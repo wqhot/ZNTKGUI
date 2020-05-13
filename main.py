@@ -6,7 +6,7 @@ from Ui_gui import Ui_MainWindow
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem, QAction,
+from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem, QAction
 
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QProcess
 
@@ -174,12 +174,13 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # proxy_z = pg.SignalProxy(self.pw_z.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
 
-        color = QColor(0, 255, 0)
         # self.label.setScaledContents(True)
-        self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
-        self.pushButton.setText("接收数据")
 
-        toolBtnStart = QAction(QIcon('close.ico'), '退出', self)
+        self.toolBtnStart = QAction(QIcon('./res/连接.png'), '开始', self)
+        self.toolBtnStart.triggered.connect(self.startRecv)
+
+        self.toolbar = self.addToolBar('接收')
+        self.toolbar.addAction(self.toolBtnStart)
 
         self.stop = False
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
@@ -208,22 +209,21 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.recvThread = threading.Thread(target=self.update)
             self.recvThread.start()
             color = QColor(255, 0, 0)
-            self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
-            self.pushButton.setText("停止接收数据")
+            self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
+            self.toolBtnStart.setText('暂停')
         elif self.recv.issend:
             self.recv.pause()
-            # self.recvThread.join()
             color = QColor(0, 255, 0)
-            self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
-            self.pushButton.setText("接收数据")
-
+            self.toolBtnStart.setIcon(QIcon('./res/播放.png'))
+            self.toolBtnStart.setText('恢复')
+            # self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
+            # self.pushButton.setText("接收数据")
         else:
-            # self.recvThread = threading.Thread(target=self.update)
-            # self.recvThread.start()
             self.recv.start()
             color = QColor(255, 0, 0)
-            self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
-            self.pushButton.setText("停止接收数据")
+            self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
+            self.toolBtnStart.setText('暂停')
+
             
 
 
