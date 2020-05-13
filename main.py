@@ -6,11 +6,11 @@ from Ui_gui import Ui_MainWindow
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem
+from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem, QAction,
 
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QProcess
 
-from PyQt5.QtGui import QPixmap, QImage, QPainter, QColor, QFont
+from PyQt5.QtGui import QPixmap, QImage, QPainter, QColor, QFont, QIcon
 
 from PyQt5.QtWidgets import QLabel, QWidget
 
@@ -178,6 +178,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # self.label.setScaledContents(True)
         self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
         self.pushButton.setText("接收数据")
+
+        toolBtnStart = QAction(QIcon('close.ico'), '退出', self)
+
         self.stop = False
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal())
@@ -207,8 +210,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             color = QColor(255, 0, 0)
             self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
             self.pushButton.setText("停止接收数据")
-        elif self.recv.isRun():
-            self.recv.stop()
+        elif self.recv.issend:
+            self.recv.pause()
             # self.recvThread.join()
             color = QColor(0, 255, 0)
             self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())

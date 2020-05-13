@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '/home/wq/catkin_ws/src/zntk_gui/gui_v2.ui'
+# Form implementation generated from reading ui file '/home/wq/catkin_ws/src/ZNTKGUI/gui.ui'
 #
 # Created by: PyQt5 UI code generator 5.14.1
 #
@@ -107,6 +107,9 @@ class Ui_MainWindow(object):
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
+        self.toolBar = QtWidgets.QToolBar(MainWindow)
+        self.toolBar.setObjectName("toolBar")
+        MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
 
         self.retranslateUi(MainWindow)
         self.pushButton.clicked.connect(MainWindow.startRecv)
@@ -117,3 +120,4 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.pushButton.setText(_translate("MainWindow", "PushButton"))
         self.label.setText(_translate("MainWindow", "图像"))
+        self.toolBar.setWindowTitle(_translate("MainWindow", "toolBar"))
