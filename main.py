@@ -201,6 +201,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnPlay.triggered.connect(self.playBag)
         self.toolBtnPlay.setEnabled(False)
 
+        self.toolBtnInit = QAction(QIcon('./res/相机.png'), '初始化', self)
+        self.toolBtnInit.triggered.connect(self.playBag)
+        self.toolBtnInit.setEnabled(False)
+
         self.toolBtnReset = QAction(QIcon('./res/重播.png'), '重置', self)
         self.toolBtnReset.triggered.connect(self.resetRemote)
         self.toolBtnReset.setEnabled(False)
@@ -219,6 +223,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_2.addAction(self.toolBtnNormal)
         self.toolbar_2.addAction(self.toolBtnRecord)
         self.toolbar_2.addAction(self.toolBtnPlay)
+        self.toolbar_2.addAction(self.toolBtnInit)
         
         self.toolbar_3 = self.addToolBar('控制')
         self.toolbar_3.addAction(self.toolBtnReset)
@@ -267,6 +272,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnPlay.setEnabled(True)
         self.toolBtnRecord.setEnabled(True)
         self.toolBtnNormal.setEnabled(True)
+        self.toolBtnInit.setEnabled(True)
     
     def resetRemote(self):
         self.ssh.sendCommand('r')
@@ -278,6 +284,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnPlay.setEnabled(False)
         self.toolBtnRecord.setEnabled(False)
         self.toolBtnNormal.setEnabled(False)
+        self.toolBtnInit.setEnabled(False)
     
     def playBag(self):
         dialog = QDialog()
@@ -296,6 +303,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnPlay.setEnabled(False)
         self.toolBtnRecord.setEnabled(False)
         self.toolBtnNormal.setEnabled(False)
+        self.toolBtnInit.setEnabled(False)
    
     def recordBag(self):
         dialog = QDialog()
@@ -313,11 +321,22 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnPlay.setEnabled(False)
         self.toolBtnRecord.setEnabled(False)
         self.toolBtnNormal.setEnabled(False)
+        self.toolBtnInit.setEnabled(False)
     
+    def initRun(self):
+        self.ssh.sendCommand('/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -s')
+        self.toolBtnReset.setEnabled(True)
+        self.toolBtnClose.setEnabled(True)
+        self.toolBtnPlay.setEnabled(False)
+        self.toolBtnRecord.setEnabled(False)
+        self.toolBtnNormal.setEnabled(False)
+        self.toolBtnInit.setEnabled(False)
+
     def connect(self):
         self.toolBtnPlay.setEnabled(True)
         self.toolBtnRecord.setEnabled(True)
         self.toolBtnNormal.setEnabled(True)
+        self.toolBtnInit.setEnabled(True)
         self.toolBtnConnect.setEnabled(False)
         self.toolBtnSetting.setEnabled(False)
         self.ssh.start()
