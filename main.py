@@ -3,20 +3,23 @@ import sys
 import socket
 
 from Ui_gui import Ui_MainWindow
+from Ui_bagset import Ui_Dialog
+from Ui_setting import Ui_Dialog as Ui_Dialog_set
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem
+from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem, QAction, QDialog
 
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QProcess
 
-from PyQt5.QtGui import QPixmap, QImage, QPainter, QColor, QFont
+from PyQt5.QtGui import QPixmap, QImage, QPainter, QColor, QFont, QIcon
 
 from PyQt5.QtWidgets import QLabel, QWidget
 
 import numpy as np
 import pyqtgraph as pg
 from recvData import RecvData
+from sshCtl import sshCtl
 import threading
 import time
 import math
@@ -52,6 +55,7 @@ DICT_TYPE_LIST = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0]
 
+
 class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignner 绘制的窗口
 
     def __init__(self):
@@ -59,7 +63,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.setupUi(self)
         self.lsts = {}
         index = 0
-
+        self.ssh = sshCtl('cd /home/shipei/zntk/lk_vio_icp/build/',
+                          '10.42.0.1',
+                          'shipei',
+                          'shipei')
         for key in DICT_NAME_LIST:
             self.lsts[key] = [DICT_TYPE_LIST[index]] * 3600
             index = index + 1
@@ -70,7 +77,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.verticalLayout_123.addWidget(self.pw)
         l = pg.GraphicsLayout()
         self.pw.setCentralWidget(l)
-        l.addItem(a_3, row=2, col=3, rowspan=1, colspan=1)      
+        l.addItem(a_3, row=2, col=3, rowspan=1, colspan=1)
         l.addItem(a_2, row=2, col=1, rowspan=1, colspan=1)
         self.pI = pg.PlotItem()
         self.v_1 = self.pI.vb
@@ -99,20 +106,19 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.v_2.enableAutoRange('y', 0.95)
         self.v_3.enableAutoRange('y', 0.95)
 
-        self.p1 = pg.PlotDataItem()      
+        self.p1 = pg.PlotDataItem()
         self.p1.setPen((255, 0, 0))
         self.v_1.addItem(self.p1)
-        self.p2 = pg.PlotDataItem() 
+        self.p2 = pg.PlotDataItem()
         self.p2.setPen((0, 255, 0))
         self.v_2.addItem(self.p2)
-        self.p3 = pg.PlotDataItem() 
+        self.p3 = pg.PlotDataItem()
         self.p3.setPen((0, 0, 255))
         self.v_3.addItem(self.p3)
-        
+
         self.pw_x = pg.PlotWidget(name='Plotx')
         self.pw_y = pg.PlotWidget(name='Ploty')
         self.pw_z = pg.PlotWidget(name='Plotz')
-
 
         self.verticalLayout_xyz.addWidget(self.pw_x)
         self.verticalLayout_xyz.addWidget(self.pw_y)
@@ -124,11 +130,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.pw_y.setLabel('bottom', 'time', units='s')
         self.pw_z.setLabel('left', 'angle', units='°')
         self.pw_z.setLabel('bottom', 'time', units='s')
-        self.pw_x.setRange(xRange=[-3599, 0], yRange=[-180,180])
+        self.pw_x.setRange(xRange=[-3599, 0], yRange=[-180, 180])
         self.pw_x.setLimits(xMax=0)
-        self.pw_y.setRange(xRange=[-3599, 0], yRange=[-180,180])
+        self.pw_y.setRange(xRange=[-3599, 0], yRange=[-180, 180])
         self.pw_y.setLimits(xMax=0)
-        self.pw_z.setRange(xRange=[-3599, 0], yRange=[-180,180])
+        self.pw_z.setRange(xRange=[-3599, 0], yRange=[-180, 180])
         self.pw_z.setLimits(xMax=0)
 
         self.pw_x.setLabel(
@@ -139,7 +145,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
         self.pw_z.setLabel(
             'top', "<span style='font-size: 12pt'> roll </span>")
-            
+
         self.p1_x = self.pw_x.plot()
         self.p1_x.setPen((255, 0, 0))
         self.p2_x = self.pw_x.plot()
@@ -174,20 +180,152 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # proxy_z = pg.SignalProxy(self.pw_z.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
 
-        color = QColor(0, 255, 0)
         # self.label.setScaledContents(True)
-        self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
-        self.pushButton.setText("接收数据")
+
+        self.toolBtnStart = QAction(QIcon('./res/播放.png'), '开始', self)
+        self.toolBtnStart.triggered.connect(self.startRecv)
+
+        self.toolBtnConnect = QAction(QIcon('./res/连接.png'), '远程连接', self)
+        self.toolBtnConnect.triggered.connect(self.connect)
+        self.toolBtnConnect.setEnabled(False)
+
+        self.toolBtnNormal = QAction(QIcon('./res/加速.png'), '正常运行', self)
+        self.toolBtnNormal.triggered.connect(self.normalRun)
+        self.toolBtnNormal.setEnabled(False)
+
+        self.toolBtnRecord = QAction(QIcon('./res/录音.png'), '录包', self)
+        self.toolBtnRecord.triggered.connect(self.recordBag)
+        self.toolBtnRecord.setEnabled(False)
+
+        self.toolBtnPlay = QAction(QIcon('./res/喇叭.png'), '回放', self)
+        self.toolBtnPlay.triggered.connect(self.playBag)
+        self.toolBtnPlay.setEnabled(False)
+
+        self.toolBtnReset = QAction(QIcon('./res/重播.png'), '重置', self)
+        self.toolBtnReset.triggered.connect(self.resetRemote)
+        self.toolBtnReset.setEnabled(False)
+
+        self.toolBtnClose = QAction(QIcon('./res/关机.png'), '停止', self)
+        self.toolBtnClose.triggered.connect(self.closeRemote)
+        self.toolBtnClose.setEnabled(False)
+
+        self.toolBtnSetting = QAction(QIcon('./res/设置.png'), '设置', self)
+        self.toolBtnSetting.triggered.connect(self.settingSSH)
+        self.toolBtnSetting.setEnabled(True)
+
+        self.toolBar.addAction(self.toolBtnStart)
+        self.toolBar.addAction(self.toolBtnConnect)
+        self.toolbar_2 = self.addToolBar('模式')
+        self.toolbar_2.addAction(self.toolBtnNormal)
+        self.toolbar_2.addAction(self.toolBtnRecord)
+        self.toolbar_2.addAction(self.toolBtnPlay)
+        
+        self.toolbar_3 = self.addToolBar('控制')
+        self.toolbar_3.addAction(self.toolBtnReset)
+        self.toolbar_3.addAction(self.toolBtnClose)
+
+        self.toolbar_4 = self.addToolBar('设置')
+        self.toolbar_4.addAction(self.toolBtnSetting)
+
+        self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.toolbar_2.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.toolbar_3.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.toolbar_4.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+
+        self.setWindowOpacity(0.9) # 设置窗口透明度
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground) # 设置窗口背景透明
         self.stop = False
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal_2())
         # self.tabWidget.addTab(EmbTerminal(), "EmbTerminal")
+    
+    def settingSSH(self):
+        dialog = QDialog()
+        setDialog = Ui_Dialog_set()
+        setDialog.setupUi(dialog)
+        host = '10.42.0.1'
+        port = 22
+        username = 'shipei'
+        password = 'shipei'
+        if dialog.exec():
+            host = setDialog.lineEdit.text()
+            port = int(setDialog.spinBox.value())
+            username = setDialog.lineEdit_3.text()
+            password = setDialog.lineEdit_4.text()
+        else:
+            return
+        self.ssh.setHost(host)
+        self.ssh.setPort(port)
+        self.ssh.setUsername(username)
+        self.ssh.setPassword(password)
+    
+    def closeRemote(self):
+        self.ssh.sendCommand('x')
+        self.toolBtnReset.setEnabled(False)
+        self.toolBtnClose.setEnabled(False)
+        self.toolBtnPlay.setEnabled(True)
+        self.toolBtnRecord.setEnabled(True)
+        self.toolBtnNormal.setEnabled(True)
+    
+    def resetRemote(self):
+        self.ssh.sendCommand('r')
+
+    def normalRun(self):
+        self.ssh.sendCommand('/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node')
+        self.toolBtnReset.setEnabled(True)
+        self.toolBtnClose.setEnabled(True)
+        self.toolBtnPlay.setEnabled(False)
+        self.toolBtnRecord.setEnabled(False)
+        self.toolBtnNormal.setEnabled(False)
+    
+    def playBag(self):
+        dialog = QDialog()
+        bagsetDialog = Ui_Dialog()
+        bagsetDialog.setupUi(dialog)
+        bagname = 'temp'
+        rate = 1.0
+        if dialog.exec():
+            bagname = bagsetDialog.lineEdit.text()
+            rate = bagsetDialog.doubleSpinBox.value()
+        else:
+            return
+        self.ssh.sendCommand('/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -p ' + bagname + ' -rate ' + str(rate))
+        self.toolBtnReset.setEnabled(True)
+        self.toolBtnClose.setEnabled(True)
+        self.toolBtnPlay.setEnabled(False)
+        self.toolBtnRecord.setEnabled(False)
+        self.toolBtnNormal.setEnabled(False)
+   
+    def recordBag(self):
+        dialog = QDialog()
+        bagsetDialog = Ui_Dialog()
+        bagsetDialog.doubleSpinBox.setEnabled(False)
+        bagsetDialog.setupUi(dialog)
+        bagname = 'temp'
+        if dialog.exec():
+            bagname = bagsetDialog.lineEdit.text()
+        else:
+            return
+        self.ssh.sendCommand('/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -r ' + bagname)
+        self.toolBtnReset.setEnabled(True)
+        self.toolBtnClose.setEnabled(True)
+        self.toolBtnPlay.setEnabled(False)
+        self.toolBtnRecord.setEnabled(False)
+        self.toolBtnNormal.setEnabled(False)
+    
+    def connect(self):
+        self.toolBtnPlay.setEnabled(True)
+        self.toolBtnRecord.setEnabled(True)
+        self.toolBtnNormal.setEnabled(True)
+        self.toolBtnConnect.setEnabled(False)
+        self.toolBtnSetting.setEnabled(False)
+        self.ssh.start()
 
     def updateViews(self):
         self.v_2.setGeometry(self.v_1.sceneBoundingRect())
         self.v_3.setGeometry(self.v_2.sceneBoundingRect())
-    
+
     # def updateDelay(self, x, y1, y2, y3):
     #     self.v_1.addItem()
 
@@ -204,25 +342,19 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.recv = RecvData()
             self.recvThread = threading.Thread(target=self.update)
             self.recvThread.start()
-            color = QColor(255, 0, 0)
-            self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
-            self.pushButton.setText("停止接收数据")
-        elif self.recv.isRun():
-            self.recv.stop()
-            # self.recvThread.join()
-            color = QColor(0, 255, 0)
-            self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
-            self.pushButton.setText("接收数据")
-
+            self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
+            self.toolBtnStart.setText('暂停')
+            self.toolBtnConnect.setEnabled(True)
+        elif self.recv.issend:
+            self.recv.pause()
+            self.toolBtnStart.setIcon(QIcon('./res/播放.png'))
+            self.toolBtnStart.setText('恢复')
+            # self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
+            # self.pushButton.setText("接收数据")
         else:
-            # self.recvThread = threading.Thread(target=self.update)
-            # self.recvThread.start()
             self.recv.start()
-            color = QColor(255, 0, 0)
-            self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
-            self.pushButton.setText("停止接收数据")
-            
-
+            self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
+            self.toolBtnStart.setText('暂停')
 
     def update(self):
         while not self.stop:
@@ -230,8 +362,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             data = self.recv.getData()
             image = self.recv.getImage()
             if image is not None:
-                convertToQtFormat = QtGui.QImage(image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
-                p = convertToQtFormat.scaled(self.label.width(), self.label.height(), Qt.KeepAspectRatio)
+                convertToQtFormat = QtGui.QImage(
+                    image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
+                p = convertToQtFormat.scaled(
+                    self.label.width(), self.label.height(), Qt.KeepAspectRatio)
                 self.label.setPixmap(QPixmap.fromImage(p))
                 # cv2.imshow("image", image)
                 # cv2.waitKey(1)
@@ -244,7 +378,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                 # print(data)
             else:
                 continue
-            
+
             # 绘图
             # fps类
             x = list(range(-3599, 1))
@@ -282,7 +416,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.p1_y.setData(x=x, y=y1)
             self.p2_y.setData(x=x, y=y2)
             self.p3_y.setData(x=x, y=y3)
-            
+
             y1 = self.lsts["EUL_BY_CAM_Z"]
             y2 = self.lsts["EUL_BY_UPDATE_Z"]
             y3 = self.lsts["EUL_BY_PRE_Z"]
@@ -346,6 +480,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def closeEvent(self, event):
         self.recv.stop()
+        self.ssh.isRun = False
         self.stop = True
         event.accept()
 
