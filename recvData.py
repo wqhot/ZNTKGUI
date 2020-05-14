@@ -7,6 +7,9 @@ import struct
 import math
 import base64
 import cv2
+import csv
+import copy
+import time
 import numpy as np
 
 
@@ -23,61 +26,68 @@ class RecvData():
     __DT_OF_FRAME = 112
     __THRESOLD = 120
     __COST_OF_IMG = 124
-    __LENGTH = 133
+    __STAMP = 132
+    __LENGTH = 165
+    __OLDLENGTH = 141
+    __IMAGE_FEATURE_POINT_X = 140
+    __IMAGE_FEATURE_POINT_Y = 144
 
     def __init__(self):
         self.mutex = threading.Lock()
-        self.img_mutex = threading.Lock()
+        # self.img_mutex = threading.Lock()
         self.que = queue.Queue(1024)
-        self.img_que = queue.Queue(8)
+        # self.img_que = queue.Queue(8)
         self.cond = threading.Condition()
-        self.img_cond = threading.Condition()
+        # self.img_cond = threading.Condition()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(("0.0.0.0", 5577))
-        self.sock_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock_2.bind(("0.0.0.0", 5578))
-        self.sock_2.listen()
+        # self.sock_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.sock_2.bind(("0.0.0.0", 5578))
+        # self.sock_2.listen()
         self.isrun = True
+        self.issave = True
         self.issend = True
+        self.displayDict = None
+        self.contsum = 0
         self.th = threading.Thread(target=self.run, daemon=True)
         self.th.start()
-        self.th_2 = threading.Thread(target=self.run_img, daemon=True)
+        self.th_2 = threading.Thread(target=self.save, daemon=True)
         self.th_2.start()
 
     def pause(self):
-        self.cond.acquire()
+        # self.cond.acquire()
         # print("get cond")
-        self.img_cond.acquire()
+        # self.img_cond.acquire()
         # print("get img_cond")
-        self.cond.release()
-        self.img_cond.release()
+        # self.cond.release()
+        # self.img_cond.release()
         self.issend = False
-    
+
     def stop(self):
         # self.sock.close()
         self.cond.acquire()
         # print("get cond")
-        self.img_cond.acquire()
-        # print("get img_cond")
-        self.cond.release()
-        self.img_cond.release()
+        # self.img_cond.acquire()
+        # print("get img_cond")   
+        # self.img_cond.release()
         self.isrun = False
+        self.issave = False
+        self.cond.release()
 
     def reconnect(self):
         self.cond.acquire()
-        self.img_cond.acquire()
+        # self.img_cond.acquire()
         self.cond.release()
-        self.img_cond.release()
+        # self.img_cond.release()
         self.isrun = False
         self.th.join()
-        self.th_2.join()
+        # self.th_2.join()
         self.isrun = True
         self.issend = True
         self.th = threading.Thread(target=self.run, daemon=True)
         self.th.start()
-        self.th_2 = threading.Thread(target=self.run_img, daemon=True)
+        self.th_2 = threading.Thread(target=self.save, daemon=True)
         self.th_2.start()
-
 
     def start(self):
         self.issend = True
@@ -89,27 +99,22 @@ class RecvData():
     def isRun(self):
         return self.isrun
 
-    def getImage(self):
-        self.img_cond.acquire()
-        self.img_cond.wait(0.5)
-        img = None
-        if not self.img_que.empty():
-            r = self.img_que.get()
-            img = np.asarray(bytearray(r), dtype='uint8')
-            img = cv2.imdecode(img, cv2.IMREAD_COLOR)
-            # print("getImage")
-        self.img_cond.notify_all()
-        self.img_cond.release()
-        return img
+    # def getImage(self):
+    #     self.img_cond.acquire()
+    #     self.img_cond.wait(0.5)
+    #     img = None
+    #     if not self.img_que.empty():
+    #         r = self.img_que.get()
+    #         img = np.asarray(bytearray(r), dtype='uint8')
+    #         img = cv2.imdecode(img, cv2.IMREAD_COLOR)
+    #         # print("getImage")
+    #     self.img_cond.notify_all()
+    #     self.img_cond.release()
+    #     return img
 
     def getData(self):
-        r = None
-        self.cond.acquire()
-        self.cond.wait(0.5)
-        if not self.que.empty():
-            r = self.que.get()
-            # print("getData")
-        self.cond.release()
+        r = copy.deepcopy(self.displayDict)
+        self.displayDict = None
         return r
 
     def qua2eul(self, qua):
@@ -129,80 +134,58 @@ class RecvData():
 
         return eul
 
-    def run_img(self):
-        while self.isrun:
-            c_socket, c_address = self.sock_2.accept()
-            while self.isrun:
-                head = c_socket.recv(4)
-                data = bytearray(head)
-                if data.find(bytearray(b'\xff\xff\xff\xff')) != -1:
-                    continue
-                length = int.from_bytes(data, byteorder='little')
-                if length == 0:
-                    break
-                # print(length)
-                curSize = 0
-                allData = b''
-                while curSize < length:
-                    remain = 1024 if (
-                        length - curSize) > 1024 else (length - curSize)
-                    data = c_socket.recv(remain)
-                    remain = len(data)
-                    index = data.rfind(bytearray(b'\xff'))
-                    if index != -1:
-                        if index == remain - 1:  # 刚好结束
-                            break
-                        elif remain - index < 5:  # 不足以接收长度
-                            data1 = bytearray(data[index + 1:])
-                            data2 = bytearray(
-                                c_socket.recv(5 + index - remain))
-                            data1.append(data2)
-                            length = int.from_bytes(data1, byteorder='little')
-                            curSize = 0
-                            allData = b''
-                            continue
-                        else:  # 足够接收长度或剩余有数据
-                            length = int.from_bytes(
-                                bytearray(data[index + 1:index + 4]), byteorder='little')
-                            curSize = 0
-                            data1 = data[index + 5:]
-                            allData = b''
-                            allData += data1
-                            curSize = curSize + len(data1)
-                            continue
-                    else:
-                        allData += data
-                        curSize = curSize + len(data)
+    def close_start(self):
+        self.issave = False
+        self.issend = False  
+        self.th_2.join()
+        self.contsum = 0
+        self.issend = True
+        self.issave = True
+        self.th_2 = threading.Thread(target=self.save, daemon=True)
+        self.th_2.start()
 
-                imgDecode = base64.b64decode(bytearray(allData))
-                # print("start put que")
-                if self.img_cond.acquire(timeout=0.5):
-                    if self.img_que.full():
-                        self.img_que.get_nowait()
-                    if self.issend:
-                        self.img_que.put(imgDecode)
-                    self.img_cond.notify_all()
-                    self.img_cond.release()
-                # print("end put que")
-                # if self.img_mutex.acquire():
-                #     # print('img len %s'%len(allData))
-                #     self.img_que.put(imgDecode)
-                #     self.img_mutex.release()
-            c_socket.close()
+    def save(self):
+        headers = ['stamp', 'eul_x', 'eul_y', 'eul_z', 't_x', 't_y', 't_z']
+        csv_name = './history/' + str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + '.csv'
+        with open(csv_name, 'w') as f:
+            f_csv = csv.writer(f)
+            f_csv.writerow(headers)
+            while self.issave:
+                r = None
+                if self.cond.acquire():
+                    if self.que.empty():
+                        self.cond.wait(0.5)                 
+                    if not self.que.empty():
+                        r = self.que.get()
+                        # print("getData")
+                    self.cond.release()
+                if r is not None:
+                    line = [r["STAMP"],
+                            r["EUL_BY_PRE_X"],
+                            r["EUL_BY_PRE_Y"],
+                            r["EUL_BY_PRE_Z"],
+                            r["POSE_BY_PRE"][0],
+                            r["POSE_BY_PRE"][1],
+                            r["POSE_BY_PRE"][2]]
+                    f_csv.writerow(line)
 
     def run(self):
         while self.isrun:
             data = []
             while len(data) < self.__LENGTH:
-                buff = self.sock.recv(self.__LENGTH)
+                # remain = self.__LENGTH - len(data)
+                buff = self.sock.recv(1024)
                 buffArray = bytearray(buff)
                 buffList = list(buffArray)
                 index = buffArray.find(bytearray(b'\xff\xff\xff'))
                 if index != -1:
                     data = []
                     buffList = buffList[index:]
+                    self.__LENGTH = buffList[index + 3]
+                    # print(self.__LENGTH)
                 data.extend(buffList)
             # 收齐一帧
+            # print(time.time())
             sumcheck = sum(data[:-1]) % 256
             if sumcheck != data[-1]:
                 print("sumcheck error!")
@@ -296,11 +279,35 @@ class RecvData():
             dc["COST_OF_IMG"] = struct.unpack('d', bytes(
                 data[self.__COST_OF_IMG:self.__COST_OF_IMG+8]))[0]
 
-            self.cond.acquire()
+            dc["STAMP"] = struct.unpack('d', bytes(
+                data[self.__STAMP:self.__STAMP+8]))[0]
+
+            pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
+            ptx = []
+            pty = []
+            for i in range(pts):
+                ptx.append(struct.unpack('f', bytes(
+                    data[self.__IMAGE_FEATURE_POINT_X + 8 * i: self.__IMAGE_FEATURE_POINT_X + 4 + 8 * i]))[0])
+                pty.append(struct.unpack('f', bytes(
+                    data[self.__IMAGE_FEATURE_POINT_Y + 8 * i: self.__IMAGE_FEATURE_POINT_Y + 4 + 8 * i]))[0])
+
+            dc["IMAGE_FEATURE_POINT_X"] = ptx
+            dc["IMAGE_FEATURE_POINT_Y"] = pty
+            save_dc = {}
+            save_dc["EUL_BY_PRE_X"] = dc["EUL_BY_PRE_X"]
+            save_dc["EUL_BY_PRE_Y"] = dc["EUL_BY_PRE_Y"]
+            save_dc["EUL_BY_PRE_Z"] = dc["EUL_BY_PRE_Z"]
+            save_dc["POSE_BY_PRE"] = dc["POSE_BY_PRE"]
+            save_dc["STAMP"] = dc["STAMP"]
+            self.contsum = self.contsum + 1
             if (self.issend):
-                self.que.put(dc)
-            self.cond.notify_all()
-            self.cond.release()
+                self.displayDict = dc
+            if self.cond.acquire():
+                if (self.issend):
+                    self.que.put(save_dc)
+                self.cond.notify_all()
+                self.cond.release()
+            # print("finish")
             # if self.mutex.acquire():
             #     self.que.put(dc)
             #     self.mutex.release()

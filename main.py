@@ -201,9 +201,13 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnPlay.triggered.connect(self.playBag)
         self.toolBtnPlay.setEnabled(False)
 
-        self.toolBtnInit = QAction(QIcon('./res/相机.png'), '初始化', self)
-        self.toolBtnInit.triggered.connect(self.playBag)
+        self.toolBtnInit = QAction(QIcon('./res/相机.png'), '装车初始化', self)
+        self.toolBtnInit.triggered.connect(self.initRun)
         self.toolBtnInit.setEnabled(False)
+
+        self.toolBtnIMUInit = QAction(QIcon('./res/指南针.png'), 'IMU初始化', self)
+        self.toolBtnIMUInit.triggered.connect(self.initIMU)
+        self.toolBtnIMUInit.setEnabled(False)
 
         self.toolBtnReset = QAction(QIcon('./res/重播.png'), '重置', self)
         self.toolBtnReset.triggered.connect(self.resetRemote)
@@ -223,8 +227,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_2.addAction(self.toolBtnNormal)
         self.toolbar_2.addAction(self.toolBtnRecord)
         self.toolbar_2.addAction(self.toolBtnPlay)
+        self.toolbar_2.addAction(self.toolBtnIMUInit)
         self.toolbar_2.addAction(self.toolBtnInit)
         
+
         self.toolbar_3 = self.addToolBar('控制')
         self.toolbar_3.addAction(self.toolBtnReset)
         self.toolbar_3.addAction(self.toolBtnClose)
@@ -237,14 +243,14 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_3.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolbar_4.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
-        self.setWindowOpacity(0.9) # 设置窗口透明度
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground) # 设置窗口背景透明
+        self.setWindowOpacity(0.9)  # 设置窗口透明度
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
         self.stop = False
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal_2())
         # self.tabWidget.addTab(EmbTerminal(), "EmbTerminal")
-    
+
     def settingSSH(self):
         dialog = QDialog()
         setDialog = Ui_Dialog_set()
@@ -264,28 +270,43 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.ssh.setPort(port)
         self.ssh.setUsername(username)
         self.ssh.setPassword(password)
-    
+
     def closeRemote(self):
         self.ssh.sendCommand('x')
+        self.recv.close_start()
         self.toolBtnReset.setEnabled(False)
         self.toolBtnClose.setEnabled(False)
         self.toolBtnPlay.setEnabled(True)
         self.toolBtnRecord.setEnabled(True)
         self.toolBtnNormal.setEnabled(True)
         self.toolBtnInit.setEnabled(True)
-    
+        self.toolBtnIMUInit.setEnabled(True)
+
     def resetRemote(self):
         self.ssh.sendCommand('r')
 
-    def normalRun(self):
-        self.ssh.sendCommand('/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node')
+    def initIMU(self):
+        self.ssh.sendCommand(
+            '/home/shipei/zntk/lk_vio_icp/build/imu_init')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
         self.toolBtnRecord.setEnabled(False)
         self.toolBtnNormal.setEnabled(False)
         self.toolBtnInit.setEnabled(False)
+        self.toolBtnIMUInit.setEnabled(False)
     
+    def normalRun(self):
+        self.ssh.sendCommand(
+            '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node')
+        self.toolBtnReset.setEnabled(True)
+        self.toolBtnClose.setEnabled(True)
+        self.toolBtnPlay.setEnabled(False)
+        self.toolBtnRecord.setEnabled(False)
+        self.toolBtnNormal.setEnabled(False)
+        self.toolBtnInit.setEnabled(False)
+        self.toolBtnIMUInit.setEnabled(False)
+
     def playBag(self):
         dialog = QDialog()
         bagsetDialog = Ui_Dialog()
@@ -297,14 +318,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             rate = bagsetDialog.doubleSpinBox.value()
         else:
             return
-        self.ssh.sendCommand('/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -p ' + bagname + ' -rate ' + str(rate))
+        self.ssh.sendCommand(
+            '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -p ' + bagname + ' -rate ' + str(rate))
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
         self.toolBtnRecord.setEnabled(False)
         self.toolBtnNormal.setEnabled(False)
         self.toolBtnInit.setEnabled(False)
-   
+        self.toolBtnIMUInit.setEnabled(False)
+
     def recordBag(self):
         dialog = QDialog()
         bagsetDialog = Ui_Dialog()
@@ -315,28 +338,33 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             bagname = bagsetDialog.lineEdit.text()
         else:
             return
-        self.ssh.sendCommand('/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -r ' + bagname)
+        self.ssh.sendCommand(
+            '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -r ' + bagname)
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
         self.toolBtnRecord.setEnabled(False)
         self.toolBtnNormal.setEnabled(False)
         self.toolBtnInit.setEnabled(False)
-    
+        self.toolBtnIMUInit.setEnabled(False)
+
     def initRun(self):
-        self.ssh.sendCommand('/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -s')
+        self.ssh.sendCommand(
+            '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -s')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
         self.toolBtnRecord.setEnabled(False)
         self.toolBtnNormal.setEnabled(False)
         self.toolBtnInit.setEnabled(False)
+        self.toolBtnIMUInit.setEnabled(False)
 
     def connect(self):
         self.toolBtnPlay.setEnabled(True)
         self.toolBtnRecord.setEnabled(True)
         self.toolBtnNormal.setEnabled(True)
         self.toolBtnInit.setEnabled(True)
+        self.toolBtnIMUInit.setEnabled(True)
         self.toolBtnConnect.setEnabled(False)
         self.toolBtnSetting.setEnabled(False)
         self.ssh.start()
@@ -379,16 +407,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         while not self.stop:
             # 接收数据
             data = self.recv.getData()
-            image = self.recv.getImage()
-            if image is not None:
-                convertToQtFormat = QtGui.QImage(
-                    image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
-                p = convertToQtFormat.scaled(
-                    self.label.width(), self.label.height(), Qt.KeepAspectRatio)
-                self.label.setPixmap(QPixmap.fromImage(p))
-                # cv2.imshow("image", image)
-                # cv2.waitKey(1)
-                # print(self.label.size())
+            # image = self.recv.getImage()
+            # if image is not None:
+            #     convertToQtFormat = QtGui.QImage(
+            #         image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
+            #     p = convertToQtFormat.scaled(
+            #         self.label.width(), self.label.height(), Qt.KeepAspectRatio)
+            #     self.label.setPixmap(QPixmap.fromImage(p))
+            #     # cv2.imshow("image", image)
+            #     # cv2.waitKey(1)
+            #     # print(self.label.size())
             if data is not None:
                 for key in DICT_NAME_LIST:
                     self.lsts[key].append(data[key])
@@ -398,7 +426,18 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             else:
                 continue
 
-            # 绘图
+            # 绘图类
+            image = np.zeros((480, 640, 3), np.uint8)
+            for i in range(len(data["IMAGE_FEATURE_POINT_X"])):
+                cv2.circle(image,
+                           (int(data["IMAGE_FEATURE_POINT_X"][i] * 640 / 2 + 320),
+                            int(data["IMAGE_FEATURE_POINT_Y"][i] * 480 / 2 + 240)),
+                           10, (255, 255, 255), 3)
+            convertToQtFormat = QtGui.QImage(
+                image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
+            p = convertToQtFormat.scaled(
+                self.label.width(), self.label.height(), Qt.KeepAspectRatio)
+            self.label.setPixmap(QPixmap.fromImage(p))
             # fps类
             x = list(range(-3599, 1))
             y1 = self.lsts["DT_BY_CAM"]
@@ -448,8 +487,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                 self.lsts["POSE_BY_PRE"][-1][0], self.lsts["POSE_BY_PRE"][-1][1], self.lsts["POSE_BY_PRE"][-1][2],
                 self.lsts["EUL_BY_PRE_X"][-1], self.lsts["EUL_BY_PRE_Y"][-1], self.lsts["EUL_BY_PRE_Z"][-1])
             self.listWidget.insertItem(0, s)
-            s = s + " 阈值:%s" % self.lsts["THRESOLD"][-1]
+            s = s + " 阈值:%s " % self.lsts["THRESOLD"][-1] + "共收到:%i" % self.recv.contsum + "包"
             self.statusbar.showMessage(s)
+            time.sleep(1.0 / 30.0)
             # print(s)
 
     def qua2eul(self, qua):
