@@ -278,7 +278,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_4.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolbar_5.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
-        self.setWindowOpacity(0.9)  # 设置窗口透明度
+        # self.setWindowOpacity(0.9)  # 设置窗口透明度
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
         self.stop = False
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
