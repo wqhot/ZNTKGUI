@@ -116,9 +116,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3.setPen((0, 0, 255))
         self.v_3.addItem(self.p3)
 
-        self.pw_x = pg.PlotWidget(name='Plotx')
-        self.pw_y = pg.PlotWidget(name='Ploty')
-        self.pw_z = pg.PlotWidget(name='Plotz')
+        self.pw_x = pg.PlotWidget(name='Plotx',_callSync='off')
+        self.pw_y = pg.PlotWidget(name='Ploty',_callSync='off')
+        self.pw_z = pg.PlotWidget(name='Plotz',_callSync='off')
 
         self.verticalLayout_xyz.addWidget(self.pw_x)
         self.verticalLayout_xyz.addWidget(self.pw_y)
@@ -146,25 +146,25 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.pw_z.setLabel(
             'top', "<span style='font-size: 12pt'> roll </span>")
 
-        self.p1_x = self.pw_x.plot()
+        self.p1_x = self.pw_x.plot(_callSync='off')
         self.p1_x.setPen((255, 0, 0))
-        self.p2_x = self.pw_x.plot()
+        self.p2_x = self.pw_x.plot(_callSync='off')
         self.p2_x.setPen((0, 255, 0))
-        self.p3_x = self.pw_x.plot()
+        self.p3_x = self.pw_x.plot(_callSync='off')
         self.p3_x.setPen((0, 0, 255))
 
-        self.p1_y = self.pw_y.plot()
+        self.p1_y = self.pw_y.plot(_callSync='off')
         self.p1_y.setPen((255, 0, 0))
-        self.p2_y = self.pw_y.plot()
+        self.p2_y = self.pw_y.plot(_callSync='off')
         self.p2_y.setPen((0, 255, 0))
-        self.p3_y = self.pw_y.plot()
+        self.p3_y = self.pw_y.plot(_callSync='off')
         self.p3_y.setPen((0, 0, 255))
 
-        self.p1_z = self.pw_z.plot()
+        self.p1_z = self.pw_z.plot(_callSync='off')
         self.p1_z.setPen((255, 0, 0))
-        self.p2_z = self.pw_z.plot()
+        self.p2_z = self.pw_z.plot(_callSync='off')
         self.p2_z.setPen((0, 255, 0))
-        self.p3_z = self.pw_z.plot()
+        self.p3_z = self.pw_z.plot(_callSync='off')
         self.p3_z.setPen((0, 0, 255))
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
@@ -281,6 +281,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # self.setWindowOpacity(0.9)  # 设置窗口透明度
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
         self.stop = False
+
+        self.timer = QTimer()
+
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal_2())
@@ -453,8 +456,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def startRecv(self):
         if not hasattr(self, "recv"):
             self.recv = RecvData()
-            self.recvThread = threading.Thread(target=self.update)
-            self.recvThread.start()
+            # self.recvThread = threading.Thread(target=self.update)
+            # self.recvThread.start()
+            self.timer.timeout.connect(self.update)
+            self.timer.start(33)
             self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
             self.toolBtnStart.setText('暂停')
             self.toolBtnConnect.setEnabled(True)
@@ -515,7 +520,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         
 
     def update(self):
-        while not self.stop:
+        if not self.stop:
             # 接收数据
             data = self.recv.getData()
             # image = self.recv.getImage()
@@ -535,7 +540,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                         self.lsts[key].pop(0)
                 # print(data)
             else:
-                continue
+                return
 
             # 绘图类
             image = np.zeros((480, 640, 3), np.uint8)
@@ -559,7 +564,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             s = s + " 阈值:%s " % self.lsts["THRESOLD"][-1] + \
                 "共收到:%i" % self.recv.contsum + "包"
             self.statusbar.showMessage(s)
-            time.sleep(1.0 / 30.0)
+            # time.sleep(1.0 / 30.0)
             # print(s)
 
     def qua2eul(self, qua):
@@ -609,6 +614,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def closeEvent(self, event):
         self.recv.stop()
+        if self.timer.isActive():
+            self.timer.stop()
         self.ssh.isRun = False
         self.stop = True
         event.accept()
