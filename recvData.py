@@ -113,6 +113,8 @@ class RecvData():
     #     return img
 
     def getData(self):
+        if self.displayDict is None:
+            return None
         r = copy.deepcopy(self.displayDict)
         self.displayDict = None
         return r

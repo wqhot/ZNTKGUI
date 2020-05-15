@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '/home/wq/catkin_ws/src/ZNTKGUI/gui.ui'
+# Form implementation generated from reading ui file '/home/wq/zntk/ZNTKGUI/gui.ui'
 #
 # Created by: PyQt5 UI code generator 5.14.1
 #
@@ -15,7 +15,7 @@ class Ui_MainWindow(object):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1225, 838)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("/home/wq/catkin_ws/src/ZNTKGUI/res/头盔.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("/home/wq/zntk/ZNTKGUI/res/头盔.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         MainWindow.setWindowIcon(icon)
         MainWindow.setStyleSheet("")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -37,24 +37,9 @@ class Ui_MainWindow(object):
         self.frame.setObjectName("frame")
         self.verticalLayout_6 = QtWidgets.QVBoxLayout(self.frame)
         self.verticalLayout_6.setObjectName("verticalLayout_6")
-        self.verticalLayout_5 = QtWidgets.QVBoxLayout()
-        self.verticalLayout_5.setObjectName("verticalLayout_5")
-        self.frame_3 = QtWidgets.QFrame(self.frame)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(3)
-        sizePolicy.setHeightForWidth(self.frame_3.sizePolicy().hasHeightForWidth())
-        self.frame_3.setSizePolicy(sizePolicy)
-        self.frame_3.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frame_3.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.frame_3.setObjectName("frame_3")
-        self.verticalLayout_8 = QtWidgets.QVBoxLayout(self.frame_3)
-        self.verticalLayout_8.setObjectName("verticalLayout_8")
         self.verticalLayout_xyz = QtWidgets.QVBoxLayout()
         self.verticalLayout_xyz.setObjectName("verticalLayout_xyz")
-        self.verticalLayout_8.addLayout(self.verticalLayout_xyz)
-        self.verticalLayout_5.addWidget(self.frame_3)
-        self.verticalLayout_6.addLayout(self.verticalLayout_5)
+        self.verticalLayout_6.addLayout(self.verticalLayout_xyz)
         self.horizontalLayout.addWidget(self.frame)
         self.frame_2 = QtWidgets.QFrame(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
