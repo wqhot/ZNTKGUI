@@ -1,0 +1,5 @@
+paramiko==2.7.1
+opencv_python==4.2.0.34
+numpy==1.13.3
+pyqtgraph==0.10.0
+PyQt5==5.14.2
