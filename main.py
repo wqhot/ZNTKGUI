@@ -96,7 +96,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.v_2.setXLink(self.v_1)
         self.v_3.setXLink(self.v_2)
 
-        self.pI.getAxis("left").setLabel('相机', color='red')
+        self.pI.getAxis("left").setLabel('视觉', color='red')
         a_2.setLabel('更新', color='green')
         a_3.setLabel('预测', color='blue')
 
@@ -221,6 +221,26 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnSetting.triggered.connect(self.settingSSH)
         self.toolBtnSetting.setEnabled(True)
 
+        self.toolBtnViewRed = QAction(QIcon('./res/过滤红.png'), '视觉', self)
+        self.toolBtnViewRed.triggered.connect(self.toggleRed)
+        self.toolBtnViewRed.setEnabled(True)
+
+        self.toolBtnViewGreen = QAction(QIcon('./res/过滤绿.png'), '更新', self)
+        self.toolBtnViewGreen.triggered.connect(self.toggleGreen)
+        self.toolBtnViewGreen.setEnabled(True)
+
+        self.toolBtnViewBlue = QAction(QIcon('./res/过滤蓝.png'), '预测', self)
+        self.toolBtnViewBlue.triggered.connect(self.toggleBlue)
+        self.toolBtnViewBlue.setEnabled(True)
+
+        self.toolBtnClearChart = QAction(QIcon('./res/删除.png'), '清空', self)
+        self.toolBtnClearChart.triggered.connect(self.clearChart)
+        self.toolBtnClearChart.setEnabled(True)
+
+        self.redON = True
+        self.greenON = True
+        self.blueON = True
+
         self.toolBar.addAction(self.toolBtnStart)
         self.toolBar.addAction(self.toolBtnConnect)
         self.toolbar_2 = self.addToolBar('模式')
@@ -229,7 +249,6 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_2.addAction(self.toolBtnPlay)
         self.toolbar_2.addAction(self.toolBtnIMUInit)
         self.toolbar_2.addAction(self.toolBtnInit)
-        
 
         self.toolbar_3 = self.addToolBar('控制')
         self.toolbar_3.addAction(self.toolBtnReset)
@@ -238,10 +257,17 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_4 = self.addToolBar('设置')
         self.toolbar_4.addAction(self.toolBtnSetting)
 
+        self.toolbar_5 = self.addToolBar('折线')
+        self.toolbar_5.addAction(self.toolBtnViewRed)
+        self.toolbar_5.addAction(self.toolBtnViewGreen)
+        self.toolbar_5.addAction(self.toolBtnViewBlue)
+        self.toolbar_5.addAction(self.toolBtnClearChart)
+
         self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolbar_2.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolbar_3.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolbar_4.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.toolbar_5.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
         self.setWindowOpacity(0.9)  # 设置窗口透明度
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
@@ -250,6 +276,37 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # self.verticalLayout_3.addWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal_2())
         # self.tabWidget.addTab(EmbTerminal(), "EmbTerminal")
+
+    def clearChart(self):
+        index = 0
+        for key in DICT_NAME_LIST:
+            self.lsts[key] = [DICT_TYPE_LIST[index]] * 3600
+            index = index + 1
+        self.reflash()
+
+    def toggleRed(self):
+        self.redON = not(self.redON)
+        self.reflash()
+        if self.redON:
+            self.toolBtnViewRed.setIcon(QIcon('./res/过滤红.png'))
+        else:
+            self.toolBtnViewRed.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleGreen(self):
+        self.greenON = not(self.greenON)
+        self.reflash()
+        if self.greenON:
+            self.toolBtnViewGreen.setIcon(QIcon('./res/过滤绿.png'))
+        else:
+            self.toolBtnViewGreen.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleBlue(self):
+        self.blueON = not(self.blueON)
+        self.reflash()
+        if self.blueON:
+            self.toolBtnViewBlue.setIcon(QIcon('./res/过滤蓝.png'))
+        else:
+            self.toolBtnViewBlue.setIcon(QIcon('./res/过滤关.png'))
 
     def settingSSH(self):
         dialog = QDialog()
@@ -295,7 +352,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnNormal.setEnabled(False)
         self.toolBtnInit.setEnabled(False)
         self.toolBtnIMUInit.setEnabled(False)
-    
+
     def normalRun(self):
         self.ssh.sendCommand(
             '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node')
@@ -403,6 +460,51 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
             self.toolBtnStart.setText('暂停')
 
+    def reflash(self):
+        # fps类
+        x = list(range(-3599, 1))
+        if self.redON:
+            y1 = self.lsts["DT_BY_CAM"]
+            self.p1.setData(x=x, y=y1)
+        if self.greenON:
+            y2 = self.lsts["DT_BY_UPDATE"]
+            self.p2.setData(x=x, y=y2)
+        if self.blueON:
+            y3 = self.lsts["DT_BY_PRE"]            
+            self.p3.setData(x=x, y=y3)
+        # 角度类
+        if self.redON:
+            y1 = self.lsts["EUL_BY_CAM_X"]
+            self.p1_x.setData(x=x, y=y1)
+        if self.greenON:
+            y2 = self.lsts["EUL_BY_UPDATE_X"]
+            self.p2_x.setData(x=x, y=y2)
+        if self.blueON:
+            y3 = self.lsts["EUL_BY_PRE_X"]            
+            self.p3_x.setData(x=x, y=y3)
+
+        if self.redON:
+            y1 = self.lsts["EUL_BY_CAM_Y"]
+            self.p1_y.setData(x=x, y=y1)
+        if self.greenON:
+            y2 = self.lsts["EUL_BY_UPDATE_Y"]
+            self.p2_y.setData(x=x, y=y2)
+        if self.blueON:
+            y3 = self.lsts["EUL_BY_PRE_Y"]            
+            self.p3_y.setData(x=x, y=y3)
+
+        if self.redON:
+            y1 = self.lsts["EUL_BY_CAM_Z"]
+            self.p1_z.setData(x=x, y=y1)
+        if self.greenON:
+            y2 = self.lsts["EUL_BY_UPDATE_Z"]
+            self.p2_z.setData(x=x, y=y2)
+        if self.blueON:
+            y3 = self.lsts["EUL_BY_PRE_Z"]            
+            self.p3_z.setData(x=x, y=y3)
+
+        
+
     def update(self):
         while not self.stop:
             # 接收数据
@@ -438,56 +540,15 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             p = convertToQtFormat.scaled(
                 self.label.width(), self.label.height(), Qt.KeepAspectRatio)
             self.label.setPixmap(QPixmap.fromImage(p))
-            # fps类
-            x = list(range(-3599, 1))
-            y1 = self.lsts["DT_BY_CAM"]
-            y2 = self.lsts["DT_BY_UPDATE"]
-            y3 = self.lsts["DT_BY_PRE"]
-            self.p1.setData(x=x, y=y1)
-            self.p2.setData(x=x, y=y2)
-            self.p3.setData(x=x, y=y3)
-            # 坐标类
-            # c0 = np.array([10.0, 0.0, 0.0])
-            # c1 = np.dot(c0, self.quaternion_to_rotation_matrix(
-            #     self.lsts["ANGLE_BY_CAM"][-1]))
-            # c2 = np.dot(c0, self.quaternion_to_rotation_matrix(
-            #     self.lsts["ANGLE_BY_UPDATE"][-1]))
-            # c3 = np.dot(c0, self.quaternion_to_rotation_matrix(
-            #     self.lsts["ANGLE_BY_PRE"][-1]))
-            # self.m1.resetTransform()
-            # self.m2.resetTransform()
-            # self.m3.resetTransform()
-            # self.m1.translate(c1[0], c1[1], c1[2])
-            # self.m2.translate(c2[0], c2[1], c2[2])
-            # self.m3.translate(c3[0], c3[1], c3[2])
-            # 角度类
-            y1 = self.lsts["EUL_BY_CAM_X"]
-            y2 = self.lsts["EUL_BY_UPDATE_X"]
-            y3 = self.lsts["EUL_BY_PRE_X"]
-            self.p1_x.setData(x=x, y=y1)
-            self.p2_x.setData(x=x, y=y2)
-            self.p3_x.setData(x=x, y=y3)
-
-            y1 = self.lsts["EUL_BY_CAM_Y"]
-            y2 = self.lsts["EUL_BY_UPDATE_Y"]
-            y3 = self.lsts["EUL_BY_PRE_Y"]
-            self.p1_y.setData(x=x, y=y1)
-            self.p2_y.setData(x=x, y=y2)
-            self.p3_y.setData(x=x, y=y3)
-
-            y1 = self.lsts["EUL_BY_CAM_Z"]
-            y2 = self.lsts["EUL_BY_UPDATE_Z"]
-            y3 = self.lsts["EUL_BY_PRE_Z"]
-            self.p1_z.setData(x=x, y=y1)
-            self.p2_z.setData(x=x, y=y2)
-            self.p3_z.setData(x=x, y=y3)
+            self.reflash()
             # 直接输出类
             # eul = self.qua2eul(self.lsts["ANGLE_BY_PRE"][-1])
             s = "x:%0.1f, y:%0.1f, z:%0.1f；    pitch:%0.1f, yaw:%0.1f, roll:%0.1f" % (
                 self.lsts["POSE_BY_PRE"][-1][0], self.lsts["POSE_BY_PRE"][-1][1], self.lsts["POSE_BY_PRE"][-1][2],
                 self.lsts["EUL_BY_PRE_X"][-1], self.lsts["EUL_BY_PRE_Y"][-1], self.lsts["EUL_BY_PRE_Z"][-1])
             self.listWidget.insertItem(0, s)
-            s = s + " 阈值:%s " % self.lsts["THRESOLD"][-1] + "共收到:%i" % self.recv.contsum + "包"
+            s = s + " 阈值:%s " % self.lsts["THRESOLD"][-1] + \
+                "共收到:%i" % self.recv.contsum + "包"
             self.statusbar.showMessage(s)
             time.sleep(1.0 / 30.0)
             # print(s)
