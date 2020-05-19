@@ -20,6 +20,7 @@ import numpy as np
 import pyqtgraph as pg
 from recvData import RecvData
 from sshCtl import sshCtl
+from plotCamera import PlotCamera
 import threading
 import time
 import math
@@ -63,6 +64,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.setupUi(self)
         self.lsts = {}
         index = 0
+        self.camera = PlotCamera(self.verticalLayout_camera)
         self.ssh = sshCtl('cd /home/shipei/zntk/lk_vio_icp/build/',
                           '10.42.0.1',
                           'shipei',
@@ -113,7 +115,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p2.setPen((0, 255, 0))
         self.v_2.addItem(self.p2)
         self.p3 = pg.PlotDataItem()
-        self.p3.setPen((0, 0, 255))
+        self.p3.setPen((255, 255, 255))
         self.v_3.addItem(self.p3)
 
         self.pw_x = pg.PlotWidget(name='Plotx',_callSync='off')
@@ -151,21 +153,21 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p2_x = self.pw_x.plot(_callSync='off')
         self.p2_x.setPen((0, 255, 0))
         self.p3_x = self.pw_x.plot(_callSync='off')
-        self.p3_x.setPen((0, 0, 255))
+        self.p3_x.setPen((255, 255, 255))
 
         self.p1_y = self.pw_y.plot(_callSync='off')
         self.p1_y.setPen((255, 0, 0))
         self.p2_y = self.pw_y.plot(_callSync='off')
         self.p2_y.setPen((0, 255, 0))
         self.p3_y = self.pw_y.plot(_callSync='off')
-        self.p3_y.setPen((0, 0, 255))
+        self.p3_y.setPen((255, 255, 255))
 
         self.p1_z = self.pw_z.plot(_callSync='off')
         self.p1_z.setPen((255, 0, 0))
         self.p2_z = self.pw_z.plot(_callSync='off')
         self.p2_z.setPen((0, 255, 0))
         self.p3_z = self.pw_z.plot(_callSync='off')
-        self.p3_z.setPen((0, 0, 255))
+        self.p3_z.setPen((255, 255, 255))
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
@@ -279,11 +281,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_5.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
         # self.setWindowOpacity(0.9)  # 设置窗口透明度
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
+        # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
         self.stop = False
 
         self.timer = QTimer()
-
+        self.camera.add_pose([0, 0, 0], [0.0, 0.0, 0.0, 1.0])
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal_2())
@@ -475,6 +477,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnStart.setText('暂停')
 
     def reflash(self):
+        # 3D类
+        self.camera.add_pose([0, 0, 0], self.lsts["ANGLE_BY_PRE"][-1])
         # fps类
         x = list(range(-3599, 1))
         if self.redON:
@@ -541,6 +545,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                 # print(data)
             else:
                 return
+            
 
             # 绘图类
             image = np.zeros((480, 640, 3), np.uint8)
