@@ -3,7 +3,7 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 import pyqtgraph as pg
 import numpy as np
-from main import TIME_LENGTH
+from config import TIME_LENGTH, SCALE
 
 
 class PlotCamera(): 
@@ -34,6 +34,15 @@ class PlotCamera():
         self.lt2 = [-1.0, -0.2, 1.0]
         self.oc = [0.0, 0.0, 0.0]
         self.lines = []
+        pos = np.empty((TIME_LENGTH, 3))
+        size = np.empty((TIME_LENGTH))
+        color = np.empty((TIME_LENGTH, 4))
+        for i in range(TIME_LENGTH):
+            pos[i] = (0, 0, 0)
+            size[i] = 0.5
+            color[i] = (i * 1.0 / TIME_LENGTH, 0.0, 0.0, 1.0)
+        self.history = gl.GLScatterPlotItem(pos=pos, size=size, color=color, pxMode=False)
+        self.w.addItem(self.history)
         for i in range(8):
             self.lines.append(gl.GLLinePlotItem(antialias=True))
             self.w.addItem(self.lines[i])
@@ -67,10 +76,14 @@ class PlotCamera():
             dtype=q.dtype)
         return rot_matrix
 
+    def draw_history(self, pos):
+        scale = SCALE
+        pos = np.vstack(scale * np.array(pos))
+        self.history.setData(pos=pos)
 
     def add_pose(self, p, q):
         rot_matrix = self.quaternion_to_rotation_matrix(q)
-        scale = 3.0
+        scale = SCALE
         pt_lt = scale * (np.matmul(rot_matrix, self.imlt) + p)
         pt_lb = scale * (np.matmul(rot_matrix, self.imlb) + p)
         pt_rt = scale * (np.matmul(rot_matrix, self.imrt) + p)

@@ -21,6 +21,7 @@ import pyqtgraph as pg
 from recvData import RecvData
 from sshCtl import sshCtl
 from plotCamera import PlotCamera
+from config import TIME_LENGTH
 import threading
 import time
 import math
@@ -41,7 +42,7 @@ import cv2
 # __THRESOLD = 120
 # __COST_OF_IMG = 124
 # __LENGTH = 133
-TIME_LENGTH = 30 * 30
+
 
 DICT_NAME_LIST = ["POSE_BY_CAM", "ANGLE_BY_CAM", "DT_BY_CAM",
                   "POSE_BY_UPDATE", "ANGLE_BY_UPDATE", "DT_BY_UPDATE",
@@ -480,7 +481,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def reflash(self):
         # 3D类
-        self.camera.add_pose([0, 0, 0], self.lsts["ANGLE_BY_PRE"][-1])
+        self.camera.add_pose(self.lsts["POSE_BY_PRE"][-1], self.lsts["ANGLE_BY_PRE"][-1])
+        self.camera.draw_history(self.lsts["POSE_BY_PRE"])
         # fps类
         x = list(range(1 - TIME_LENGTH, 1))
         if self.redON:

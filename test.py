@@ -1,102 +1,106 @@
 # -*- coding: utf-8 -*-
 """
-Demonstrate use of GLLinePlotItem to draw cross-sections of a surface.
+Demonstrates use of GLScatterPlotItem with rapidly-updating plots.
 
 """
 
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
-import pyqtgraph as pg
 import numpy as np
 
 app = QtGui.QApplication([])
 w = gl.GLViewWidget()
-w.opts['distance'] = 40
+w.opts['distance'] = 20
 w.show()
-w.setWindowTitle('pyqtgraph example: GLLinePlotItem')
+w.setWindowTitle('pyqtgraph example: GLScatterPlotItem')
 
-gx = gl.GLGridItem()
-gx.rotate(90, 0, 1, 0)
-gx.translate(-10, 0, 0)
-w.addItem(gx)
-gy = gl.GLGridItem()
-gy.rotate(90, 1, 0, 0)
-gy.translate(0, -10, 0)
-w.addItem(gy)
-gz = gl.GLGridItem()
-gz.translate(0, 0, -10)
-w.addItem(gz)
-
-imlt = [-1.0, -0.5, 1.0]
-imrt = [1.0, -0.5, 1.0]
-imlb = [-1.0,  0.5, 1.0]
-imrb = [1.0,  0.5, 1.0]
-lt0 = [-0.7, -0.5, 1.0]
-lt1 = [-0.7, -0.2, 1.0]
-lt2 = [-1.0, -0.2, 1.0]
-oc = [0.0, 0.0, 0.0]
-
-def drawLine(start, end):
-    x = np.linspace(start[0], end[0], 50)
-    y = np.linspace(start[1], end[1], 50)
-    z = np.linspace(start[2], end[2], 50)
-    pts = np.vstack([x,y,z]).transpose()
-    plt = gl.GLLinePlotItem(pos=pts, antialias=True)
-    w.addItem(plt)
-
-def quaternion_to_rotation_matrix(quat):
-    quat = np.array(quat)
-    q = quat.copy()
-    n = np.dot(q, q)
-    if n < np.finfo(q.dtype).eps:
-        return np.identity(3)
-    q = q * np.sqrt(2.0 / n)
-    q = np.outer(q, q)
-    rot_matrix = np.array(
-        [[1.0 - q[2, 2] - q[3, 3], q[1, 2] + q[3, 0], q[1, 3] - q[2, 0]],
-         [q[1, 2] - q[3, 0], 1.0 - q[1, 1] - q[3, 3], q[2, 3] + q[1, 0]],
-         [q[1, 3] + q[2, 0], q[2, 3] - q[1, 0], 1.0 - q[1, 1] - q[2, 2]]],
-        dtype=q.dtype)
-    return rot_matrix
+g = gl.GLGridItem()
+w.addItem(g)
 
 
-def add_pose(p, q):
-    rot_matrix = quaternion_to_rotation_matrix(q)
-    pt_lt = np.matmul(rot_matrix, imlt) + p
-    pt_lb = np.matmul(rot_matrix, imlb) + p
-    pt_rt = np.matmul(rot_matrix, imrt) + p
-    pt_rb = np.matmul(rot_matrix, imrb) + p
-    pt_lt0 = rot_matrix * lt0
-    pt_lt1 = rot_matrix * lt1
-    pt_lt2 = rot_matrix * lt2
-    pt_oc = np.matmul(rot_matrix, oc) + p
-    drawLine(pt_lt, pt_rt)
-    drawLine(pt_lt, pt_lb)
-    drawLine(pt_lb, pt_rb)
-    drawLine(pt_rb, pt_rt)
-    drawLine(pt_oc, pt_lt)
-    drawLine(pt_oc, pt_lb)
-    drawLine(pt_oc, pt_rb)
-    drawLine(pt_oc, pt_rt)
+##
+##  First example is a set of points with pxMode=False
+##  These demonstrate the ability to have points with real size down to a very small scale 
+## 
+pos = np.empty((53, 3))
+size = np.empty((53))
+color = np.empty((53, 4))
+pos[0] = (1,0,0); size[0] = 0.5;   color[0] = (1.0, 0.0, 0.0, 0.5)
+pos[1] = (0,1,0); size[1] = 0.2;   color[1] = (0.0, 0.0, 1.0, 0.5)
+pos[2] = (0,0,1); size[2] = 2./3.; color[2] = (0.0, 1.0, 0.0, 0.5)
 
-add_pose([0, 0, 0], [-0.460,  -0.003,  -0.842,   0.281])
-
-add_pose([100, 0, 0], [1.0,  0.0, 0.0,   0.0])
-
-# def fn(x, y):
-#     return np.cos((x**2 + y**2)**0.5)
-
-# n = 51
-# y = np.linspace(-10,10,n)
-# x = np.linspace(-10,10,100)
-# for i in range(n):
-#     yi = np.array([y[i]]*100)
-#     d = (x**2 + yi**2)**0.5
-#     z = 10 * np.cos(d) / (d+1)
-#     pts = np.vstack([x,yi,z]).transpose()
-#     plt = gl.GLLinePlotItem(pos=pts, color=pg.glColor((i,n*1.3)), width=(i+1)/10., antialias=True)
-#     w.addItem(plt)
+z = 0.5
+d = 6.0
+for i in range(3,53):
+    pos[i] = (0,0,z)
+    size[i] = 0.1
+    color[i] = (0.0, 1.0, 0.0, 0.5)
+    z *= 0.5
+    d *= 2.0
     
+sp1 = gl.GLScatterPlotItem(pos=pos, size=size, color=color, pxMode=False)
+# sp1.translate(5,5,0)
+w.addItem(sp1)
+
+
+##
+##  Second example shows a volume of points with rapidly updating color
+##  and pxMode=True
+##
+
+pos = np.random.random(size=(100000,3))
+pos *= [10,-10,10]
+pos[0] = (0,0,0)
+color = np.ones((pos.shape[0], 4))
+d2 = (pos**2).sum(axis=1)**0.5
+size = np.random.random(size=pos.shape[0])*10
+sp2 = gl.GLScatterPlotItem(pos=pos, color=(1,1,1,1), size=size)
+phase = 0.
+
+# w.addItem(sp2)
+
+
+##
+##  Third example shows a grid of points with rapidly updating position
+##  and pxMode = False
+##
+
+pos3 = np.zeros((100,100,3))
+pos3[:,:,:2] = np.mgrid[:100, :100].transpose(1,2,0) * [-0.1,0.1]
+pos3 = pos3.reshape(10000,3)
+d3 = (pos3**2).sum(axis=1)**0.5
+
+sp3 = gl.GLScatterPlotItem(pos=pos3, color=(1,1,1,.3), size=0.1, pxMode=False)
+
+# w.addItem(sp3)
+
+
+def update():
+    ## update volume colors
+    global phase, sp2, d2
+    s = -np.cos(d2*2+phase)
+    color = np.empty((len(d2),4), dtype=np.float32)
+    color[:,3] = np.clip(s * 0.1, 0, 1)
+    color[:,0] = np.clip(s * 3.0, 0, 1)
+    color[:,1] = np.clip(s * 1.0, 0, 1)
+    color[:,2] = np.clip(s ** 3, 0, 1)
+    sp2.setData(color=color)
+    phase -= 0.1
+    
+    ## update surface positions and colors
+    global sp3, d3, pos3
+    z = -np.cos(d3*2+phase)
+    pos3[:,2] = z
+    color = np.empty((len(d3),4), dtype=np.float32)
+    color[:,3] = 0.3
+    color[:,0] = np.clip(z * 3.0, 0, 1)
+    color[:,1] = np.clip(z * 1.0, 0, 1)
+    color[:,2] = np.clip(z ** 3, 0, 1)
+    sp3.setData(pos=pos3, color=color)
+    
+t = QtCore.QTimer()
+t.timeout.connect(update)
+t.start(50)
 
 
 ## Start Qt event loop unless running in interactive mode.
