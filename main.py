@@ -68,7 +68,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.lsts = {}
         index = 0
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl('cd /home/shipei/zntk/lk_vio_icp/build/',
+        self.ssh = sshCtl('cd /home/shipei/zntk/zntk_core/build/',
                           '10.42.0.1',
                           'shipei',
                           'shipei')
