@@ -3,6 +3,7 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 import pyqtgraph as pg
 import numpy as np
+from main import TIME_LENGTH
 
 
 class PlotCamera(): 
@@ -24,10 +25,10 @@ class PlotCamera():
         gz.translate(0, 0, -10)
         self.w.addItem(gz)
 
-        self.imlt = [-1.0, -0.5, 1.0]
-        self.imrt = [1.0, -0.5, 1.0]
-        self.imlb = [-1.0,  0.5, 1.0]
-        self.imrb = [1.0,  0.5, 1.0]
+        self.imlt = [1.0, -1.0, -0.5]
+        self.imrt = [ 1.0, 1.0, -0.5]
+        self.imlb = [1.0, -1.0,  0.5]
+        self.imrb = [1.0, 1.0,  0.5]
         self.lt0 = [-0.7, -0.5, 1.0]
         self.lt1 = [-0.7, -0.2, 1.0]
         self.lt2 = [-1.0, -0.2, 1.0]

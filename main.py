@@ -41,6 +41,8 @@ import cv2
 # __THRESOLD = 120
 # __COST_OF_IMG = 124
 # __LENGTH = 133
+TIME_LENGTH = 30 * 30
+
 DICT_NAME_LIST = ["POSE_BY_CAM", "ANGLE_BY_CAM", "DT_BY_CAM",
                   "POSE_BY_UPDATE", "ANGLE_BY_UPDATE", "DT_BY_UPDATE",
                   "POSE_BY_PRE", "ANGLE_BY_PRE", "DT_BY_PRE",
@@ -70,7 +72,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                           'shipei',
                           'shipei')
         for key in DICT_NAME_LIST:
-            self.lsts[key] = [DICT_TYPE_LIST[index]] * 3600
+            self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
             index = index + 1
         a_2 = pg.AxisItem("left")
         a_3 = pg.AxisItem("right")
@@ -92,7 +94,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         a_2.linkToView(self.v_2)
         a_3.linkToView(self.v_3)
 
-        self.v_1.setRange(xRange=[-3599, 0])
+        self.v_1.setRange(xRange=[1 - TIME_LENGTH, 0])
         self.v_1.setLimits(xMax=0)
 
         self.v_2.setXLink(self.v_1)
@@ -132,11 +134,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.pw_y.setLabel('bottom', 'time', units='s')
         self.pw_z.setLabel('left', 'angle', units='°')
         self.pw_z.setLabel('bottom', 'time', units='s')
-        self.pw_x.setRange(xRange=[-3599, 0], yRange=[-180, 180])
+        self.pw_x.setRange(xRange=[1 - TIME_LENGTH, 0], yRange=[-180, 180])
         self.pw_x.setLimits(xMax=0)
-        self.pw_y.setRange(xRange=[-3599, 0], yRange=[-180, 180])
+        self.pw_y.setRange(xRange=[1 - TIME_LENGTH, 0], yRange=[-180, 180])
         self.pw_y.setLimits(xMax=0)
-        self.pw_z.setRange(xRange=[-3599, 0], yRange=[-180, 180])
+        self.pw_z.setRange(xRange=[1 - TIME_LENGTH, 0], yRange=[-180, 180])
         self.pw_z.setLimits(xMax=0)
 
         self.pw_x.setLabel(
@@ -294,7 +296,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def clearChart(self):
         index = 0
         for key in DICT_NAME_LIST:
-            self.lsts[key] = [DICT_TYPE_LIST[index]] * 3600
+            self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
             index = index + 1
         self.reflash()
 
@@ -480,7 +482,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # 3D类
         self.camera.add_pose([0, 0, 0], self.lsts["ANGLE_BY_PRE"][-1])
         # fps类
-        x = list(range(-3599, 1))
+        x = list(range(1 - TIME_LENGTH, 1))
         if self.redON:
             y1 = self.lsts["DT_BY_CAM"]
             self.p1.setData(x=x, y=y1)
@@ -540,7 +542,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             if data is not None:
                 for key in DICT_NAME_LIST:
                     self.lsts[key].append(data[key])
-                    while len(self.lsts[key]) > 3600:
+                    while len(self.lsts[key]) > TIME_LENGTH:
                         self.lsts[key].pop(0)
                 # print(data)
             else:
@@ -611,7 +613,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             mousePoint = vb.mapSceneToView(pos)
             print(index)
             index = int(mousePoint.x())
-            if index > 0 and index < 3600:
+            if index > 0 and index < TIME_LENGTH:
                 self.label.setText("<span style='font-size: 12pt'>x=%0.1f,   <span style='color: red'>y1=%0.1f</span>,   <span style='color: green'>y2=%0.1f</span>" %
                                    (mousePoint.x(), 0.1, 0.1))
             # self.vLine.setPos(mousePoint.x())
