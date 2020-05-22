@@ -10,7 +10,7 @@ class PlotCamera():
     def __init__(self, layout):
         self.w = gl.GLViewWidget()
         self.w.opts['distance'] = 40
-        self.w.show()
+        # self.w.show()
         # self.w.setWindowTitle('pyqtgraph example: GLLinePlotItem')
 
         gx = gl.GLGridItem()

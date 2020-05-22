@@ -68,7 +68,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.lsts = {}
         index = 0
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl('cd /home/shipei/zntk/lk_vio_icp/build/',
+        self.ssh = sshCtl('cd /home/shipei/zntk/zntk_core/build/',
                           '10.42.0.1',
                           'shipei',
                           'shipei')
@@ -361,7 +361,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def initIMU(self):
         self.ssh.sendCommand(
-            '/home/shipei/zntk/lk_vio_icp/build/imu_init')
+            '/home/shipei/zntk/zntk_core/build/imu_init')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -372,7 +372,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def normalRun(self):
         self.ssh.sendCommand(
-            '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node')
+            '/home/shipei/zntk/zntk_core/build/zntk_core')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -393,7 +393,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             return
         self.ssh.sendCommand(
-            '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -p ' + bagname + ' -rate ' + str(rate))
+            '/home/shipei/zntk/zntk_core/build/zntk_core -p ' + bagname + ' -rate ' + str(rate))
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -405,15 +405,15 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def recordBag(self):
         dialog = QDialog()
         bagsetDialog = Ui_Dialog()
-        bagsetDialog.doubleSpinBox.setEnabled(False)
         bagsetDialog.setupUi(dialog)
+        bagsetDialog.doubleSpinBox.setEnabled(False)     
         bagname = 'temp'
         if dialog.exec():
             bagname = bagsetDialog.lineEdit.text()
         else:
             return
         self.ssh.sendCommand(
-            '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -r ' + bagname)
+            '/home/shipei/zntk/zntk_core/build/zntk_core -r ' + bagname)
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -424,7 +424,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def initRun(self):
         self.ssh.sendCommand(
-            '/home/shipei/zntk/lk_vio_icp/build/lk_icp_vio_node -s')
+            '/home/shipei/zntk/zntk_core/build/zntk_core -s')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
