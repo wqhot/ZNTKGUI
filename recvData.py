@@ -27,10 +27,11 @@ class RecvData():
     __THRESOLD = 120
     __COST_OF_IMG = 124
     __STAMP = 132
-    __LENGTH = 165
-    __OLDLENGTH = 141
-    __IMAGE_FEATURE_POINT_X = 140
-    __IMAGE_FEATURE_POINT_Y = 144
+    __ANGLE_BY_IMU = 140
+    __LENGTH = 181
+    __OLDLENGTH = 157
+    __IMAGE_FEATURE_POINT_X = 156
+    __IMAGE_FEATURE_POINT_Y = 160
 
     def __init__(self):
         self.mutex = threading.Lock()
@@ -68,7 +69,7 @@ class RecvData():
         self.cond.acquire()
         # print("get cond")
         # self.img_cond.acquire()
-        # print("get img_cond")   
+        # print("get img_cond")
         # self.img_cond.release()
         self.isrun = False
         self.issave = False
@@ -145,7 +146,7 @@ class RecvData():
 
     def close_start(self):
         self.issave = False
-        self.issend = False  
+        self.issend = False
         self.th_2.join()
         self.contsum = 0
         self.issend = True
@@ -154,8 +155,11 @@ class RecvData():
         self.th_2.start()
 
     def save(self):
-        headers = ['stamp', 'eul_x', 'eul_y', 'eul_z', 't_x', 't_y', 't_z']
-        csv_name = './history/' + str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + '.csv'
+        headers = ['stamp', 'eul_x', 'eul_y', 'eul_z', 't_x', 't_y', 't_z',
+                   'cam_x', 'cam_y', 'cam_z', 'updt_x', 'updt_y', 'updt_z',
+                   'imu_x', 'imu_y', 'imu_z']
+        csv_name = './history/' + \
+            str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
             f_csv = csv.writer(f)
             f_csv.writerow(headers)
@@ -163,7 +167,7 @@ class RecvData():
                 r = None
                 if self.cond.acquire():
                     if self.que.empty():
-                        self.cond.wait(0.5)                 
+                        self.cond.wait(0.5)
                     if not self.que.empty():
                         r = self.que.get()
                         # print("getData")
@@ -175,7 +179,16 @@ class RecvData():
                             r["EUL_BY_PRE_Z"],
                             r["POSE_BY_PRE"][0],
                             r["POSE_BY_PRE"][1],
-                            r["POSE_BY_PRE"][2]]
+                            r["POSE_BY_PRE"][2],
+                            r["EUL_BY_CAM_X"],
+                            r["EUL_BY_CAM_Y"],
+                            r["EUL_BY_CAM_Z"],
+                            r["EUL_BY_UPDATE_X"],
+                            r["EUL_BY_UPDATE_Y"],
+                            r["EUL_BY_UPDATE_Z"],
+                            r["EUL_BY_IMU_X"],
+                            r["EUL_BY_IMU_Y"],
+                            r["EUL_BY_IMU_Z"]]
                     f_csv.writerow(line)
 
     def run(self):
@@ -291,6 +304,21 @@ class RecvData():
             dc["STAMP"] = struct.unpack('d', bytes(
                 data[self.__STAMP:self.__STAMP+8]))[0]
 
+            dc["ANGLE_BY_IMU"] = [0.0, 0.0, 0.0, 0.0]
+            dc["ANGLE_BY_IMU"][0] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_IMU + 0:self.__ANGLE_BY_IMU + 4]))[0]
+            dc["ANGLE_BY_IMU"][1] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_IMU + 4:self.__ANGLE_BY_IMU + 8]))[0]
+            dc["ANGLE_BY_IMU"][2] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_IMU + 8:self.__ANGLE_BY_IMU + 12]))[0]
+            dc["ANGLE_BY_IMU"][3] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_IMU + 12:self.__ANGLE_BY_IMU + 16]))[0]
+
+            eul = self.qua2eul(dc["ANGLE_BY_IMU"])
+            dc["EUL_BY_IMU_X"] = eul[0]
+            dc["EUL_BY_IMU_X"] = eul[1]
+            dc["EUL_BY_IMU_X"] = eul[2]
+
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []
             pty = []
@@ -306,6 +334,19 @@ class RecvData():
             save_dc["EUL_BY_PRE_X"] = dc["EUL_BY_PRE_X"]
             save_dc["EUL_BY_PRE_Y"] = dc["EUL_BY_PRE_Y"]
             save_dc["EUL_BY_PRE_Z"] = dc["EUL_BY_PRE_Z"]
+
+            save_dc["EUL_BY_CAM_X"] = dc["EUL_BY_CAM_X"]
+            save_dc["EUL_BY_CAM_Y"] = dc["EUL_BY_CAM_Y"]
+            save_dc["EUL_BY_CAM_Z"] = dc["EUL_BY_CAM_Z"]
+
+            save_dc["EUL_BY_UPDATE_X"] = dc["EUL_BY_UPDATE_X"]
+            save_dc["EUL_BY_UPDATE_Y"] = dc["EUL_BY_UPDATE_Y"]
+            save_dc["EUL_BY_UPDATE_Z"] = dc["EUL_BY_UPDATE_Z"]
+
+            save_dc["EUL_BY_IMU_X"] = dc["EUL_BY_IMU_X"]
+            save_dc["EUL_BY_IMU_Y"] = dc["EUL_BY_IMU_Y"]
+            save_dc["EUL_BY_IMU_Z"] = dc["EUL_BY_IMU_Z"]
+
             save_dc["POSE_BY_PRE"] = dc["POSE_BY_PRE"]
             save_dc["STAMP"] = dc["STAMP"]
             self.contsum = self.contsum + 1
