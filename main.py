@@ -48,12 +48,16 @@ DICT_NAME_LIST = ["POSE_BY_CAM", "ANGLE_BY_CAM", "DT_BY_CAM",
                   "POSE_BY_UPDATE", "ANGLE_BY_UPDATE", "DT_BY_UPDATE",
                   "POSE_BY_PRE", "ANGLE_BY_PRE", "DT_BY_PRE",
                   "DT_OF_FRAME", "THRESOLD", "COST_OF_IMG",
+                  "ANGLE_BY_IMU",
+                  "EUL_BY_IMU_X", "EUL_BY_IMU_Y", "EUL_BY_IMU_Z",
                   "EUL_BY_CAM_X", "EUL_BY_UPDATE_X", "EUL_BY_PRE_X",
                   "EUL_BY_CAM_Y", "EUL_BY_UPDATE_Y", "EUL_BY_PRE_Y",
                   "EUL_BY_CAM_Z", "EUL_BY_UPDATE_Z", "EUL_BY_PRE_Z"]
 DICT_TYPE_LIST = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
+                  [0.0, 0.0, 0.0],
+                  0.0, 0, 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0,
@@ -68,7 +72,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.lsts = {}
         index = 0
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl('cd /home/shipei/zntk/zntk_core/build/',
+        self.ssh = sshCtl('cd /home/shipei/zntk/zntk_core/bin/',
                           '10.42.0.1',
                           'shipei',
                           'shipei')
@@ -157,6 +161,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p2_x.setPen((0, 255, 0))
         self.p3_x = self.pw_x.plot(_callSync='off')
         self.p3_x.setPen((255, 255, 255))
+        self.p4_x = self.pw_x.plot(_callSync='off')
+        self.p4_x.setPen((0, 0, 255))
 
         self.p1_y = self.pw_y.plot(_callSync='off')
         self.p1_y.setPen((255, 0, 0))
@@ -164,6 +170,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p2_y.setPen((0, 255, 0))
         self.p3_y = self.pw_y.plot(_callSync='off')
         self.p3_y.setPen((255, 255, 255))
+        self.p4_y = self.pw_y.plot(_callSync='off')
+        self.p4_y.setPen((0, 0, 255))
 
         self.p1_z = self.pw_z.plot(_callSync='off')
         self.p1_z.setPen((255, 0, 0))
@@ -171,6 +179,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p2_z.setPen((0, 255, 0))
         self.p3_z = self.pw_z.plot(_callSync='off')
         self.p3_z.setPen((255, 255, 255))
+        self.p4_y = self.pw_y.plot(_callSync='off')
+        self.p4_y.setPen((0, 0, 255))
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
@@ -247,6 +257,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnViewBlue.triggered.connect(self.toggleBlue)
         self.toolBtnViewBlue.setEnabled(True)
 
+        self.toolBtnViewIMU = QAction(QIcon('./res/过滤蓝.png'), '纯IMU', self)
+        self.toolBtnViewIMU.triggered.connect(self.toggleIMU)
+        self.toolBtnViewIMU.setEnabled(True)
+
         self.toolBtnClearChart = QAction(QIcon('./res/删除.png'), '清空', self)
         self.toolBtnClearChart.triggered.connect(self.clearChart)
         self.toolBtnClearChart.setEnabled(True)
@@ -254,6 +268,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.redON = True
         self.greenON = True
         self.blueON = True
+        self.imuON = True
 
         self.toolBar.addAction(self.toolBtnStart)
         self.toolBar.addAction(self.toolBtnConnect)
@@ -275,6 +290,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_5.addAction(self.toolBtnViewRed)
         self.toolbar_5.addAction(self.toolBtnViewGreen)
         self.toolbar_5.addAction(self.toolBtnViewBlue)
+        self.toolbar_5.addAction(self.toolBtnViewIMU)
         self.toolbar_5.addAction(self.toolBtnClearChart)
 
         self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
@@ -325,6 +341,14 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             self.toolBtnViewBlue.setIcon(QIcon('./res/过滤关.png'))
 
+    def toggleIMU(self):
+        self.imuON = not(self.imuON)
+        self.reflash()
+        if self.imuON:
+            self.toolBtnViewIMU.setIcon(QIcon('./res/过滤蓝.png'))
+        else:
+            self.toolBtnViewIMU.setIcon(QIcon('./res/过滤关.png'))
+
     def settingSSH(self):
         dialog = QDialog()
         setDialog = Ui_Dialog_set()
@@ -361,7 +385,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def initIMU(self):
         self.ssh.sendCommand(
-            '/home/shipei/zntk/zntk_core/build/imu_init')
+            '.imu_init')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -372,7 +396,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def normalRun(self):
         self.ssh.sendCommand(
-            '/home/shipei/zntk/zntk_core/build/zntk_core')
+            '.zntk_core')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -393,7 +417,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             return
         self.ssh.sendCommand(
-            '/home/shipei/zntk/zntk_core/build/zntk_core -p ' + bagname + ' -rate ' + str(rate))
+            '.zntk_core -p ' + bagname + ' -rate ' + str(rate))
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -413,7 +437,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             return
         self.ssh.sendCommand(
-            '/home/shipei/zntk/zntk_core/build/zntk_core -r ' + bagname)
+            '.zntk_core -r ' + bagname)
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -424,7 +448,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def initRun(self):
         self.ssh.sendCommand(
-            '/home/shipei/zntk/zntk_core/build/zntk_core -s')
+            '.zntk_core -s')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -504,6 +528,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.blueON:
             y3 = self.lsts["EUL_BY_PRE_X"]            
             self.p3_x.setData(x=x, y=y3)
+        if self.imuON:
+            y4 = self.lsts["EUL_BY_IMU_X"]            
+            self.p4_x.setData(x=x, y=y4)
+
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Y"]
@@ -514,6 +542,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.blueON:
             y3 = self.lsts["EUL_BY_PRE_Y"]            
             self.p3_y.setData(x=x, y=y3)
+        if self.imuON:
+            y4 = self.lsts["EUL_BY_IMU_Y"]            
+            self.p4_y.setData(x=x, y=y4)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Z"]
@@ -524,6 +555,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.blueON:
             y3 = self.lsts["EUL_BY_PRE_Z"]            
             self.p3_z.setData(x=x, y=y3)
+        if self.imuON:
+            y4 = self.lsts["EUL_BY_IMU_Z"]            
+            self.p4_z.setData(x=x, y=y4)
+        
 
         
 
