@@ -406,7 +406,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         dialog = QDialog()
         bagsetDialog = Ui_Dialog()
         bagsetDialog.setupUi(dialog)
-        bagsetDialog.doubleSpinBox.setEnabled(False)
+        bagsetDialog.doubleSpinBox.setEnabled(False)     
         bagname = 'temp'
         if dialog.exec():
             bagname = bagsetDialog.lineEdit.text()
