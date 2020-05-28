@@ -203,11 +203,12 @@ class RecvData():
                 if index != -1:
                     data = []
                     buffList = buffList[index:]
+                    # print(time.time())
                     self.__LENGTH = buffList[index + 3]
                     # print(self.__LENGTH)
                 data.extend(buffList)
             # 收齐一帧
-            # print(time.time())
+            
             sumcheck = sum(data[:-1]) % 256
             if sumcheck != data[-1]:
                 print("sumcheck error!")
@@ -316,8 +317,8 @@ class RecvData():
 
             eul = self.qua2eul(dc["ANGLE_BY_IMU"])
             dc["EUL_BY_IMU_X"] = eul[0]
-            dc["EUL_BY_IMU_X"] = eul[1]
-            dc["EUL_BY_IMU_X"] = eul[2]
+            dc["EUL_BY_IMU_Y"] = eul[1]
+            dc["EUL_BY_IMU_Z"] = eul[2]
 
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []

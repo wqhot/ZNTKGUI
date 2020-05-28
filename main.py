@@ -72,7 +72,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.lsts = {}
         index = 0
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl('cd /home/shipei/zntk/zntk_core/bin/',
+        self.ssh = sshCtl('cd /home/shipei/zntk/zntk_core/build/',
                           '10.42.0.1',
                           'shipei',
                           'shipei')
@@ -179,8 +179,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p2_z.setPen((0, 255, 0))
         self.p3_z = self.pw_z.plot(_callSync='off')
         self.p3_z.setPen((255, 255, 255))
-        self.p4_y = self.pw_y.plot(_callSync='off')
-        self.p4_y.setPen((0, 0, 255))
+        self.p4_z = self.pw_z.plot(_callSync='off')
+        self.p4_z.setPen((0, 0, 255))
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
@@ -385,7 +385,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def initIMU(self):
         self.ssh.sendCommand(
-            '.imu_init')
+            './imu_init')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -396,7 +396,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def normalRun(self):
         self.ssh.sendCommand(
-            '.zntk_core')
+            './zntk_core')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -417,7 +417,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             return
         self.ssh.sendCommand(
-            '.zntk_core -p ' + bagname + ' -rate ' + str(rate))
+            './zntk_core -p ' + bagname + ' -rate ' + str(rate))
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -437,7 +437,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             return
         self.ssh.sendCommand(
-            '.zntk_core -r ' + bagname)
+            './zntk_core -r ' + bagname)
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -448,7 +448,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def initRun(self):
         self.ssh.sendCommand(
-            '.zntk_core -s')
+            './zntk_core -s')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
