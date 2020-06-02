@@ -72,10 +72,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.lsts = {}
         index = 0
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl('cd /home/shipei/zntk/zntk_core/build/',
-                          '10.42.0.1',
-                          'shipei',
-                          'shipei')
+        self.ssh = sshCtl('cd /home/zhangtian/zntk/zntk_core/bin/',
+                          '127.0.0.1',
+                          'zhangtian',
+                          'zhangtian')
         for key in DICT_NAME_LIST:
             self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
             index = index + 1
@@ -355,8 +355,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         setDialog.setupUi(dialog)
         host = '10.42.0.1'
         port = 22
-        username = 'shipei'
-        password = 'shipei'
+        username = 'zhangtian'
+        password = 'zhangtian'
         if dialog.exec():
             host = setDialog.lineEdit.text()
             port = int(setDialog.spinBox.value())

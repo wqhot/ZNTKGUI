@@ -192,6 +192,7 @@ class RecvData():
                     f_csv.writerow(line)
 
     def run(self):
+        count = 0
         while self.isrun:
             data = []
             while len(data) < self.__LENGTH:
@@ -214,7 +215,7 @@ class RecvData():
                 print("sumcheck error!")
                 break
             dc = {}
-
+            
             dc["POSE_BY_CAM"] = [0.0, 0.0, 0.0]
             dc["POSE_BY_CAM"][0] = struct.unpack('f', bytes(
                 data[self.__POSE_BY_CAM + 0:self.__POSE_BY_CAM + 4]))[0]
@@ -354,10 +355,11 @@ class RecvData():
             if (self.issend):
                 self.displayDict = dc
             if self.cond.acquire():
-                if (self.issend):
+                if (self.issend and count % 200 == 0):
                     self.que.put(save_dc)
                 self.cond.notify_all()
                 self.cond.release()
+            count = (count + 1) % 200
             # print("finish")
             # if self.mutex.acquire():
             #     self.que.put(dc)
