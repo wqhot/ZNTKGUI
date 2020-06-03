@@ -355,7 +355,7 @@ class RecvData():
             if (self.issend):
                 self.displayDict = dc
             if self.cond.acquire():
-                if (self.issend and count % 200 == 0):
+                if (self.issend):
                     self.que.put(save_dc)
                 self.cond.notify_all()
                 self.cond.release()

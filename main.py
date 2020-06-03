@@ -1,21 +1,18 @@
 # -*- coding: utf-8 -*-
 import sys
 import socket
-
+import csv
 from Ui_gui import Ui_MainWindow
 from Ui_bagset import Ui_Dialog
 from Ui_setting import Ui_Dialog as Ui_Dialog_set
-
+from Ui_zttask import Ui_Dialog as Ui_Dialog_zt
+from ztUsage import ztUsage
+from zt902e1 import ztScheduler, ztTask
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem, QAction, QDialog
-
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QProcess
-
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QColor, QFont, QIcon
-
 from PyQt5.QtWidgets import QLabel, QWidget
-
 import numpy as np
 import pyqtgraph as pg
 from recvData import RecvData
@@ -28,6 +25,7 @@ import math
 import os
 import pyqtgraph.opengl as gl
 import cv2
+import queue
 
 # __POSE_BY_CAM = 4
 # __ANGLE_BY_CAM = 16
@@ -71,6 +69,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.setupUi(self)
         self.lsts = {}
         index = 0
+        self.que = queue.Queue(1024)
+        self.cond = threading.Condition()
         self.camera = PlotCamera(self.verticalLayout_camera)
         self.ssh = sshCtl('cd /home/zhangtian/zntk/zntk_core/bin/',
                           '127.0.0.1',
@@ -265,6 +265,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnClearChart.triggered.connect(self.clearChart)
         self.toolBtnClearChart.setEnabled(True)
 
+        self.toolBtnZTDialog = QAction(QIcon('./res/过滤红.png'), '转台', self)
+        self.toolBtnZTDialog.triggered.connect(self.settingZT)
+        self.toolBtnZTDialog.setEnabled(True)
+
         self.redON = True
         self.greenON = True
         self.blueON = True
@@ -292,6 +296,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_5.addAction(self.toolBtnViewBlue)
         self.toolbar_5.addAction(self.toolBtnViewIMU)
         self.toolbar_5.addAction(self.toolBtnClearChart)
+
+        self.toolbar_6 = self.addToolBar('转台')
+        self.toolbar_6.addAction(self.toolBtnZTDialog)
+
 
         self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolbar_2.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
@@ -348,6 +356,22 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewIMU.setIcon(QIcon('./res/过滤蓝.png'))
         else:
             self.toolBtnViewIMU.setIcon(QIcon('./res/过滤关.png'))
+
+    def settingZT(self):
+        dialog = ztUsage()
+        if dialog.exec():
+            self.issave = True
+            th_2 = threading.Thread(target=self.save)
+            th_2.start()
+            taskLst = dialog.createTasks(dialog.lst)
+            ss = ztScheduler(self.ztcallback, self.ztfinishcb)
+            for t in taskLst:
+                ss.addTask(t)
+            ss.run(1)
+            
+        else:
+            return
+       
 
     def settingSSH(self):
         dialog = QDialog()
@@ -642,20 +666,6 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             dtype=q.dtype)
         return rot_matrix
 
-    def mouseMoved(self, evt):
-        pos = evt[0]  # using signal proxy turns original arguments into a tuple
-        print(index)
-        if self.v_1.sceneBoundingRect().contains(pos):
-            vb = self.v_1.vb
-            mousePoint = vb.mapSceneToView(pos)
-            print(index)
-            index = int(mousePoint.x())
-            if index > 0 and index < TIME_LENGTH:
-                self.label.setText("<span style='font-size: 12pt'>x=%0.1f,   <span style='color: red'>y1=%0.1f</span>,   <span style='color: green'>y2=%0.1f</span>" %
-                                   (mousePoint.x(), 0.1, 0.1))
-            # self.vLine.setPos(mousePoint.x())
-            # self.hLine.setPos(mousePoint.y())
-
     def closeEvent(self, event):
         self.recv.stop()
         if self.timer.isActive():
@@ -664,6 +674,40 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.stop = True
         event.accept()
 
+    def save(self):
+        headers = ['stamp', 'firstAxisPos', 'firstAxisVelocity', 'secondAxisPos', 'secondAxisVelocity']
+        csv_name = './history/' + \
+            str(time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime())) + '_zt.csv'
+        with open(csv_name, 'w') as f:
+            f_csv = csv.writer(f)
+            f_csv.writerow(headers)
+            while self.issave:
+                r = None
+                if self.cond.acquire():
+                    if self.que.empty():
+                        self.cond.wait(0.5)
+                    if not self.que.empty():
+                        r = self.que.get()
+                    self.cond.release()
+                if r is not None:
+                    line = [float(r["STAMP"]),
+                            float(r["firstAxisPos"]),
+                            float(r["firstAxisVelocity"]),
+                            float(r["secondAxisPos"]),
+                            float(r["secondAxisVelocity"])]
+                    f_csv.writerow(line)
+    
+    def ztcallback(self, status):
+        if self.cond.acquire():
+            status["STAMP"] = time.time()
+            print(status)
+            self.que.put(status)
+            self.cond.notify_all()
+            self.cond.release()
+
+    def ztfinishcb(self):
+        self.issave = False
+        print("FINISH")
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
