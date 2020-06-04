@@ -365,16 +365,18 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             th_2 = threading.Thread(target=self.save)
             th_2.start()
             taskLst = dialog.createTasks(dialog.lst)
-            ss = ztScheduler(readCallback=self.ztcallback, finishCallback=self.ztfinishcb)
+            ss = ztScheduler(readCallback=self.ztcallback, \
+                            finishCallback=self.ztfinishcb, 
+                            portname='/dev/ttyUSB1')
             if ss.zt902e1.connected:
                 for t in taskLst:
                     ss.addTask(t)
-                    ss.run(1)
-                else:
-                    msgBox = QMessageBox()
-                    msgBox.setWindowTitle("通信失败")
-                    msgBox.setText("与转台间通信失败，请检查线缆是否连接正常")
-                    msgBox.exec()          
+                ss.run(500)
+            else:
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("通信失败")
+                msgBox.setText("与转台间通信失败，请检查线缆是否连接正常")
+                msgBox.exec()          
         else:
             return
        
@@ -696,16 +698,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                         r = self.que.get()
                     self.cond.release()
                 if r is not None:
-                    line = [float(r["STAMP"]),
-                            float(r["firstAxisPos"]),
-                            float(r["firstAxisVelocity"]),
-                            float(r["secondAxisPos"]),
-                            float(r["secondAxisVelocity"])]
+                    line = [(r["STAMP"]),
+                            '%.4f' % float(r["firstAxisPos"]),
+                            '%.4f' % float(r["firstAxisVelocity"]),
+                            '%.4f' % float(r["secondAxisPos"]),
+                            '%.4f' % float(r["secondAxisVelocity"])]
                     f_csv.writerow(line)
     
     def ztcallback(self, status):
         if self.cond.acquire():
-            status["STAMP"] = time.time()
+            status["STAMP"] = str(time.time())
             print(status)
             self.que.put(status)
             self.cond.notify_all()

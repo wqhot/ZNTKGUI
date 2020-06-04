@@ -86,8 +86,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             task["id"] = self.addDialog.comboBox.currentIndex()
             task["text"] = self.addDialog.comboBox.currentText()
             task["axis"] = self.addDialog.comboBox_2.currentIndex() + 1
-            task["opt1"] = self.addDialog.doubleSpinBox1.value()
-            task["opt2"] = self.addDialog.doubleSpinBox2.value()
+            task["opt1"] = self.addDialog.doubleSpinBox2.value()
+            task["opt2"] = self.addDialog.doubleSpinBox1.value()
             task["opt3"] = self.addDialog.doubleSpinBox3.value()
             task["opt4"] = self.addDialog.doubleSpinBox4.value()
             s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
@@ -154,7 +154,11 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             if t["id"] == 0:
                 task = ztTask(type=1, axis=t["axis"])
                 taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
+                taskLst.append(task)
                 task = ztTask(type=3, axis=t["axis"])
+                taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
                 taskLst.append(task)
                 if t["axis"] & 1 != 0:
                     task = ztTask(type=0x0b, axis=1)
@@ -170,15 +174,23 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             if t["id"] == 1:
                 task = ztTask(type=6, axis=t["axis"])
                 taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
+                taskLst.append(task)
                 task = ztTask(type=4, axis=t["axis"])
                 taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
+                taskLst.append(task)
                 task = ztTask(type=2, axis=t["axis"])
+                taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
                 taskLst.append(task)
 
             # 位置设置一条龙
             if t["id"] == 2:
                 task = ztTask(
                     type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
+                taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
                 taskLst.append(task)
                 task = ztTask(type=5, axis=t["axis"], runType_1=5, runType_2=5)
                 taskLst.append(task)
@@ -190,6 +202,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                 task = ztTask(type=8, axis=t["axis"],
                               vel_v=t["opt1"], vel_a=t["opt2"])
                 taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
+                taskLst.append(task)
                 task = ztTask(type=5, axis=t["axis"], runType_1=6, runType_2=6)
                 taskLst.append(task)
                 task = ztTask(type=0xd, delay=t["opt4"])
@@ -199,6 +213,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             if t["id"] == 4:
                 task = ztTask(
                     type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"])
+                taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
                 taskLst.append(task)
                 task = ztTask(type=5, axis=t["axis"], runType_1=7, runType_2=7)
                 taskLst.append(task)
@@ -210,6 +226,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                 task = ztTask(type=t["id"] - 4, axis=t["axis"],
                               runType_1=runtype1, runType_2=runtype2)
                 taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
+                taskLst.append(task)
 
             # 位置设置
             if t["id"] == 11:
@@ -220,6 +238,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                     runtype1 = 5
                 if t["axis"] & 2 != 0:
                     runtype2 = 5
+                task = ztTask(type=0x0d, delay=5.0)
+                taskLst.append(task)
             # 速率设置
             if t["id"] == 12:
                 task = ztTask(type=8, axis=t["axis"],
@@ -229,6 +249,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                     runtype1 = 6
                 if t["axis"] & 2 != 0:
                     runtype2 = 6
+                task = ztTask(type=0x0d, delay=5.0)
+                taskLst.append(task)
 
             # 摇摆设置
             if t["id"] == 13:
@@ -239,10 +261,14 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                     runtype1 = 7
                 if t["axis"] & 2 != 0:
                     runtype2 = 7
+                task = ztTask(type=0x0d, delay=5.0)
+                taskLst.append(task)
 
             # 归零 停止归零
             if t["id"] in [14, 15]:
                 task = ztTask(type=t["id"] - 3, axis=t["axis"])
+                taskLst.append(task)
+                task = ztTask(type=0x0d, delay=5.0)
                 taskLst.append(task)
 
             # 保持
