@@ -713,7 +713,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def ztfinishcb(self):
         self.issave = False
-        print("FINISH")
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("执行结束")
+        msgBox.setText("转台运动结束，结果保存在history文件夹下")
+        msgBox.exec()
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
