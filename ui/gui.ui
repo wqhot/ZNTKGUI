@@ -148,7 +148,7 @@
   </widget>
   <widget class="QStatusBar" name="statusbar">
    <property name="styleSheet">
-    <string notr="true">color: rgb(255, 255, 255);</string>
+    <string notr="true"/>
    </property>
   </widget>
   <widget class="QToolBar" name="toolBar">

@@ -192,6 +192,7 @@ class RecvData():
                     f_csv.writerow(line)
 
     def run(self):
+        count = 0
         while self.isrun:
             data = []
             while len(data) < self.__LENGTH:
@@ -203,17 +204,18 @@ class RecvData():
                 if index != -1:
                     data = []
                     buffList = buffList[index:]
+                    # print(time.time())
                     self.__LENGTH = buffList[index + 3]
                     # print(self.__LENGTH)
                 data.extend(buffList)
             # 收齐一帧
-            # print(time.time())
+            
             sumcheck = sum(data[:-1]) % 256
             if sumcheck != data[-1]:
                 print("sumcheck error!")
                 break
             dc = {}
-
+            
             dc["POSE_BY_CAM"] = [0.0, 0.0, 0.0]
             dc["POSE_BY_CAM"][0] = struct.unpack('f', bytes(
                 data[self.__POSE_BY_CAM + 0:self.__POSE_BY_CAM + 4]))[0]
@@ -316,8 +318,8 @@ class RecvData():
 
             eul = self.qua2eul(dc["ANGLE_BY_IMU"])
             dc["EUL_BY_IMU_X"] = eul[0]
-            dc["EUL_BY_IMU_X"] = eul[1]
-            dc["EUL_BY_IMU_X"] = eul[2]
+            dc["EUL_BY_IMU_Y"] = eul[1]
+            dc["EUL_BY_IMU_Z"] = eul[2]
 
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []
@@ -357,6 +359,7 @@ class RecvData():
                     self.que.put(save_dc)
                 self.cond.notify_all()
                 self.cond.release()
+            count = (count + 1) % 200
             # print("finish")
             # if self.mutex.acquire():
             #     self.que.put(dc)

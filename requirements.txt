@@ -1,5 +1,8 @@
-paramiko==2.7.1
-opencv_python==4.2.0.34
 numpy==1.13.3
+paramiko==2.7.1
 pyqtgraph==0.10.0
-PyQt5==5.14.2
+opencv_python==4.2.0.34
+matplotlib==3.2.1
+PyQt5==5.15.0
+pyserial==3.4
+PyOpenGL==3.1.5
