@@ -11,7 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>任务详情</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>res/旋转.png</normaloff>res/旋转.png</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
@@ -172,6 +176,9 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="maximum">
+          <double>360.000000000000000</double>
+         </property>
         </widget>
        </item>
        <item>
@@ -194,6 +201,9 @@
            <horstretch>3</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="maximum">
+          <double>360.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -218,6 +228,9 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="maximum">
+          <double>360.000000000000000</double>
+         </property>
         </widget>
        </item>
        <item>
@@ -240,6 +253,9 @@
            <horstretch>3</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="maximum">
+          <double>360.000000000000000</double>
          </property>
         </widget>
        </item>

@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, Q
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QProcess
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QColor, QFont, QIcon
 from PyQt5.QtWidgets import QLabel, QWidget
-from Ui_zttask import Ui_Dialog as Ui_Dialog_zt
-from Ui_addtask import Ui_Dialog as Ui_Dialog_add
+from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
+from ui.Ui_addtask import Ui_Dialog as Ui_Dialog_add
 import sys
 from zt902e1 import ztScheduler, ztTask
 # dialog = QDialog()
@@ -20,6 +20,18 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         super().__init__()
         self.lst = []
         self.setupUi(self)
+        self.pushButton.setStyleSheet("QPushButton{border-image: url(res/添加.png)}"
+                                      "QPushButton:hover{border-image: url(res/添加.png)}"
+                                      "QPushButton:pressed{border-image: url(res/添加1.png)}")
+        self.pushButton_2.setStyleSheet("QPushButton{border-image: url(res/向上.png)}"
+                                      "QPushButton:hover{border-image: url(res/向上.png)}"
+                                      "QPushButton:pressed{border-image: url(res/向上1.png)}")
+        self.pushButton_3.setStyleSheet("QPushButton{border-image: url(res/向下.png)}"
+                                      "QPushButton:hover{border-image: url(res/向下.png)}"
+                                      "QPushButton:pressed{border-image: url(res/向下1.png)}")
+        self.pushButton_4.setStyleSheet("QPushButton{border-image: url(res/关闭.png)}"
+                                      "QPushButton:hover{border-image: url(res/关闭.png)}"
+                                      "QPushButton:pressed{border-image: url(res/关闭1.png)}")
         self.pushButton.clicked.connect(self.addBtn)
         self.pushButton_2.clicked.connect(self.moveUpBtn)
         self.pushButton_3.clicked.connect(self.moveDownBtn)
@@ -36,7 +48,6 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.listWidget.insertItem(newrow, crow)
         self.listWidget.insertItem(currow, nrow)
         self.listWidget.setCurrentRow(newrow)
-        
 
     def moveDownBtn(self):
         newrow = self.listWidget.currentRow() + 1
@@ -51,11 +62,10 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.listWidget.setCurrentRow(newrow)
 
     def delBtn(self):
-        currow = self.listWidget.currentRow()      
+        currow = self.listWidget.currentRow()
         self.lst.remove(self.lst[currow])
         self.listWidget.takeItem(self.listWidget.currentRow())
         self.listWidget.setCurrentRow(currow - 1)
-
 
     def addBtn(self):
         dialog = QDialog()
@@ -66,7 +76,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         if dialog.exec():
             # 只能设置单一的轴
             if self.addDialog.comboBox.currentIndex() in [2, 3, 4, 11, 12, 13, 14, 15] and \
-                self.addDialog.comboBox_2.currentIndex() == 2:
+                    self.addDialog.comboBox_2.currentIndex() == 2:
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("轴设置错误")
                 msgBox.setText("该模式下只能设置一个轴")
@@ -81,7 +91,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             task["opt3"] = self.addDialog.doubleSpinBox3.value()
             task["opt4"] = self.addDialog.doubleSpinBox4.value()
             s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
-                (task["text"], task["axis"], task["opt1"], task["opt2"], task["opt3"], task["opt4"])
+                (task["text"], task["axis"], task["opt1"],
+                 task["opt2"], task["opt3"], task["opt4"])
             newrow = self.listWidget.currentRow() + 1
             self.lst.insert(newrow, task)
             self.listWidget.insertItem(newrow, s)
@@ -166,7 +177,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
 
             # 位置设置一条龙
             if t["id"] == 2:
-                task = ztTask(type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
+                task = ztTask(
+                    type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
                 taskLst.append(task)
                 task = ztTask(type=5, axis=t["axis"], runType_1=5, runType_2=5)
                 taskLst.append(task)
@@ -175,30 +187,34 @@ class ztUsage(QDialog, Ui_Dialog_zt):
 
             # 速率设置一条龙
             if t["id"] == 3:
-                task = ztTask(type=8, axis=t["axis"], vel_v=t["opt1"], vel_a=t["opt2"])
+                task = ztTask(type=8, axis=t["axis"],
+                              vel_v=t["opt1"], vel_a=t["opt2"])
                 taskLst.append(task)
                 task = ztTask(type=5, axis=t["axis"], runType_1=6, runType_2=6)
                 taskLst.append(task)
                 task = ztTask(type=0xd, delay=t["opt4"])
-                taskLst.append(task) 
+                taskLst.append(task)
 
             # 摇摆设置一条龙
             if t["id"] == 4:
-                task = ztTask(type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"])
+                task = ztTask(
+                    type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"])
                 taskLst.append(task)
                 task = ztTask(type=5, axis=t["axis"], runType_1=7, runType_2=7)
                 taskLst.append(task)
                 task = ztTask(type=0xd, delay=t["opt3"] + 1)
-                taskLst.append(task) 
+                taskLst.append(task)
 
             # 上电 下电 闭合 闲置 运行 停止
             if t["id"] in [5, 6, 7, 8, 9, 10]:
-                task = ztTask(type=t["id"] - 4, axis=t["axis"], runType_1=runtype1, runType_2=runtype2)
+                task = ztTask(type=t["id"] - 4, axis=t["axis"],
+                              runType_1=runtype1, runType_2=runtype2)
                 taskLst.append(task)
 
             # 位置设置
             if t["id"] == 11:
-                task = ztTask(type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
+                task = ztTask(
+                    type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
                 taskLst.append(task)
                 if t["axis"] & 1 != 0:
                     runtype1 = 5
@@ -206,7 +222,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                     runtype2 = 5
             # 速率设置
             if t["id"] == 12:
-                task = ztTask(type=8, axis=t["axis"], vel_v=t["opt1"], vel_a=t["opt2"])
+                task = ztTask(type=8, axis=t["axis"],
+                              vel_v=t["opt1"], vel_a=t["opt2"])
                 taskLst.append(task)
                 if t["axis"] & 1 != 0:
                     runtype1 = 6
@@ -215,7 +232,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
 
             # 摇摆设置
             if t["id"] == 13:
-                task = ztTask(type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"])
+                task = ztTask(
+                    type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"])
                 taskLst.append(task)
                 if t["axis"] & 1 != 0:
                     runtype1 = 7
@@ -238,17 +256,22 @@ def cbTest(status):
     print(status)
 
 
-
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
+    usbport = '/dev/ttyUSB1'
+    if len(sys.argv) > 1:
+        usbport = sys.argv[1]
     ex = ztUsage()
     if ex.exec():
         print(ex.lst)
         taskLst = ex.createTasks(ex.lst)
-        ss = ztScheduler(cbTest)
-        for t in taskLst:
-            ss.addTask(t)
-        ss.run(1)
-
-    
-
+        ss = ztScheduler(readCallback=cbTest, portname=usbport)
+        if ss.zt902e1.connected:
+            for t in taskLst:
+                ss.addTask(t)
+            ss.run(1)
+        else:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("通信失败")
+            msgBox.setText("与转台间通信失败，请检查线缆是否连接正常")
+            msgBox.exec()

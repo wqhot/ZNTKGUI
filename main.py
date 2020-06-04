@@ -2,10 +2,10 @@
 import sys
 import socket
 import csv
-from Ui_gui import Ui_MainWindow
-from Ui_bagset import Ui_Dialog
-from Ui_setting import Ui_Dialog as Ui_Dialog_set
-from Ui_zttask import Ui_Dialog as Ui_Dialog_zt
+from ui.Ui_gui import Ui_MainWindow
+from ui.Ui_bagset import Ui_Dialog
+from ui.Ui_setting import Ui_Dialog as Ui_Dialog_set
+from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
 from ztUsage import ztUsage
 from zt902e1 import ztScheduler, ztTask
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -265,7 +265,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnClearChart.triggered.connect(self.clearChart)
         self.toolBtnClearChart.setEnabled(True)
 
-        self.toolBtnZTDialog = QAction(QIcon('./res/过滤红.png'), '转台', self)
+        self.toolBtnZTDialog = QAction(QIcon('./res/旋转.png'), '转台', self)
         self.toolBtnZTDialog.triggered.connect(self.settingZT)
         self.toolBtnZTDialog.setEnabled(True)
 
@@ -306,6 +306,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_3.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolbar_4.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.toolbar_5.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.toolbar_6.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
         # self.setWindowOpacity(0.9)  # 设置窗口透明度
         # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)  # 设置窗口背景透明
@@ -364,11 +365,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             th_2 = threading.Thread(target=self.save)
             th_2.start()
             taskLst = dialog.createTasks(dialog.lst)
-            ss = ztScheduler(self.ztcallback, self.ztfinishcb)
-            for t in taskLst:
-                ss.addTask(t)
-            ss.run(1)
-            
+            ss = ztScheduler(readCallback=self.ztcallback, finishCallback=self.ztfinishcb)
+            if ss.zt902e1.connected:
+                for t in taskLst:
+                    ss.addTask(t)
+                    ss.run(1)
+                else:
+                    msgBox = QMessageBox()
+                    msgBox.setWindowTitle("通信失败")
+                    msgBox.setText("与转台间通信失败，请检查线缆是否连接正常")
+                    msgBox.exec()          
         else:
             return
        

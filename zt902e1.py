@@ -96,13 +96,13 @@ class ztTask():
 # 对转台写命令，并延时等待执行
 # 定时读取转台数据，通过回调函数范围
 class ztScheduler():
-    def __init__(self, readCallback, finishCallback=None):
+    def __init__(self, readCallback, finishCallback=None, portname='/dev/ttyUSB1'):
         self.callback = readCallback
         self.finishCallback = finishCallback
         self.taskList = []
         self.readelay = 0.001
         self.readrun = True
-        self.zt902e1 = zt902e1(self.callback)
+        con = self.zt902e1 = zt902e1(callback=self.callback, portname=portname)
         self.readth = threading.Thread(target=self.readProcess, daemon=True)
         self.th = threading.Thread(target=self.process, daemon=True)
 
@@ -136,8 +136,8 @@ class ztScheduler():
             self.finishCallback()
 
 class zt902e1():
-    def __init__(self, callback):
-        portName = '/dev/ttyUSB1'
+    def __init__(self, callback, portname='/dev/ttyUSB1'):
+        portName = portname
         bps = 9600
         time = 0.5
         self.mutex = threading.Lock()
@@ -148,8 +148,9 @@ class zt902e1():
         # self.th_recv = threading.Thread(target=self.recv, daemon=True)
         # self.th_recv.start()
         self.callback = callback
-        # self.send()
-        self.recv()
+        self.send() # 建立链接
+        self.connected = self.recv() # 接收建立连接返回信号
+
 
     def getValue(self):
         status = ztStatus()
@@ -216,16 +217,7 @@ class zt902e1():
     def send(self):
         # 建立通信
         startbuff = b'\x00\x55\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        # 上电
-        onbuff = b'\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        # 闭合
-        closebuff = b'\x01\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         self.sendCommand(startbuff)
-        time.sleep(1)
-        self.sendCommand(onbuff)
-        time.sleep(1)
-        self.sendCommand(closebuff)
-        time.sleep(1)
 
 
 # def cbTest(status):

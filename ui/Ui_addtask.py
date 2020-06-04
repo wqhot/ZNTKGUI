@@ -14,6 +14,9 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
         Dialog.resize(1014, 91)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("/home/wq/zntk/ZNTKGUI/res/旋转.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        Dialog.setWindowIcon(icon)
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(Dialog)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.verticalLayout = QtWidgets.QVBoxLayout()
@@ -80,6 +83,7 @@ class Ui_Dialog(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.doubleSpinBox2.sizePolicy().hasHeightForWidth())
         self.doubleSpinBox2.setSizePolicy(sizePolicy)
+        self.doubleSpinBox2.setMaximum(360.0)
         self.doubleSpinBox2.setObjectName("doubleSpinBox2")
         self.horizontalLayout_item.addWidget(self.doubleSpinBox2)
         self.label_3 = QtWidgets.QLabel(Dialog)
@@ -97,6 +101,7 @@ class Ui_Dialog(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.doubleSpinBox1.sizePolicy().hasHeightForWidth())
         self.doubleSpinBox1.setSizePolicy(sizePolicy)
+        self.doubleSpinBox1.setMaximum(360.0)
         self.doubleSpinBox1.setObjectName("doubleSpinBox1")
         self.horizontalLayout_item.addWidget(self.doubleSpinBox1)
         self.label_4 = QtWidgets.QLabel(Dialog)
@@ -114,6 +119,7 @@ class Ui_Dialog(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.doubleSpinBox3.sizePolicy().hasHeightForWidth())
         self.doubleSpinBox3.setSizePolicy(sizePolicy)
+        self.doubleSpinBox3.setMaximum(360.0)
         self.doubleSpinBox3.setObjectName("doubleSpinBox3")
         self.horizontalLayout_item.addWidget(self.doubleSpinBox3)
         self.label_5 = QtWidgets.QLabel(Dialog)
@@ -131,6 +137,7 @@ class Ui_Dialog(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.doubleSpinBox4.sizePolicy().hasHeightForWidth())
         self.doubleSpinBox4.setSizePolicy(sizePolicy)
+        self.doubleSpinBox4.setMaximum(360.0)
         self.doubleSpinBox4.setObjectName("doubleSpinBox4")
         self.horizontalLayout_item.addWidget(self.doubleSpinBox4)
         self.verticalLayout.addLayout(self.horizontalLayout_item)
@@ -148,7 +155,7 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
-        Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
+        Dialog.setWindowTitle(_translate("Dialog", "任务详情"))
         self.comboBox.setItemText(0, _translate("Dialog", "开机一条龙(上电->闭合->归零->延时100s)"))
         self.comboBox.setItemText(1, _translate("Dialog", "关机一条龙(停止->闲置->下电)"))
         self.comboBox.setItemText(2, _translate("Dialog", "位置设置一条龙(位置方式设置->运行->延时)"))
