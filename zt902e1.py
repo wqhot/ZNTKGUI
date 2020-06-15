@@ -102,7 +102,8 @@ class ztScheduler():
         self.taskList = []
         self.readelay = 0.001
         self.readrun = True
-        con = self.zt902e1 = zt902e1(callback=self.callback, portname=portname)
+        self.waitCond = threading.Condition()
+        self.zt902e1 = zt902e1(callback=self.callback, portname=portname)
         self.readth = threading.Thread(target=self.readProcess, daemon=True)
         self.th = threading.Thread(target=self.process, daemon=True)
 
@@ -113,24 +114,32 @@ class ztScheduler():
     def run(self, readFPS = 1000):
         self.readrun = True   
         # 开始接收数据
-        self.readelay = 1.0 / readFPS      
-        self.readth.start()
+        if (readFPS > 0):
+            self.readelay = 1.0 / readFPS      
+            self.readth.start()
         # 开始运行任务       
         self.th.start()
         
     
     def readProcess(self):
         while self.readrun:
+            self.waitCond.acquire()
             self.zt902e1.getValue()
+            self.waitCond.release()
             time.sleep(self.readelay)
 
     def process(self):
         for task in self.taskList:
             if task.type == 0x0d:
+                # print("delay")
                 time.sleep(task.delay)
                 continue
+            self.waitCond.acquire()
             self.zt902e1.sendCommand(task.command)
-            print(task.command)
+            time.sleep(0.5)
+            self.waitCond.notifyAll()
+            self.waitCond.release()
+            # print(task.command)
         self.readrun = False
         if self.finishCallback is not None:
             self.finishCallback()
@@ -139,10 +148,9 @@ class zt902e1():
     def __init__(self, callback, portname='/dev/ttyUSB1'):
         portName = portname
         bps = 9600
-        time = 0.5
+        time = 0.005
         self.mutex = threading.Lock()
-        self.ser = None
-        # self.ser = serial.Serial(port=portName, baudrate=bps, timeout=0.5)
+        self.ser = serial.Serial(port=portName, baudrate=bps, timeout=0.5)
         self.recvrun = True
         # self.ser.open()
         # self.th_recv = threading.Thread(target=self.recv, daemon=True)
@@ -150,6 +158,7 @@ class zt902e1():
         self.callback = callback
         self.send() # 建立链接
         self.connected = self.recv() # 接收建立连接返回信号
+        self.connected = True
 
 
     def getValue(self):
@@ -168,9 +177,13 @@ class zt902e1():
     def recv(self, status=None):
         length = 15
         sum = 0
-        # buff = self.ser.read(length)
-        buff = b'\x02\x0a\xa0\x86\x01\x00\xc0\xd4\x01\x00\xa0\x86\x01\x00\x11'
+        buff = self.ser.read(length)
+        # print("recv: ", end='')
+        # print(buff)
+        # buff = b'\x02\x0a\xa0\x86\x01\x00\xc0\xd4\x01\x00\xa0\x86\x01\x00\x11'
         buffArray = list(bytearray(buff))
+        if len(buff) != length:
+            return False
         # 校验
         for b in buffArray:
             sum += b
@@ -184,6 +197,10 @@ class zt902e1():
                 for i in range(2, 6, 1):
                     pos |= (buffArray[i] << 8 * (i - 2))
                     velocity |= (buffArray[i + 4] << 8 * (i - 2))
+                if pos > 0x10000000: # 负数                  
+                    pos -= 0xffffffff
+                if velocity > 0x10000000: # 负数
+                    velocity -= 0xffffffff
                 pos *= 0.0001
                 velocity *= 0.0001
                 status.setAxisValue(buffArray[0], pos, velocity)
@@ -193,31 +210,34 @@ class zt902e1():
         return False
 
     def sendCommand(self, command):
-        if self.mutex.acquire(timeout=0.5):
-            sendbuff = bytearray(command)
-            # test
-            sum = 0
-            for i in range(len(sendbuff)):
-                sum = sum + int(sendbuff[i])
-            sum = (~(sum % 256))
-            sum &= 0xffffffff
-            sum %= 256
-            sum += 1
-            #
-            tempSum = bytearray(1)
-            tempSum[0] = sum
-            buf = command + bytes(tempSum)
-            # self.ser.write(buf)
+        sendbuff = bytearray(command)
+        # test
+        sum = 0
+        for i in range(len(sendbuff)):
+            sum = sum + int(sendbuff[i])
+        sum = 256 - (sum % 256)
+        sum %= 256
+        #
+        tempSum = bytearray(1)
+        tempSum[0] = sum
+        buf = bytes(command) + bytes(tempSum)
+        if self.mutex.acquire(timeout=0.5):      
+            # print('send:', end='')
+            # print(buf)
+            self.ser.write(buf)
             # self.ser.write(str(tempSum[0], encoding='utf-8'))
             self.mutex.release()
+            # time.sleep(0.1)
             return True
         else:
+            print("send fail because of mutex")
             return False
 
     def send(self):
         # 建立通信
         startbuff = b'\x00\x55\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         self.sendCommand(startbuff)
+        
 
 
 # def cbTest(status):
