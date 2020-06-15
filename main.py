@@ -675,7 +675,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         return rot_matrix
 
     def closeEvent(self, event):
-        self.recv.stop()
+        if hasattr(self, "recv"):
+            self.recv.stop()
         if self.timer.isActive():
             self.timer.stop()
         self.ssh.isRun = False

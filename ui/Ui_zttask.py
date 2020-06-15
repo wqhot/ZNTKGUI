@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '/home/wq/zntk/ZNTKGUI/zttask.ui'
+# Form implementation generated from reading ui file 'c:\Users\wqhot\Desktop\ZNTKGUI\ui\zttask.ui'
 #
-# Created by: PyQt5 UI code generator 5.14.2
+# Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
 
-
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 
 class Ui_dialog(object):
     def setupUi(self, dialog):
@@ -87,6 +85,19 @@ class Ui_dialog(object):
         self.pushButton_4.setText("")
         self.pushButton_4.setObjectName("pushButton_4")
         self.horizontalLayout.addWidget(self.pushButton_4)
+        spacerItem3 = QtWidgets.QSpacerItem(60, 20, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout.addItem(spacerItem3)
+        self.pushButton_5 = QtWidgets.QPushButton(self.frame_2)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.pushButton_5.sizePolicy().hasHeightForWidth())
+        self.pushButton_5.setSizePolicy(sizePolicy)
+        self.pushButton_5.setMinimumSize(QtCore.QSize(26, 26))
+        self.pushButton_5.setMaximumSize(QtCore.QSize(26, 26))
+        self.pushButton_5.setText("")
+        self.pushButton_5.setObjectName("pushButton_5")
+        self.horizontalLayout.addWidget(self.pushButton_5)
         self.horizontalLayout_2.addLayout(self.horizontalLayout)
         self.verticalLayout.addWidget(self.frame_2)
         self.verticalLayout_2.addLayout(self.verticalLayout)
@@ -104,3 +115,4 @@ class Ui_dialog(object):
     def retranslateUi(self, dialog):
         _translate = QtCore.QCoreApplication.translate
         dialog.setWindowTitle(_translate("dialog", "转台任务计划"))
+

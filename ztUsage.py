@@ -21,21 +21,27 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.lst = []
         self.setupUi(self)
         self.pushButton.setStyleSheet("QPushButton{border-image: url(res/添加.png)}"
-                                      "QPushButton:hover{border-image: url(res/添加.png)}"
-                                      "QPushButton:pressed{border-image: url(res/添加1.png)}")
+                                      "QPushButton:hover{border-image: url(res/添加1.png)}"
+                                      "QPushButton:pressed{border-image: url(res/添加.png)}")
         self.pushButton_2.setStyleSheet("QPushButton{border-image: url(res/向上.png)}"
-                                      "QPushButton:hover{border-image: url(res/向上.png)}"
-                                      "QPushButton:pressed{border-image: url(res/向上1.png)}")
+                                      "QPushButton:hover{border-image: url(res/向上1.png)}"
+                                      "QPushButton:pressed{border-image: url(res/向上.png)}")
         self.pushButton_3.setStyleSheet("QPushButton{border-image: url(res/向下.png)}"
-                                      "QPushButton:hover{border-image: url(res/向下.png)}"
-                                      "QPushButton:pressed{border-image: url(res/向下1.png)}")
+                                      "QPushButton:hover{border-image: url(res/向下1.png)}"
+                                      "QPushButton:pressed{border-image: url(res/向下.png)}")
         self.pushButton_4.setStyleSheet("QPushButton{border-image: url(res/关闭.png)}"
-                                      "QPushButton:hover{border-image: url(res/关闭.png)}"
-                                      "QPushButton:pressed{border-image: url(res/关闭1.png)}")
+                                      "QPushButton:hover{border-image: url(res/关闭1.png)}"
+                                      "QPushButton:pressed{border-image: url(res/关闭.png)}")
+        self.pushButton_5.setStyleSheet("QPushButton{border-image: url(res/复制.png)}"
+                                      "QPushButton:hover{border-image: url(res/复制1.png)}"
+                                      "QPushButton:pressed{border-image: url(res/复制.png)}")
         self.pushButton.clicked.connect(self.addBtn)
         self.pushButton_2.clicked.connect(self.moveUpBtn)
         self.pushButton_3.clicked.connect(self.moveDownBtn)
         self.pushButton_4.clicked.connect(self.delBtn)
+        self.pushButton_5.clicked.connect(self.copyBtn)
+        self.pushButton_5.setShortcut('Ctrl+C')
+        self.listWidget.doubleClicked.connect(self.modifyBtn)
 
     def moveUpBtn(self):
         newrow = self.listWidget.currentRow() - 1
@@ -63,9 +69,63 @@ class ztUsage(QDialog, Ui_Dialog_zt):
 
     def delBtn(self):
         currow = self.listWidget.currentRow()
-        self.lst.remove(self.lst[currow])
-        self.listWidget.takeItem(self.listWidget.currentRow())
-        self.listWidget.setCurrentRow(currow - 1)
+        if currow >= 0:
+            self.lst.remove(self.lst[currow])
+            self.listWidget.takeItem(self.listWidget.currentRow())
+            self.listWidget.setCurrentRow(currow - 1)
+
+    def copyBtn(self):
+        row = self.listWidget.currentRow()
+        if row < 0:
+            return
+        task = self.lst[row]
+        s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
+            (task["text"], task["axis"], task["opt1"],
+            task["opt2"], task["opt3"], task["opt4"])
+        newrow = self.listWidget.currentRow() + 1
+        self.lst.insert(newrow, task)
+        self.listWidget.insertItem(newrow, s)
+        self.listWidget.setCurrentRow(newrow)
+
+    def modifyBtn(self):
+        row = self.listWidget.currentRow()
+        task = self.lst[row]
+        dialog = QDialog()
+        self.addDialog = Ui_Dialog_add()
+        self.addDialog.setupUi(dialog)
+        self.addDialog.comboBox.setCurrentIndex(task["id"])
+        self.addDialog.comboBox_2.setCurrentIndex(task["axis"] - 1)
+        self.addDialog.doubleSpinBox1.setValue(task["opt1"])
+        self.addDialog.doubleSpinBox2.setValue(task["opt2"])
+        self.addDialog.doubleSpinBox3.setValue(task["opt3"])
+        self.addDialog.doubleSpinBox4.setValue(task["opt4"])
+        self.addDialog.comboBox.currentIndexChanged.connect(self.select)
+        # addDialog.comboBox.activated.connect(self.select, addDialog)
+        if dialog.exec():
+            # 只能设置单一的轴
+            if self.addDialog.comboBox.currentIndex() in [2, 3, 4, 11, 12, 13, 14, 15] and \
+                    self.addDialog.comboBox_2.currentIndex() == 2:
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("轴设置错误")
+                msgBox.setText("该模式下只能设置一个轴")
+                msgBox.exec()
+                return
+            task = {}
+            task["id"] = self.addDialog.comboBox.currentIndex()
+            task["text"] = self.addDialog.comboBox.currentText()
+            task["axis"] = self.addDialog.comboBox_2.currentIndex() + 1
+            task["opt1"] = self.addDialog.doubleSpinBox1.value()
+            task["opt2"] = self.addDialog.doubleSpinBox2.value()
+            task["opt3"] = self.addDialog.doubleSpinBox3.value()
+            task["opt4"] = self.addDialog.doubleSpinBox4.value()
+            s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
+                (task["text"], task["axis"], task["opt1"],
+                 task["opt2"], task["opt3"], task["opt4"])
+            self.lst[row] = task
+            item = self.listWidget.takeItem(row)
+            item.setText(s)
+            self.listWidget.insertItem(row, item)
+            self.listWidget.setCurrentRow(row)
 
     def addBtn(self):
         dialog = QDialog()
