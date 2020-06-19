@@ -19,6 +19,7 @@ from recvData import RecvData
 from sshCtl import sshCtl
 from plotCamera import PlotCamera
 from config import TIME_LENGTH
+from analysis import analysisDialog
 import threading
 import time
 import math
@@ -72,10 +73,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl('cd /home/zhangtian/zntk/zntk_core/bin/',
+        self.ssh = sshCtl('cd /home/wq/zntk/zntk_core/build/',
                           '127.0.0.1',
-                          'zhangtian',
-                          'zhangtian')
+                          'wq',
+                          'wq')
         for key in DICT_NAME_LIST:
             self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
             index = index + 1
@@ -269,6 +270,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnZTDialog.triggered.connect(self.settingZT)
         self.toolBtnZTDialog.setEnabled(True)
 
+        self.toolBtnAnalysisDialog = QAction(QIcon('./res/数据.png'), '分析数据', self)
+        self.toolBtnAnalysisDialog.triggered.connect(self.analysis)
+        self.toolBtnAnalysisDialog.setEnabled(True)
+
         self.redON = True
         self.greenON = True
         self.blueON = True
@@ -299,6 +304,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
         self.toolbar_6 = self.addToolBar('转台')
         self.toolbar_6.addAction(self.toolBtnZTDialog)
+        self.toolbar_6.addAction(self.toolBtnAnalysisDialog)
 
 
         self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
@@ -358,6 +364,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             self.toolBtnViewIMU.setIcon(QIcon('./res/过滤关.png'))
 
+    def analysis(self):
+        dialog = analysisDialog()
+        dialog.show()
+        # if dialog.exec():
+        #     return
+
     def settingZT(self):
         dialog = ztUsage()
         if dialog.exec():
@@ -365,13 +377,13 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             th_2 = threading.Thread(target=self.save)
             th_2.start()
             taskLst = dialog.createTasks(dialog.lst)
-            ss = ztScheduler(readCallback=self.ztcallback, \
+            self.ss = ztScheduler(readCallback=self.ztcallback, \
                             finishCallback=self.ztfinishcb, 
                             portname='/dev/ttyUSB1')
-            if ss.zt902e1.connected:
+            if self.ss.zt902e1.connected:
                 for t in taskLst:
-                    ss.addTask(t)
-                ss.run(500)
+                    self.ss.addTask(t)
+                self.ss.run(500)
             else:
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("通信失败")
