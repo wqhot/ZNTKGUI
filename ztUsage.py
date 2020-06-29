@@ -8,6 +8,7 @@ from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
 from ui.Ui_addtask import Ui_Dialog as Ui_Dialog_add
 import sys
 from zt902e1 import ztScheduler, ztTask
+import serial.tools.list_ports
 # dialog = QDialog()
 # setDialog = Ui_Dialog_zt()
 # setDialog.setupUi(dialog)
@@ -42,6 +43,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.pushButton_5.clicked.connect(self.copyBtn)
         self.pushButton_5.setShortcut('Ctrl+C')
         self.listWidget.doubleClicked.connect(self.modifyBtn)
+        port_list = list(serial.tools.list_ports.comports())
+        print(port_list[0])
 
     def moveUpBtn(self):
         newrow = self.listWidget.currentRow() - 1
