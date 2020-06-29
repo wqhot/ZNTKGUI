@@ -43,6 +43,8 @@ class ztTask():
     # 0xb: 归零
     # 0xc: 停止归零
     # 0xd: 等待
+    # 0xe: 循环开始
+    # 0xf: 循环结束
     # axis:
     # 1 航向
     # 2 俯仰
@@ -51,12 +53,14 @@ class ztTask():
     # 5 位置 6 速率 7 摇摆
     # runType_2 俯仰轴的运动方式
     # 5 位置 6 速率 7 摇摆
+    # repeat 循环次数
     def __init__(self, type, axis=0, runType_1=0, runType_2=0,
                  pos_p=0, pos_v=0, pos_a=0, vel_v=0, vel_a=0,
-                 swing_range=0, swing_freq=0, swing_dur=0, delay=0):
+                 swing_range=0, swing_freq=0, swing_dur=0, delay=0, repeat=0):
         self.type = type
         self.command = bytearray(14)
         self.delay = delay
+        self.repeat = int(repeat)
         for c in self.command:
             c = 0
         self.command[1] = type
@@ -91,6 +95,10 @@ class ztTask():
                 self.command[10 + i] = (c_a & (0xff << (i * 8))) >> (i * 8)
         if type == 0x0d: # delay
             self.command = bytearray(b'')
+        if type == 0x0e: # 循环开始
+            self.command = bytearray(b'')
+        if type == 0x0f: # 循环结束
+            self.command = bytearray(b'')
 
 # 调度器负责两个任务：
 # 对转台写命令，并延时等待执行
@@ -100,6 +108,7 @@ class ztScheduler():
         self.callback = readCallback
         self.finishCallback = finishCallback
         self.taskList = []
+        self.unrollingTaskList = []
         self.readelay = 0.001
         self.readrun = True
         self.waitCond = threading.Condition()
@@ -111,16 +120,36 @@ class ztScheduler():
     def addTask(self, task):
         self.taskList.append(task)
     
+    def loopUnrolling(self):
+        repeatList = []
+        self.unrollingTaskList = []
+        startUnrolling = False
+        repeat = 0
+        for task in self.taskList:
+            if task.type == 0x0e: #循环开始
+                startUnrolling = True
+                repeatList = []
+                repeat = task.repeat
+            elif task.type == 0x0f: #循环结束
+                startUnrolling = False
+                self.unrollingTaskList.extend(repeatList * repeat)
+            else:
+                if startUnrolling:
+                    repeatList.append(task)
+                else:
+                    self.unrollingTaskList.append(task)
+            
+
     def run(self, readFPS = 1000):
         self.readrun = True   
         # 开始接收数据
         if (readFPS > 0):
             self.readelay = 1.0 / readFPS      
             self.readth.start()
-        # 开始运行任务       
+        # 开始运行任务 
+        self.loopUnrolling()      
         self.th.start()
         
-    
     def readProcess(self):
         while self.readrun:
             self.waitCond.acquire()
@@ -129,10 +158,12 @@ class ztScheduler():
             time.sleep(self.readelay)
 
     def process(self):
-        for task in self.taskList:
+        for task in self.unrollingTaskList:
             if task.type == 0x0d:
                 # print("delay")
                 time.sleep(task.delay)
+                continue
+            if task.type in [0x0e, 0x0f]:
                 continue
             self.waitCond.acquire()
             self.zt902e1.sendCommand(task.command)
@@ -230,7 +261,6 @@ class zt902e1():
             # time.sleep(0.1)
             return True
         else:
-            print("send fail because of mutex")
             return False
 
     def send(self):

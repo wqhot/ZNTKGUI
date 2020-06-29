@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '/home/wq/zntk/ZNTKGUI/addtask.ui'
+# Form implementation generated from reading ui file 'c:\Users\wqhot\Desktop\ZNTKGUI\ui\addtask.ui'
 #
-# Created by: PyQt5 UI code generator 5.14.2
+# Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
 
-
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -30,6 +28,8 @@ class Ui_Dialog(object):
         sizePolicy.setHeightForWidth(self.comboBox.sizePolicy().hasHeightForWidth())
         self.comboBox.setSizePolicy(sizePolicy)
         self.comboBox.setObjectName("comboBox")
+        self.comboBox.addItem("")
+        self.comboBox.addItem("")
         self.comboBox.addItem("")
         self.comboBox.addItem("")
         self.comboBox.addItem("")
@@ -172,7 +172,10 @@ class Ui_Dialog(object):
         self.comboBox.setItemText(13, _translate("Dialog", "摇摆方式设置"))
         self.comboBox.setItemText(14, _translate("Dialog", "归零"))
         self.comboBox.setItemText(15, _translate("Dialog", "停止归零"))
-        self.comboBox.setItemText(16, _translate("Dialog", "空闲"))
+        self.comboBox.setItemText(16, _translate("Dialog", "延时"))
+        self.comboBox.setItemText(17, _translate("Dialog", "循环开始"))
+        self.comboBox.setItemText(18, _translate("Dialog", "循环结束"))
         self.comboBox_2.setItemText(0, _translate("Dialog", "航向轴"))
         self.comboBox_2.setItemText(1, _translate("Dialog", "俯仰轴"))
         self.comboBox_2.setItemText(2, _translate("Dialog", "航向轴+俯仰轴"))
+

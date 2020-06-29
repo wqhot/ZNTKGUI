@@ -112,7 +112,17 @@
          </item>
          <item>
           <property name="text">
-           <string>空闲</string>
+           <string>延时</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>循环开始</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>循环结束</string>
           </property>
          </item>
         </widget>

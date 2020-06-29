@@ -114,8 +114,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             task["id"] = self.addDialog.comboBox.currentIndex()
             task["text"] = self.addDialog.comboBox.currentText()
             task["axis"] = self.addDialog.comboBox_2.currentIndex() + 1
-            task["opt1"] = self.addDialog.doubleSpinBox1.value()
-            task["opt2"] = self.addDialog.doubleSpinBox2.value()
+            task["opt1"] = self.addDialog.doubleSpinBox2.value()
+            task["opt2"] = self.addDialog.doubleSpinBox1.value()
             task["opt3"] = self.addDialog.doubleSpinBox3.value()
             task["opt4"] = self.addDialog.doubleSpinBox4.value()
             s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
@@ -204,6 +204,15 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         elif index == 16:
             self.addDialog.label.setText("无效")
             self.addDialog.label_2.setText("保持时间")
+
+        # 开始循环
+        elif index == 17:
+            self.addDialog.label.setText("无效")
+            self.addDialog.label_2.setText("循环次数")
+
+        # 结束循环
+        elif index == 18:
+            self.addDialog.label.setText("无效")
 
     def createTasks(self, oriTasks):
         taskLst = []
@@ -334,6 +343,16 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             # 保持
             if t["id"] == 16:
                 task = ztTask(type=0x0d, delay=t["opt1"])
+                taskLst.append(task)
+
+            # 循环开始
+            if t["id"] == 17:
+                task = ztTask(type=0x0e, repeat=t["opt1"])
+                taskLst.append(task)
+            
+            # 循环结束
+            if t["id"] == 18:
+                task = ztTask(type=0x0f)
                 taskLst.append(task)
         return taskLst
 
