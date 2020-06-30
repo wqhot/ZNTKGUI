@@ -111,12 +111,16 @@ class ztScheduler():
         self.unrollingTaskList = []
         self.readelay = 0.001
         self.readrun = True
+        self.enableCallback = False
         self.waitCond = threading.Condition()
         self.zt902e1 = zt902e1(callback=self.callback, portname=portname)
         self.readth = threading.Thread(target=self.readProcess, daemon=True)
         self.th = threading.Thread(target=self.process, daemon=True)
 
-    
+    def setProgressCallback(self, callback):
+        self.enableCallback = True
+        self.progressCallback = callback
+
     def addTask(self, task):
         self.taskList.append(task)
     
@@ -158,7 +162,9 @@ class ztScheduler():
             time.sleep(self.readelay)
 
     def process(self):
+        taskCount = 0
         for task in self.unrollingTaskList:
+            taskCount += 1
             if task.type == 0x0d:
                 # print("delay")
                 time.sleep(task.delay)
@@ -167,6 +173,8 @@ class ztScheduler():
                 continue
             self.waitCond.acquire()
             self.zt902e1.sendCommand(task.command)
+            if self.enableCallback:
+                self.progressCallback(float(taskCount / len(self.unrollingTaskList)))
             time.sleep(0.5)
             self.waitCond.notifyAll()
             self.waitCond.release()

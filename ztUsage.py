@@ -25,26 +25,59 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                                       "QPushButton:hover{border-image: url(res/添加1.png)}"
                                       "QPushButton:pressed{border-image: url(res/添加.png)}")
         self.pushButton_2.setStyleSheet("QPushButton{border-image: url(res/向上.png)}"
-                                      "QPushButton:hover{border-image: url(res/向上1.png)}"
-                                      "QPushButton:pressed{border-image: url(res/向上.png)}")
+                                        "QPushButton:hover{border-image: url(res/向上1.png)}"
+                                        "QPushButton:pressed{border-image: url(res/向上.png)}")
         self.pushButton_3.setStyleSheet("QPushButton{border-image: url(res/向下.png)}"
-                                      "QPushButton:hover{border-image: url(res/向下1.png)}"
-                                      "QPushButton:pressed{border-image: url(res/向下.png)}")
+                                        "QPushButton:hover{border-image: url(res/向下1.png)}"
+                                        "QPushButton:pressed{border-image: url(res/向下.png)}")
         self.pushButton_4.setStyleSheet("QPushButton{border-image: url(res/关闭.png)}"
-                                      "QPushButton:hover{border-image: url(res/关闭1.png)}"
-                                      "QPushButton:pressed{border-image: url(res/关闭.png)}")
+                                        "QPushButton:hover{border-image: url(res/关闭1.png)}"
+                                        "QPushButton:pressed{border-image: url(res/关闭.png)}")
         self.pushButton_5.setStyleSheet("QPushButton{border-image: url(res/复制.png)}"
-                                      "QPushButton:hover{border-image: url(res/复制1.png)}"
-                                      "QPushButton:pressed{border-image: url(res/复制.png)}")
+                                        "QPushButton:hover{border-image: url(res/复制1.png)}"
+                                        "QPushButton:pressed{border-image: url(res/复制.png)}")
         self.pushButton.clicked.connect(self.addBtn)
         self.pushButton_2.clicked.connect(self.moveUpBtn)
         self.pushButton_3.clicked.connect(self.moveDownBtn)
         self.pushButton_4.clicked.connect(self.delBtn)
         self.pushButton_5.clicked.connect(self.copyBtn)
         self.pushButton_5.setShortcut('Ctrl+C')
+        self.pushButton_6.clicked.connect(self.startRun)
         self.listWidget.doubleClicked.connect(self.modifyBtn)
-        port_list = list(serial.tools.list_ports.comports())
-        print(port_list[0])
+        self.port_list = list(serial.tools.list_ports.comports())
+        for port in self.port_list:
+            self.comboBox.addItem(port.name)
+        if len(self.port_list) > 0:
+            self.pushButton_6.setEnabled(True)
+
+    def finishCallback(self):
+        self.progressBar.setValue(100)
+        self.progressBar.setEnabled(False)
+        self.comboBox.setEnabled(True)
+        self.pushButton_6.setEnabled(True)
+        msgBox = QMessageBox.information(self, "执行结束", "转台运动结束，结果保存在history文件夹下")
+
+    def progressCallback(self, progress):
+        self.progressBar.setValue(int(progress * 100))
+
+    def startRun(self):
+        taskLst = self.createTasks(self.lst)
+        port = self.port_list[self.comboBox.currentIndex()]
+        ss = ztScheduler(
+            readCallback=cbTest, finishCallback=self.finishCallback, portname=port.device)
+        ss.setProgressCallback(self.progressCallback)
+        if ss.zt902e1.connected:
+            for t in taskLst:
+                ss.addTask(t)
+            self.progressBar.setEnabled(True)
+            self.comboBox.setEnabled(False)
+            self.pushButton_6.setEnabled(False)
+            ss.run(1)
+        else:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("通信失败")
+            msgBox.setText("与转台间通信失败，请检查线缆是否连接正常")
+            msgBox.exec()
 
     def moveUpBtn(self):
         newrow = self.listWidget.currentRow() - 1
@@ -84,7 +117,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         task = self.lst[row]
         s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
             (task["text"], task["axis"], task["opt1"],
-            task["opt2"], task["opt3"], task["opt4"])
+             task["opt2"], task["opt3"], task["opt4"])
         newrow = self.listWidget.currentRow() + 1
         self.lst.insert(newrow, task)
         self.listWidget.insertItem(newrow, s)
@@ -98,8 +131,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.addDialog.setupUi(dialog)
         self.addDialog.comboBox.setCurrentIndex(task["id"])
         self.addDialog.comboBox_2.setCurrentIndex(task["axis"] - 1)
-        self.addDialog.doubleSpinBox1.setValue(task["opt1"])
-        self.addDialog.doubleSpinBox2.setValue(task["opt2"])
+        self.addDialog.doubleSpinBox2.setValue(task["opt1"])
+        self.addDialog.doubleSpinBox1.setValue(task["opt2"])
         self.addDialog.doubleSpinBox3.setValue(task["opt3"])
         self.addDialog.doubleSpinBox4.setValue(task["opt4"])
         self.addDialog.comboBox.currentIndexChanged.connect(self.select)
@@ -352,7 +385,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             if t["id"] == 17:
                 task = ztTask(type=0x0e, repeat=t["opt1"])
                 taskLst.append(task)
-            
+
             # 循环结束
             if t["id"] == 18:
                 task = ztTask(type=0x0f)
@@ -370,6 +403,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         usbport = sys.argv[1]
     ex = ztUsage()
+    # ex.show()
     if ex.exec():
         print(ex.lst)
         taskLst = ex.createTasks(ex.lst)
