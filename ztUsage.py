@@ -7,6 +7,10 @@ from PyQt5.QtWidgets import QLabel, QWidget
 from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
 from ui.Ui_addtask import Ui_Dialog as Ui_Dialog_add
 import sys
+import time
+import csv
+import threading
+import queue
 from zt902e1 import ztScheduler, ztTask
 import serial.tools.list_ports
 # dialog = QDialog()
@@ -44,17 +48,52 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.pushButton_5.setShortcut('Ctrl+C')
         self.pushButton_6.clicked.connect(self.startRun)
         self.listWidget.doubleClicked.connect(self.modifyBtn)
+        self.issave = False
+        self.cond = threading.Condition()
+        self.que = queue.Queue(1024)
         self.port_list = list(serial.tools.list_ports.comports())
         for port in self.port_list:
             self.comboBox.addItem(port.name)
         if len(self.port_list) > 0:
             self.pushButton_6.setEnabled(True)
 
+    def save(self):
+        headers = ['stamp', 'firstAxisPos', 'firstAxisVelocity', 'secondAxisPos', 'secondAxisVelocity']
+        csv_name = './history/' + \
+            str(time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime())) + '_zt.csv'
+        with open(csv_name, 'w') as f:
+            f_csv = csv.writer(f)
+            f_csv.writerow(headers)
+            while self.issave:
+                r = None
+                if self.cond.acquire():
+                    if self.que.empty():
+                        self.cond.wait(0.5)
+                    if not self.que.empty():
+                        r = self.que.get()
+                    self.cond.release()
+                if r is not None:
+                    line = [(r["STAMP"]),
+                            '%.16f' % float(r["firstAxisPos"]),
+                            '%.16f' % float(r["firstAxisVelocity"]),
+                            '%.16f' % float(r["secondAxisPos"]),
+                            '%.16f' % float(r["secondAxisVelocity"])]
+                    f_csv.writerow(line)
+
+    def ztcallback(self, status):
+        if self.cond.acquire():
+            status["STAMP"] = str(time.time())
+            print(status)
+            self.que.put(status)
+            self.cond.notify_all()
+            self.cond.release()
+
     def finishCallback(self):
         self.progressBar.setValue(100)
         self.progressBar.setEnabled(False)
         self.comboBox.setEnabled(True)
         self.pushButton_6.setEnabled(True)
+        self.issave = False
         msgBox = QMessageBox.information(self, "执行结束", "转台运动结束，结果保存在history文件夹下")
 
     def progressCallback(self, progress):
@@ -64,7 +103,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         taskLst = self.createTasks(self.lst)
         port = self.port_list[self.comboBox.currentIndex()]
         ss = ztScheduler(
-            readCallback=cbTest, finishCallback=self.finishCallback, portname=port.device)
+            readCallback=self.ztcallback, finishCallback=self.finishCallback, portname=port.device)
         ss.setProgressCallback(self.progressCallback)
         if ss.zt902e1.connected:
             for t in taskLst:
@@ -72,6 +111,9 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.progressBar.setEnabled(True)
             self.comboBox.setEnabled(False)
             self.pushButton_6.setEnabled(False)
+            self.issave = True
+            self.save_th = threading.Thread(target=self.save, daemon=True)
+            self.save_th.start()
             ss.run(1)
         else:
             msgBox = QMessageBox()
