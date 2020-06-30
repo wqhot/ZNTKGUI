@@ -53,7 +53,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.que = queue.Queue(1024)
         self.port_list = list(serial.tools.list_ports.comports())
         for port in self.port_list:
-            self.comboBox.addItem(port.name)
+            self.comboBox.addItem(port.device)
+            self.comboBox_2.addItem(port.device)
         if len(self.port_list) > 0:
             self.pushButton_6.setEnabled(True)
 
