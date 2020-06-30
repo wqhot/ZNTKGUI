@@ -59,8 +59,8 @@ class ztTask():
                  swing_range=0, swing_freq=0, swing_dur=0, delay=0, repeat=0):
         self.type = type
         self.command = bytearray(14)
-        self.delay = delay
-        self.repeat = int(repeat)
+        self.delay = abs(delay)
+        self.repeat = abs(int(repeat))
         for c in self.command:
             c = 0
         self.command[1] = type
@@ -81,13 +81,21 @@ class ztTask():
             c_p = int(pos_p * 10000)
             c_v = int(pos_v * 10000)
             c_a = int(pos_a * 10000)
+            c_p = c_p if c_p >= 0 else c_p + 0x1000000
+            c_v = c_v if c_v >= 0 else abs(c_v)
+            c_a = c_a if c_a >= 0 else abs(c_a)
         elif type == 8: # 速率设置
             c_p = int(vel_v * 10000)
             c_v = int(vel_a * 10000)
+            c_p = c_p if c_p >= 0 else c_p + 0x1000000
+            c_v = c_v if c_v >= 0 else abs(c_v)
         elif type == 9: # 摇摆设置
             c_p = int(swing_range * 10000)
             c_v = int(swing_freq * 10000)
             c_a = int(swing_dur * 10000)
+            c_p = c_p if c_p >= 0 else c_p + 0x1000000
+            c_v = c_v if c_v >= 0 else abs(c_v)
+            c_a = c_a if c_a >= 0 else abs(c_a)
         if type in [7, 8, 9]: # 设置
             for i in range(4):
                 self.command[2 + i] = (c_p & (0xff << (i * 8))) >> (i * 8)
