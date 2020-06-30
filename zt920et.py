@@ -31,20 +31,20 @@ class ztStatus():
 
 class ztTask():
     # type:
-    # 0x1: 上电
-    # 0x2: 下电
-    # 0x3: 闭合
-    # 0x4: 闲置
-    # 0x5: 运行
-    # 0x6: 停止
-    # 0x7: 位置方式
-    # 0x8: 速率方式
-    # 0x9: 摇摆方式
-    # 0xb: 归零
-    # 0xc: 停止归零
+    # 0x55: 建立通讯
+    # 0x66: 退出远控
+    # 0x01: 闭合
+    # 0x02: 释放
+    # 0x03: 停止
+    # 0x04: 归零
+    # 0x06: 速度方式
+    # 0x07: 位置方式   
+    # 0x15: 正弦方式
+    # 0x33: 增量方式
     # 0xd: 等待
     # 0xe: 循环开始
     # 0xf: 循环结束
+    # 0x77: 选择负载
     # axis:
     # 1 航向
     # 2 俯仰
@@ -54,53 +54,64 @@ class ztTask():
     # runType_2 俯仰轴的运动方式
     # 5 位置 6 速率 7 摇摆
     # repeat 循环次数
-    def __init__(self, type, axis=0, runType_1=0, runType_2=0,
+    def __init__(self, type, axis=0, runType_1=0, runType_2=0, load_type=0,
                  pos_p=0, pos_v=0, pos_a=0, vel_v=0, vel_a=0,
                  swing_range=0, swing_freq=0, swing_dur=0, delay=0, repeat=0):
         self.type = type
-        self.command = bytearray(14)
+        self.command = bytearray(10)
         self.delay = abs(delay)
         self.repeat = abs(int(repeat))
         for c in self.command:
             c = 0
         self.command[1] = type
         self.command[0] = axis
-        if type in [7, 8, 9, 0x0b, 0x0c] and axis > 2:  # 只能同时运行一个轴
-            print("只能同时运行一个轴")
-            self.command = bytearray(b'')
-            return
-        if type == 5:  # 运行设置
-            if axis & 1 != 0:
-                self.command[2] = runType_1
-            if axis & 2 != 0:
-                self.command[6] = runType_2
         c_p = 0
         c_v = 0
         c_a = 0
-        if type == 7: # 位置设置
+        if type == 0x07: # 位置设置
             c_p = int(pos_p * 10000)
-            c_v = int(pos_v * 10000)
-            c_a = int(pos_a * 10000)
-            c_p = c_p if c_p >= 0 else c_p + 0x1000000
+            c_v = int(pos_v * 2000)
+            c_a = int(pos_a * 10)
+            c_p = c_p if c_p >= 0 else c_p + 0x10000
             c_v = c_v if c_v >= 0 else abs(c_v)
             c_a = c_a if c_a >= 0 else abs(c_a)
-        elif type == 8: # 速率设置
+            for i in range(3):
+                self.command[1 + i] = (c_p & (0xff << (i * 8))) >> (i * 8)
+                self.command[4 + i] = (c_v & (0xff << (i * 8))) >> (i * 8)
+            for i in range(2):
+                self.command[7 + i] = (c_a & (0xff << (i * 8))) >> (i * 8)
+        elif type == 0x06: # 速率设置
             c_p = int(vel_v * 10000)
-            c_v = int(vel_a * 10000)
+            c_v = int(vel_a * 10)
             c_p = c_p if c_p >= 0 else c_p + 0x1000000
             c_v = c_v if c_v >= 0 else abs(c_v)
-        elif type == 9: # 摇摆设置
+            for i in range(4):
+                self.command[1 + i] = (c_p & (0xff << (i * 8))) >> (i * 8)
+            for i in range(3):
+                self.command[5 + i] = (c_v & (0xff << (i * 8))) >> (i * 8)
+        elif type == 0x15: # 摇摆设置
             c_p = int(swing_range * 10000)
-            c_v = int(swing_freq * 10000)
-            c_a = int(swing_dur * 10000)
-            c_p = c_p if c_p >= 0 else c_p + 0x1000000
+            c_v = int(swing_freq * 10)
+            c_p = c_p if c_p >= 0 else abs(c_p)
+            c_v = c_v if c_v >= 0 else abs(c_v)
+            for i in range(3):
+                self.command[1 + i] = (c_p & (0xff << (i * 8))) >> (i * 8)
+            for i in range(2):
+                self.command[4 + i] = (c_v & (0xff << (i * 8))) >> (i * 8)
+        elif type == 0x33: # 增量设置
+            c_p = int(pos_p * 10000)
+            c_v = int(pos_v * 2000)
+            c_a = int(pos_a * 10)
+            c_p = c_p if c_p >= 0 else c_p + 0x10000
             c_v = c_v if c_v >= 0 else abs(c_v)
             c_a = c_a if c_a >= 0 else abs(c_a)
-        if type in [7, 8, 9]: # 设置
-            for i in range(4):
-                self.command[2 + i] = (c_p & (0xff << (i * 8))) >> (i * 8)
-                self.command[6 + i] = (c_v & (0xff << (i * 8))) >> (i * 8)
-                self.command[10 + i] = (c_a & (0xff << (i * 8))) >> (i * 8)
+            for i in range(3):
+                self.command[1 + i] = (c_p & (0xff << (i * 8))) >> (i * 8)
+                self.command[4 + i] = (c_v & (0xff << (i * 8))) >> (i * 8)
+            for i in range(2):
+                self.command[7 + i] = (c_a & (0xff << (i * 8))) >> (i * 8)
+        if type == 0x77: # 选择负载
+            self.command[1] = load_type
         if type == 0x0d: # delay
             self.command = bytearray(b'')
         if type == 0x0e: # 循环开始
@@ -203,31 +214,28 @@ class zt902e1():
         # self.th_recv = threading.Thread(target=self.recv, daemon=True)
         # self.th_recv.start()
         self.callback = callback
-        self.send() # 建立链接
-        self.connected = self.recv() # 接收建立连接返回信号
+        # self.send() # 建立链接
+        # self.connected = self.recv() # 接收建立连接返回信号
         self.connected = True
 
 
     def getValue(self):
         status = ztStatus()
-        # 01
-        command = b'\x01\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        # 速度
+        command = b'\x10\x00\x00\x00\x00\x00\x00\x00\x00\xF0'
         if self.sendCommand(command):
             self.recv(status=status)
-        # 02
-        command = b'\x02\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        # 位置
+        command = b'\x11\x00\x00\x00\x00\x00\x00\x00\x00\xEF'
         if self.sendCommand(command):
             self.recv(status=status)
         # callback
         self.callback(status.toDict())
 
     def recv(self, status=None):
-        length = 15
+        length = 8
         sum = 0
         buff = self.ser.read(length)
-        # print("recv: ", end='')
-        # print(buff)
-        # buff = b'\x02\x0a\xa0\x86\x01\x00\xc0\xd4\x01\x00\xa0\x86\x01\x00\x11'
         buffArray = list(bytearray(buff))
         if len(buff) != length:
             return False
@@ -236,21 +244,26 @@ class zt902e1():
             sum += b
         sum %= 256
         if sum == 0:
-            if buffArray[1] == 0x55:
-                return True
-            elif buffArray[1] == 0x0a and status is not None:
+            # if buffArray[1] == 0x55:
+            #     return True
+            # 速度
+            if buffArray[0] == 0x10 and status is not None:
                 pos = 0
-                velocity = 0
-                for i in range(2, 6, 1):
+                for i in range(3, 7, 1):
                     pos |= (buffArray[i] << 8 * (i - 2))
-                    velocity |= (buffArray[i + 4] << 8 * (i - 2))
                 if pos > 0x10000000: # 负数                  
                     pos -= 0xffffffff
-                if velocity > 0x10000000: # 负数
-                    velocity -= 0xffffffff
                 pos *= 0.0001
-                velocity *= 0.0001
-                status.setAxisValue(buffArray[0], pos, velocity)
+                status.setAxisValue(buffArray[0], status.pos, pos)
+                return True
+            elif buffArray[0] == 0x11 and status is not None:
+                pos = 0
+                for i in range(3, 7, 1):
+                    pos |= (buffArray[i] << 8 * (i - 2))
+                if pos > 0x10000000: # 负数                  
+                    pos -= 0xffffffff
+                pos *= 0.0001
+                status.setAxisValue(buffArray[0], pos, status.velocity)
                 return True
         else:
             print("校验失败")
@@ -285,32 +298,3 @@ class zt902e1():
         self.sendCommand(startbuff)
         
 
-
-# def cbTest(status):
-#     print(status)
-
-
-# # aa = zt902e1(cbTest)
-# ss = ztScheduler(cbTest)
-
-# cc = ztTask(type=7,axis=2, pos_p=10, pos_v=12, pos_a=10)
-# ss.addTask(cc)
-# cc = ztTask(type=7,axis=1, pos_p=20, pos_v=12, pos_a=10)
-# ss.addTask(cc)
-# cc = ztTask(type=5,axis=3, runType_1=5, runType_2=5)
-# ss.addTask(cc)
-# cc = ztTask(type=0x0d,axis=3, delay=10)
-# ss.addTask(cc)
-# cc = ztTask(type=6,axis=3)
-# ss.addTask(cc)
-# cc = ztTask(type=7,axis=2, pos_p=10, pos_v=12, pos_a=10)
-# ss.addTask(cc)
-# cc = ztTask(type=7,axis=1, pos_p=20, pos_v=12, pos_a=10)
-# ss.addTask(cc)
-# cc = ztTask(type=5,axis=3, runType_1=5, runType_2=5)
-# ss.addTask(cc)
-# cc = ztTask(type=0x0d,axis=3, delay=10)
-# ss.addTask(cc)
-# cc = ztTask(type=6,axis=3)
-# ss.addTask(cc)
-# ss.run(1)

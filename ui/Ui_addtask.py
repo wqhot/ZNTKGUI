@@ -58,6 +58,7 @@ class Ui_Dialog(object):
         self.label.setObjectName("label")
         self.horizontalLayout_item.addWidget(self.label)
         self.comboBox_2 = QtWidgets.QComboBox(Dialog)
+        self.comboBox_2.setEnabled(False)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(3)
         sizePolicy.setVerticalStretch(0)

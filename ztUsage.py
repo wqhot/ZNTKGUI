@@ -11,7 +11,7 @@ import time
 import csv
 import threading
 import queue
-from zt902e1 import ztScheduler, ztTask
+from zt920et import ztScheduler, ztTask
 import serial.tools.list_ports
 # dialog = QDialog()
 # setDialog = Ui_Dialog_zt()
