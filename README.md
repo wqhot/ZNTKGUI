@@ -27,7 +27,7 @@ conda activate ztcontrol
 python ztUsage.py
 ```
 
-![界面图](docs/界面.PNG)
+![界面图](https://github.com/wqhot/ZNTKGUI/blob/v1.1/docs/gui.PNG)
 
 4. 选择转台型号、串口号
 
