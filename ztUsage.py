@@ -11,7 +11,8 @@ import time
 import csv
 import threading
 import queue
-from zt920et import ztScheduler, ztTask
+from zt920et import ztScheduler as ztScheduler_zt920et
+from zt920et import ztTaskType as ztTaskType_zt920et
 import serial.tools.list_ports
 # dialog = QDialog()
 # setDialog = Ui_Dialog_zt()
@@ -103,7 +104,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
     def startRun(self):
         taskLst = self.createTasks(self.lst)
         port = self.port_list[self.comboBox.currentIndex()]
-        ss = ztScheduler(
+        ss = ztScheduler_zt920et(
             readCallback=self.ztcallback, finishCallback=self.finishCallback, portname=port.device)
         ss.setProgressCallback(self.progressCallback)
         if ss.zt902e1.connected:
@@ -158,9 +159,13 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         if row < 0:
             return
         task = self.lst[row]
-        s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
-            (task["text"], task["axis"], task["opt1"],
-             task["opt2"], task["opt3"], task["opt4"])
+        opt1_s = ztTaskType_zt920et.type[task["id"]]["opt1name"] + ": " + str(task["opt1"]) if ztTaskType_zt920et.type[task["id"]]["opt1"] else ""
+        opt2_s = ztTaskType_zt920et.type[task["id"]]["opt2name"] + ": " + str(task["opt2"]) if ztTaskType_zt920et.type[task["id"]]["opt2"] else ""
+        opt3_s = ztTaskType_zt920et.type[task["id"]]["opt3name"] + ": " + str(task["opt3"]) if ztTaskType_zt920et.type[task["id"]]["opt3"] else ""
+        opt4_s = ztTaskType_zt920et.type[task["id"]]["opt4name"] + ": " + str(task["opt4"]) if ztTaskType_zt920et.type[task["id"]]["opt4"] else ""
+        s = "模式: " + str(task["text"]) + \
+            "\t轴: " + str(task["axis"]) + \
+            "\t" + opt1_s + "\t" + opt2_s + "\t" + opt3_s + "\t" + opt4_s
         newrow = self.listWidget.currentRow() + 1
         self.lst.insert(newrow, task)
         self.listWidget.insertItem(newrow, s)
@@ -172,6 +177,11 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         dialog = QDialog()
         self.addDialog = Ui_Dialog_add()
         self.addDialog.setupUi(dialog)
+        self.addDialog.comboBox.clear()
+        for t in ztTaskType_zt920et.type:
+            self.addDialog.comboBox.addItem(t["name"])
+        self.addDialog.label.setText("选择设置的轴")
+        self.select(task["id"])
         self.addDialog.comboBox.setCurrentIndex(task["id"])
         self.addDialog.comboBox_2.setCurrentIndex(task["axis"] - 1)
         self.addDialog.doubleSpinBox2.setValue(task["opt1"])
@@ -197,9 +207,13 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             task["opt2"] = self.addDialog.doubleSpinBox1.value()
             task["opt3"] = self.addDialog.doubleSpinBox3.value()
             task["opt4"] = self.addDialog.doubleSpinBox4.value()
-            s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
-                (task["text"], task["axis"], task["opt1"],
-                 task["opt2"], task["opt3"], task["opt4"])
+            opt1_s = ztTaskType_zt920et.type[task["id"]]["opt1name"] + ": " + str(task["opt1"]) if ztTaskType_zt920et.type[task["id"]]["opt1"] else ""
+            opt2_s = ztTaskType_zt920et.type[task["id"]]["opt2name"] + ": " + str(task["opt2"]) if ztTaskType_zt920et.type[task["id"]]["opt2"] else ""
+            opt3_s = ztTaskType_zt920et.type[task["id"]]["opt3name"] + ": " + str(task["opt3"]) if ztTaskType_zt920et.type[task["id"]]["opt3"] else ""
+            opt4_s = ztTaskType_zt920et.type[task["id"]]["opt4name"] + ": " + str(task["opt4"]) if ztTaskType_zt920et.type[task["id"]]["opt4"] else ""
+            s = "模式: " + str(task["text"]) + \
+                "\t轴: " + str(task["axis"]) + \
+                "\t" + opt1_s + "\t" + opt2_s + "\t" + opt3_s + "\t" + opt4_s
             self.lst[row] = task
             item = self.listWidget.takeItem(row)
             item.setText(s)
@@ -210,6 +224,10 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         dialog = QDialog()
         self.addDialog = Ui_Dialog_add()
         self.addDialog.setupUi(dialog)
+        self.addDialog.comboBox.clear()
+        for t in ztTaskType_zt920et.type:
+            self.addDialog.comboBox.addItem(t["name"])
+        self.addDialog.label.setText("选择设置的轴")
         self.addDialog.comboBox.currentIndexChanged.connect(self.select)
         # addDialog.comboBox.activated.connect(self.select, addDialog)
         if dialog.exec():
@@ -229,69 +247,28 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             task["opt2"] = self.addDialog.doubleSpinBox1.value()
             task["opt3"] = self.addDialog.doubleSpinBox3.value()
             task["opt4"] = self.addDialog.doubleSpinBox4.value()
-            s = "模式: %s, 轴: %d, 选项1: %f, 选项2: %f, 选项3: %f, 选项4: %f" % \
-                (task["text"], task["axis"], task["opt1"],
-                 task["opt2"], task["opt3"], task["opt4"])
+            opt1_s = ztTaskType_zt920et.type[task["id"]]["opt1name"] + ": " + str(task["opt1"]) if ztTaskType_zt920et.type[task["id"]]["opt1"] else ""
+            opt2_s = ztTaskType_zt920et.type[task["id"]]["opt2name"] + ": " + str(task["opt2"]) if ztTaskType_zt920et.type[task["id"]]["opt2"] else ""
+            opt3_s = ztTaskType_zt920et.type[task["id"]]["opt3name"] + ": " + str(task["opt3"]) if ztTaskType_zt920et.type[task["id"]]["opt3"] else ""
+            opt4_s = ztTaskType_zt920et.type[task["id"]]["opt4name"] + ": " + str(task["opt4"]) if ztTaskType_zt920et.type[task["id"]]["opt4"] else ""
+            s = "模式: " + str(task["text"]) + \
+                "\t轴: " + str(task["axis"]) + \
+                "\t" + opt1_s + "\t" + opt2_s + "\t" + opt3_s + "\t" + opt4_s
             newrow = self.listWidget.currentRow() + 1
             self.lst.insert(newrow, task)
             self.listWidget.insertItem(newrow, s)
             self.listWidget.setCurrentRow(newrow)
 
     def select(self, index):
-        self.addDialog.label.setText("选择设置的轴")
-        self.addDialog.label_2.setText("无效")
-        self.addDialog.label_3.setText("无效")
-        self.addDialog.label_4.setText("无效")
-        self.addDialog.label_5.setText("无效")
-        # 位置设置一条龙
-        if index == 2:
-            self.addDialog.label.setText("选择设置的轴")
-            self.addDialog.label_2.setText("目标角度")
-            self.addDialog.label_3.setText("目标速度")
-            self.addDialog.label_4.setText("目标加速度")
-            self.addDialog.label_5.setText("保持时间")
-        # 速率设置一条龙
-        elif index == 3:
-            self.addDialog.label.setText("选择设置的轴")
-            self.addDialog.label_2.setText("目标速度")
-            self.addDialog.label_3.setText("目标加速度")
-            self.addDialog.label_4.setText("保持时间")
-        # 摇摆设置一条龙
-        elif index == 4:
-            self.addDialog.label.setText("选择设置的轴")
-            self.addDialog.label_2.setText("幅度")
-            self.addDialog.label_3.setText("频率")
-            self.addDialog.label_4.setText("时长")
-        # 位置方式设置
-        elif index == 11:
-            self.addDialog.label.setText("选择设置的轴")
-            self.addDialog.label_2.setText("目标角度")
-            self.addDialog.label_3.setText("目标速度")
-            self.addDialog.label_4.setText("目标加速度")
-        # 速率设置
-        elif index == 12:
-            self.addDialog.label.setText("选择设置的轴")
-            self.addDialog.label_2.setText("目标速度")
-            self.addDialog.label_3.setText("目标加速度")
-        # 摇摆设置
-        elif index == 13:
-            self.addDialog.label.setText("选择设置的轴")
-            self.addDialog.label_2.setText("幅度")
-            self.addDialog.label_3.setText("频率")
-            self.addDialog.label_4.setText("时长")
-        # 空闲
-        elif index == 16:
-            self.addDialog.label.setText("无效")
-            self.addDialog.label_2.setText("保持时间")
-
-        # 开始循环
-        elif index == 17:
-            self.addDialog.label.setText("无效")
-            self.addDialog.label_2.setText("循环次数")
-
-        # 结束循环
-        elif index == 18:
-            self.addDialog.label.setText("无效")
+        self.addDialog.comboBox_2.setEnabled(ztTaskType_zt920et.type[index]["axis"])
+        self.addDialog.label_2.setText(ztTaskType_zt920et.type[index]["opt1name"])
+        self.addDialog.label_3.setText(ztTaskType_zt920et.type[index]["opt2name"])
+        self.addDialog.label_4.setText(ztTaskType_zt920et.type[index]["opt3name"])
+        self.addDialog.label_5.setText(ztTaskType_zt920et.type[index]["opt4name"])
+        self.addDialog.doubleSpinBox2.setEnabled(ztTaskType_zt920et.type[index]["opt1"])
+        self.addDialog.doubleSpinBox1.setEnabled(ztTaskType_zt920et.type[index]["opt2"])
+        self.addDialog.doubleSpinBox3.setEnabled(ztTaskType_zt920et.type[index]["opt3"])
+        self.addDialog.doubleSpinBox4.setEnabled(ztTaskType_zt920et.type[index]["opt4"])
 
     def createTasks(self, oriTasks):
         taskLst = []
@@ -450,7 +427,7 @@ if __name__ == '__main__':
     if ex.exec():
         print(ex.lst)
         taskLst = ex.createTasks(ex.lst)
-        ss = ztScheduler(readCallback=cbTest, portname=usbport)
+        ss = ztScheduler_zt920et(readCallback=cbTest, portname=usbport)
         if ss.zt902e1.connected:
             for t in taskLst:
                 ss.addTask(t)
