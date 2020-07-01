@@ -11,7 +11,7 @@
 ```
 conda env create -f envs.yaml
 ```
-
+4. 在转台控制程序所在的路径新建文件夹*history*
 
 ## 运行
 
