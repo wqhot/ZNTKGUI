@@ -6,11 +6,9 @@ import queue
 import struct
 import math
 import base64
-import cv2
 import csv
 import copy
 import time
-import numpy as np
 
 
 class RecvIMU():
@@ -91,22 +89,22 @@ class RecvIMU():
                 if sum == buffList[-1]:
                     dc = {}
                     # hardcode...
-                    freq = ((buffList[self.__FREQ + 0] << 24) if buffList[self.__FREQ + 0] < 0x7f else ((buffList[self.__FREQ + 0] - 0xff) << 24) +
+                    freq = ((buffList[self.__FREQ + 0] << 24) +
                             (buffList[self.__FREQ + 1] << 16) +
                             (buffList[self.__FREQ + 2] << 8) +
-                            (buffList[self.__FREQ + 3] << 0)) * 0.00001
-                    amp = ((buffList[self.__AMP + 0] << 24) if buffList[self.__AMP + 0] < 0x7f else ((buffList[self.__AMP + 0] - 0xff) << 24) +
+                            (buffList[self.__FREQ + 3] << 0))
+                    amp = ((buffList[self.__AMP + 0] << 24) +
                             (buffList[self.__AMP + 1] << 16) +
                             (buffList[self.__AMP + 2] << 8) +
-                            (buffList[self.__AMP + 3] << 0)) * 0.00001
-                    gyr = ((buffList[self.__GYR_OUT + 0] << 24) if buffList[self.__GYR_OUT + 0] < 0x7f else ((buffList[self.__GYR_OUT + 0] - 0xff) << 24) +
+                            (buffList[self.__AMP + 3] << 0))
+                    gyr = ((buffList[self.__GYR_OUT + 0] << 24) +
                             (buffList[self.__GYR_OUT + 1] << 16) +
                             (buffList[self.__GYR_OUT + 2] << 8) +
-                            (buffList[self.__GYR_OUT + 3] << 0)) * 0.00001
-                    ortgnl = ((buffList[self.__ORTHOGONAL + 0] << 24) if buffList[self.__ORTHOGONAL + 0] < 0x7f else ((buffList[self.__ORTHOGONAL + 0] - 0xff) << 24) +
+                            (buffList[self.__GYR_OUT + 3] << 0))
+                    ortgnl = ((buffList[self.__ORTHOGONAL + 0] << 24) +
                             (buffList[self.__ORTHOGONAL + 1] << 16) +
                             (buffList[self.__ORTHOGONAL + 2] << 8) +
-                            (buffList[self.__ORTHOGONAL + 3] << 0)) * 0.00001
+                            (buffList[self.__ORTHOGONAL + 3] << 0))
                     dc["stamp"] = float(time.time())
                     dc["freq"] = freq
                     dc["amp"] = amp
