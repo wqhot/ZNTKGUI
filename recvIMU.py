@@ -6,11 +6,9 @@ import queue
 import struct
 import math
 import base64
-import cv2
 import csv
 import copy
 import time
-import numpy as np
 
 
 class RecvIMU():
