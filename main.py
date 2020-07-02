@@ -347,6 +347,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         for key in DICT_NAME_LIST:
             self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
             index = index + 1
+        index = 0
+        for key in TK_DICT_NAME_LIST:
+            self.tk_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
+            index = index + 1
         self.reflash()
 
     def toggleRed(self):
