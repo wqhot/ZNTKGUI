@@ -102,6 +102,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.radioButton_2.setEnabled(True)
         self.issave = False
         self.recv.isRecv = False
+        self.recv.isSave = False
         msgBox = QMessageBox.information(self, "执行结束", "转台运动结束，结果保存在history文件夹下")
 
     def progressCallback(self, progress):

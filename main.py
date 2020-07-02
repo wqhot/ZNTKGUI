@@ -7,7 +7,7 @@ from ui.Ui_bagset import Ui_Dialog
 from ui.Ui_setting import Ui_Dialog as Ui_Dialog_set
 from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
 from ztUsage import ztUsage
-from zt902e1 import ztScheduler, ztTask
+# from zt902e1 import ztScheduler, ztTask
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem, QAction, QDialog
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QProcess
@@ -20,6 +20,7 @@ from sshCtl import sshCtl
 from plotCamera import PlotCamera
 from config import TIME_LENGTH
 from analysis import analysisDialog
+from recvIMU import RecvIMU
 import threading
 import time
 import math
@@ -43,6 +44,8 @@ import queue
 # __LENGTH = 133
 
 
+TK_DICT_NAME_LIST = ["x_ang", "z_ang"]
+TK_DICT_TYPE_LIST = [0.0, 0]
 DICT_NAME_LIST = ["POSE_BY_CAM", "ANGLE_BY_CAM", "DT_BY_CAM",
                   "POSE_BY_UPDATE", "ANGLE_BY_UPDATE", "DT_BY_UPDATE",
                   "POSE_BY_PRE", "ANGLE_BY_PRE", "DT_BY_PRE",
@@ -69,6 +72,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         super(mywindow, self).__init__()
         self.setupUi(self)
         self.lsts = {}
+        self.tk_lsts = {}
         index = 0
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
@@ -79,6 +83,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                           'wq')
         for key in DICT_NAME_LIST:
             self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
+            index = index + 1
+        index = 0
+        for key in TK_DICT_NAME_LIST:
+            self.tk_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
             index = index + 1
         a_2 = pg.AxisItem("left")
         a_3 = pg.AxisItem("right")
@@ -125,6 +133,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3 = pg.PlotDataItem()
         self.p3.setPen((255, 255, 255))
         self.v_3.addItem(self.p3)
+        self.p4 = pg.PlotDataItem()
+        self.p4.setPen((128, 128, 128))
+        self.v_3.addItem(self.p4)
 
         self.pw_x = pg.PlotWidget(name='Plotx',_callSync='off')
         self.pw_y = pg.PlotWidget(name='Ploty',_callSync='off')
@@ -164,6 +175,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_x.setPen((255, 255, 255))
         self.p4_x = self.pw_x.plot(_callSync='off')
         self.p4_x.setPen((0, 0, 255))
+        self.p5_x = self.pw_x.plot(_callSync='off')
+        self.p5_x.setPen((128, 128, 128))
 
         self.p1_y = self.pw_y.plot(_callSync='off')
         self.p1_y.setPen((255, 0, 0))
@@ -173,6 +186,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_y.setPen((255, 255, 255))
         self.p4_y = self.pw_y.plot(_callSync='off')
         self.p4_y.setPen((0, 0, 255))
+        self.p5_y = self.pw_y.plot(_callSync='off')
+        self.p5_y.setPen((128, 128, 128))
 
         self.p1_z = self.pw_z.plot(_callSync='off')
         self.p1_z.setPen((255, 0, 0))
@@ -182,6 +197,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_z.setPen((255, 255, 255))
         self.p4_z = self.pw_z.plot(_callSync='off')
         self.p4_z.setPen((0, 0, 255))
+        self.p5_z = pg.PlotDataItem()
+        self.p5_z.setPen((128, 128, 128))
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
@@ -372,25 +389,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def settingZT(self):
         dialog = ztUsage()
-        if dialog.exec():
-            self.issave = True
-            th_2 = threading.Thread(target=self.save)
-            th_2.start()
-            taskLst = dialog.createTasks(dialog.lst)
-            self.ss = ztScheduler(readCallback=self.ztcallback, \
-                            finishCallback=self.ztfinishcb, 
-                            portname='/dev/ttyUSB1')
-            if self.ss.zt902e1.connected:
-                for t in taskLst:
-                    self.ss.addTask(t)
-                self.ss.run(500)
-            else:
-                msgBox = QMessageBox()
-                msgBox.setWindowTitle("通信失败")
-                msgBox.setText("与转台间通信失败，请检查线缆是否连接正常")
-                msgBox.exec()          
-        else:
-            return
+        dialog.show()
        
 
     def settingSSH(self):
@@ -529,6 +528,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def startRecv(self):
         if not hasattr(self, "recv"):
             self.recv = RecvData()
+            self.recvImu = RecvIMU(portName='/dev/ttyUSB1', save=False)
             # self.recvThread = threading.Thread(target=self.update)
             # self.recvThread.start()
             self.timer.timeout.connect(self.update)
@@ -538,12 +538,14 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnConnect.setEnabled(True)
         elif self.recv.issend:
             self.recv.pause()
+            self.recvImu.pause=True
             self.toolBtnStart.setIcon(QIcon('./res/播放.png'))
             self.toolBtnStart.setText('恢复')
             # self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
             # self.pushButton.setText("接收数据")
         else:
             self.recv.start()
+            self.recvImu.pause=False
             self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
             self.toolBtnStart.setText('暂停')
 
@@ -575,6 +577,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.imuON:
             y4 = self.lsts["EUL_BY_IMU_X"]            
             self.p4_x.setData(x=x, y=y4)
+        y5 = self.tk_lsts["x_ang"]
+        self.p5_x.setData(x=x, y=y5)
 
 
         if self.redON:
@@ -589,6 +593,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.imuON:
             y4 = self.lsts["EUL_BY_IMU_Y"]            
             self.p4_y.setData(x=x, y=y4)
+        y5 = self.tk_lsts["z_ang"]
+        self.p5_y.setData(x=x, y=y5)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Z"]
@@ -610,50 +616,66 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if not self.stop:
             # 接收数据
             data = self.recv.getData()
-            # image = self.recv.getImage()
-            # if image is not None:
-            #     convertToQtFormat = QtGui.QImage(
-            #         image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
-            #     p = convertToQtFormat.scaled(
-            #         self.label.width(), self.label.height(), Qt.KeepAspectRatio)
-            #     self.label.setPixmap(QPixmap.fromImage(p))
-            #     # cv2.imshow("image", image)
-            #     # cv2.waitKey(1)
-            #     # print(self.label.size())
-            if data is not None:
+            imudata = self.recvImu.getIMUdata()
+            if data is not None and imudata is not None:
                 for key in DICT_NAME_LIST:
                     self.lsts[key].append(data[key])
                     while len(self.lsts[key]) > TIME_LENGTH:
                         self.lsts[key].pop(0)
+                for key in TK_DICT_NAME_LIST:
+                    self.tk_lsts[key].append(imudata[key])
+                    while len(self.tk_lsts[key]) > TIME_LENGTH:
+                        self.tk_lsts[key].pop(0)
+            if data is not None and imudata is None:
+                for key in DICT_NAME_LIST:
+                    self.lsts[key].append(data[key])
+                    while len(self.lsts[key]) > TIME_LENGTH:
+                        self.lsts[key].pop(0)
+                for key in TK_DICT_NAME_LIST:
+                    self.tk_lsts[key].append(0.0)
+                    while len(self.tk_lsts[key]) > TIME_LENGTH:
+                        self.tk_lsts[key].pop(0)
+            if data is None and imudata is not None:
+                index = 0
+                for key in DICT_NAME_LIST:
+                    self.lsts[key].append(DICT_TYPE_LIST[index])
+                    index = index + 1
+                    while len(self.lsts[key]) > TIME_LENGTH:
+                        self.lsts[key].pop(0)
+                for key in TK_DICT_NAME_LIST:
+                    self.tk_lsts[key].append(imudata[key])
+                    while len(self.tk_lsts[key]) > TIME_LENGTH:
+                        self.tk_lsts[key].pop(0)
                 # print(data)
             else:
                 return
             
-
-            # 绘图类
-            image = np.zeros((480, 640, 3), np.uint8)
-            for i in range(len(data["IMAGE_FEATURE_POINT_X"])):
-                cv2.circle(image,
-                           (int(data["IMAGE_FEATURE_POINT_X"][i] * 640 / 2 + 320),
-                            int(data["IMAGE_FEATURE_POINT_Y"][i] * 480 / 2 + 240)),
-                           10, (255, 255, 255), 3)
-            convertToQtFormat = QtGui.QImage(
-                image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
-            p = convertToQtFormat.scaled(
-                self.label.width(), self.label.height(), Qt.KeepAspectRatio)
-            self.label.setPixmap(QPixmap.fromImage(p))
+            if data is not None:
+                # 绘图类
+                image = np.zeros((480, 640, 3), np.uint8)
+                for i in range(len(data["IMAGE_FEATURE_POINT_X"])):
+                    cv2.circle(image,
+                            (int(data["IMAGE_FEATURE_POINT_X"][i] * 640 / 2 + 320),
+                                int(data["IMAGE_FEATURE_POINT_Y"][i] * 480 / 2 + 240)),
+                            10, (255, 255, 255), 3)
+                convertToQtFormat = QtGui.QImage(
+                    image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
+                p = convertToQtFormat.scaled(
+                    self.label.width(), self.label.height(), Qt.KeepAspectRatio)
+                self.label.setPixmap(QPixmap.fromImage(p))
+                
+                # 直接输出类
+                # eul = self.qua2eul(self.lsts["ANGLE_BY_PRE"][-1])
+                s = "x:%0.1f, y:%0.1f, z:%0.1f；    pitch:%0.1f, yaw:%0.1f, roll:%0.1f" % (
+                    self.lsts["POSE_BY_PRE"][-1][0], self.lsts["POSE_BY_PRE"][-1][1], self.lsts["POSE_BY_PRE"][-1][2],
+                    self.lsts["EUL_BY_PRE_X"][-1], self.lsts["EUL_BY_PRE_Y"][-1], self.lsts["EUL_BY_PRE_Z"][-1])
+                self.listWidget.insertItem(0, s)
+                s = s + " 阈值:%s " % self.lsts["THRESOLD"][-1] + \
+                    "共收到:%i" % self.recv.contsum + "包"
+                self.statusbar.showMessage(s)
+                # time.sleep(1.0 / 30.0)
+                # print(s)
             self.reflash()
-            # 直接输出类
-            # eul = self.qua2eul(self.lsts["ANGLE_BY_PRE"][-1])
-            s = "x:%0.1f, y:%0.1f, z:%0.1f；    pitch:%0.1f, yaw:%0.1f, roll:%0.1f" % (
-                self.lsts["POSE_BY_PRE"][-1][0], self.lsts["POSE_BY_PRE"][-1][1], self.lsts["POSE_BY_PRE"][-1][2],
-                self.lsts["EUL_BY_PRE_X"][-1], self.lsts["EUL_BY_PRE_Y"][-1], self.lsts["EUL_BY_PRE_Z"][-1])
-            self.listWidget.insertItem(0, s)
-            s = s + " 阈值:%s " % self.lsts["THRESOLD"][-1] + \
-                "共收到:%i" % self.recv.contsum + "包"
-            self.statusbar.showMessage(s)
-            # time.sleep(1.0 / 30.0)
-            # print(s)
 
     def qua2eul(self, qua):
         w = float(qua[3])
@@ -689,10 +711,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def closeEvent(self, event):
         if hasattr(self, "recv"):
             self.recv.stop()
+            self.recvImu.isRecv = False
         if self.timer.isActive():
             self.timer.stop()
         self.ssh.isRun = False
-        self.stop = True
+        self.stop = True       
         event.accept()
 
     def save(self):

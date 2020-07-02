@@ -20,9 +20,11 @@ class RecvIMU():
     __Z_ANG = 5
     __BUF_LENGTH = 11
 
-    def __init__(self, portName):
+    def __init__(self, portName, save=True):
         # self.recvTh
         self.isRecv = True
+        self.isSave = save
+        self.pause = False
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
         self.serial = serial.Serial(
@@ -31,6 +33,14 @@ class RecvIMU():
         self.th.start()
         self.th_2 = threading.Thread(target=self.save, daemon=True)
         self.th_2.start()
+        self.recvData = None
+
+    def getIMUdata(self):
+        if self.recvData is None:
+            return None
+        r = copy.deepcopy(self.recvData)
+        self.recvData = None
+        return r
 
     def save(self):
         headers = ['stamp', 'x_ang', 'z_ang']
@@ -71,8 +81,10 @@ class RecvIMU():
             else:  # 无帧头时
                 buffList.extend(list(buffArray))
                 remainLength = self.__BUF_LENGTH
+                print("head not fount")
                 if len(buffList) > self.__BUF_LENGTH:
                     buffList = []
+                    print("drop")
             if remainLength == 0:
                 remainLength = self.__BUF_LENGTH
 
@@ -94,10 +106,14 @@ class RecvIMU():
                     dc["stamp"] = float(time.time())
                     dc["x_ang"] = x_ang
                     dc["z_ang"] = z_ang
-                    print(dc)
+                    # print(dc)
+                    if not self.pause:
+                        self.recvData = dc
                     if self.cond.acquire():
-                        if (self.isRecv):
+                        if (self.isRecv and self.isSave):
                             self.que.put(dc)
-                        self.cond.notify_all()
+                            self.cond.notify_all()
                         self.cond.release()
+                else:
+                    print("checkerror")
                     
