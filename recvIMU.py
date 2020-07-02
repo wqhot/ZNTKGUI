@@ -73,7 +73,9 @@ class RecvIMU():
             if headIndex != -1:
                 remainLength = remainLength - headIndex
                 buffList = []
-                buffList.extend(list(buffArray)[headIndex])
+                buffList.extend(list(buffArray)[headIndex:])
+                if len(buffList) > self.__BUF_LENGTH:
+                    buffList = []
             else:  # 无帧头时
                 buffList.extend(list(buffArray))
                 remainLength = self.__BUF_LENGTH

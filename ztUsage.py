@@ -130,7 +130,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.radioButton.setEnabled(False)
             self.radioButton_2.setEnabled(False)
             self.issave = True
-            self.recv = RecvIMU(portName=port_imu)
+            self.recv = RecvIMU(portName=port_imu.device)
             self.save_th = threading.Thread(target=self.save, daemon=True)
             self.save_th.start()
             ss.run(500)
