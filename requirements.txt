@@ -1,8 +1,0 @@
-numpy
-paramiko
-pyqtgraph
-opencv_python
-matplotlib
-PyQt5
-pyserial
-PyOpenGL

@@ -133,7 +133,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.recv = RecvIMU(portName=port_imu)
             self.save_th = threading.Thread(target=self.save, daemon=True)
             self.save_th.start()
-            ss.run(1)
+            ss.run(500)
         else:
             msgBox = QMessageBox()
             msgBox.setWindowTitle("通信失败")

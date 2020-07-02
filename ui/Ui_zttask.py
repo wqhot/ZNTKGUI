@@ -16,7 +16,7 @@ class Ui_dialog(object):
         dialog.setObjectName("dialog")
         dialog.resize(983, 575)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("../res/旋转.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("res/旋转.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         dialog.setWindowIcon(icon)
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(dialog)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
