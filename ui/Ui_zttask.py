@@ -224,7 +224,7 @@ class Ui_dialog(object):
         self.label_7.setText(_translate("dialog", "转台串口"))
         self.pushButton_6.setText(_translate("dialog", "开始"))
         self.radioButton_2.setText(_translate("dialog", "zt920et"))
-        self.radioButton.setText(_translate("dialog", "zt901et"))
+        self.radioButton.setText(_translate("dialog", "zt902e1"))
         self.label_5.setText(_translate("dialog", "新增"))
         self.label_2.setText(_translate("dialog", "上移"))
         self.label_4.setText(_translate("dialog", "下移"))
