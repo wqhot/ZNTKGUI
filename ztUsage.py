@@ -6,6 +6,7 @@ from PyQt5.QtGui import QPixmap, QImage, QPainter, QColor, QFont, QIcon
 from PyQt5.QtWidgets import QLabel, QWidget
 from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
 from ui.Ui_addtask import Ui_Dialog as Ui_Dialog_add
+import os
 import sys
 import time
 import csv
@@ -19,6 +20,9 @@ import serial.tools.list_ports
 from recvIMU import RecvIMU
 
 class ztUsage(QDialog, Ui_Dialog_zt):
+    finishSignal = pyqtSignal()
+    progessSignal = pyqtSignal(int)
+    
     def __init__(self):
         super().__init__()
         self.lst = []
@@ -57,15 +61,15 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.comboBox_2.addItem(port.device)
         if len(self.port_list) > 0:
             self.pushButton_6.setEnabled(True)
-
+    
     def clearLst(self):
         self.lst.clear()
         self.listWidget.clear()
 
     def save(self):
         headers = ['stamp', 'firstAxisPos', 'firstAxisVelocity', 'secondAxisPos', 'secondAxisVelocity']
-        csv_name = './history/' + \
-            str(time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime())) + '_zt.csv'
+        csv_name = r'./history/' + \
+            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_zt.csv'
         with open(csv_name, 'w') as f:
             f_csv = csv.writer(f)
             f_csv.writerow(headers)
@@ -93,32 +97,47 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.cond.notify_all()
             self.cond.release()
 
-    def finishCallback(self):
+    def finishCallback_mainThread(self):
         self.progressBar.setValue(100)
         self.progressBar.setEnabled(False)
         self.comboBox.setEnabled(True)
         self.pushButton_6.setEnabled(True)
         self.radioButton.setEnabled(True)
         self.radioButton_2.setEnabled(True)
-        self.issave = False
-        self.recv.isRecv = False
         msgBox = QMessageBox.information(self, "执行结束", "转台运动结束，结果保存在history文件夹下")
 
-    def progressCallback(self, progress):
-        self.progressBar.setValue(int(progress * 100))
+    def finishCallback(self):
+        self.issave = False
+        self.recv.isRecv = False
+        self.finishSignal.emit()
+        print("执行结束")       
 
-    def startRun(self):  
-        port = self.port_list[self.comboBox.currentIndex()]
-        port_imu = self.port_list[self.comboBox_2.currentIndex()]
-        if self.comboBox_2.currentIndex() == self.comboBox.currentIndex():
+    def progressCallback_mainThread(self, progress):
+        self.progressBar.setValue(progress)
+    
+    def progressCallback(self, progress):
+        self.progessSignal.emit(int(progress * 100))
+
+    def startRun(self): 
+        if self.comboBox.currentIndex() > 0:
+            port = self.port_list[self.comboBox.currentIndex() - 1]
+        else:
+            port = None
+        if self.comboBox_2.currentIndex() > 0:
+            port_imu = self.port_list[self.comboBox_2.currentIndex() - 1]
+        else:
+            port_imu = None
+        if self.comboBox_2.currentIndex() == self.comboBox.currentIndex() and port is not None:
             msgBox = QMessageBox.warning(self, "串口选择错误", "不能选择同样的串口")
             return
         if self.radioButton_2.isChecked():
             ss = ztScheduler_zt920et(
-                readCallback=self.ztcallback, finishCallback=self.finishCallback, portname=port.device)
+                readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port)
         else:
             ss = ztScheduler_zt901et(
-                readCallback=self.ztcallback, finishCallback=self.finishCallback, portname=port.device)
+                readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port)
+        self.finishSignal.connect(self.finishCallback_mainThread)
+        self.progessSignal.connect(self.progressCallback_mainThread)
         ss.setProgressCallback(self.progressCallback)
         taskLst = ss.createTasks(self.lst)
         if ss.zt902e1.connected:
@@ -130,10 +149,10 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.radioButton.setEnabled(False)
             self.radioButton_2.setEnabled(False)
             self.issave = True
-            self.recv = RecvIMU(portName=port_imu.device)
+            self.recv = RecvIMU(port=port_imu)
             self.save_th = threading.Thread(target=self.save, daemon=True)
             self.save_th.start()
-            ss.run(500)
+            ss.run(-1)
         else:
             msgBox = QMessageBox()
             msgBox.setWindowTitle("通信失败")

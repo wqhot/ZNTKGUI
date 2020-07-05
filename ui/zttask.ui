@@ -59,6 +59,11 @@
                   <height>16777215</height>
                  </size>
                 </property>
+                <item>
+                 <property name="text">
+                  <string>不使用</string>
+                 </property>
+                </item>
                </widget>
               </item>
              </layout>
@@ -89,6 +94,11 @@
                   <height>16777215</height>
                  </size>
                 </property>
+                <item>
+                 <property name="text">
+                  <string>不使用</string>
+                 </property>
+                </item>
                </widget>
               </item>
              </layout>

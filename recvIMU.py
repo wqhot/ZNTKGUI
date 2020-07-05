@@ -24,13 +24,15 @@ class RecvIMU():
     __CRC_SUM = 21
     __BUF_LENGTH = 22
 
-    def __init__(self, portName):
+    def __init__(self, port):
         # self.recvTh
         self.isRecv = True
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
+        if port is None:
+            return
         self.serial = serial.Serial(
-            port=portName, baudrate=230400, timeout=0.5)
+            port=port.device, baudrate=230400, timeout=0.5)
         self.th = threading.Thread(target=self.recv, daemon=True)
         self.th.start()
         self.th_2 = threading.Thread(target=self.save, daemon=True)

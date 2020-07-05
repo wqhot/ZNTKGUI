@@ -343,7 +343,7 @@ class ztTask():
 # 对转台写命令，并延时等待执行
 # 定时读取转台数据，通过回调函数范围
 class ztScheduler():
-    def __init__(self, readCallback, finishCallback=None, portname='/dev/ttyUSB1'):
+    def __init__(self, readCallback, port, finishCallback=None):
         self.callback = readCallback
         self.finishCallback = finishCallback
         self.taskList = []
@@ -352,7 +352,7 @@ class ztScheduler():
         self.readrun = True
         self.enableCallback = False
         self.waitCond = threading.Condition()
-        self.zt902e1 = zt902e1(callback=self.callback, portname=portname)
+        self.zt902e1 = zt902e1(callback=self.callback, port=port)
         self.readth = threading.Thread(target=self.readProcess, daemon=True)
         self.th = threading.Thread(target=self.process, daemon=True)
     def createTasks(self, oriTasks):
@@ -564,12 +564,14 @@ class ztScheduler():
             self.finishCallback()
 
 class zt902e1():
-    def __init__(self, callback, portname='/dev/ttyUSB1'):
-        portName = portname
+    def __init__(self, callback, port):
         bps = 9600
         time = 0.005
         self.mutex = threading.Lock()
-        self.ser = serial.Serial(port=portName, baudrate=bps, timeout=0.5)
+        if port is None:
+            self.connected = False
+            return
+        self.ser = serial.Serial(port=port.device, baudrate=bps, timeout=0.5)
         self.recvrun = True
         # self.ser.open()
         # self.th_recv = threading.Thread(target=self.recv, daemon=True)
