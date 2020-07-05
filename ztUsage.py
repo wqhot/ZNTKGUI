@@ -83,10 +83,10 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                     self.cond.release()
                 if r is not None:
                     line = [(r["STAMP"]),
-                            '%.16f' % float(r["firstAxisPos"]),
-                            '%.16f' % float(r["firstAxisVelocity"]),
-                            '%.16f' % float(r["secondAxisPos"]),
-                            '%.16f' % float(r["secondAxisVelocity"])]
+                            str(int(r["firstAxisPos"])),
+                            str(int(r["firstAxisVelocity"])),
+                            str(int(r["secondAxisPos"])),
+                            str(int(r["secondAxisVelocity"]))]
                     f_csv.writerow(line)
 
     def ztcallback(self, status):
@@ -154,10 +154,18 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.save_th.start()
             ss.run(-1)
         else:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("通信失败")
-            msgBox.setText("与转台间通信失败，请检查线缆是否连接正常")
-            msgBox.exec()
+            if port is None:
+                self.progressBar.setEnabled(True)
+                self.comboBox.setEnabled(False)
+                self.pushButton_6.setEnabled(False)
+                self.radioButton.setEnabled(False)
+                self.radioButton_2.setEnabled(False)
+                self.recv = RecvIMU(port=port_imu)
+            else:
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("通信失败")
+                msgBox.setText("与转台间通信失败，请检查线缆是否连接正常")
+                msgBox.exec()
 
     def moveUpBtn(self):
         newrow = self.listWidget.currentRow() - 1

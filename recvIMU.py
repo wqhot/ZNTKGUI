@@ -66,14 +66,15 @@ class RecvIMU():
         remainLength = self.__BUF_LENGTH
         buffList = []
         while self.isRecv:
-            buff = self.serial.read(remainLength)
-            if len(buff) != remainLength:
-                break
+            buff = self.serial.read(remainLength)           
+            if len(buff) == 0:
+                continue
+            remainLength = len(buff)
             buffArray = bytearray(buff)
             # 找帧头
             headIndex = buffArray.find(bytearray(b'\x90\xeb'))
             if headIndex != -1:
-                remainLength = remainLength - headIndex
+                remainLength = self.__BUF_LENGTH - (remainLength - headIndex)
                 buffList = []
                 buffList.extend(list(buffArray)[headIndex:])
                 if len(buffList) > self.__BUF_LENGTH:
@@ -88,7 +89,7 @@ class RecvIMU():
             if len(buffList) == self.__BUF_LENGTH:
                 # check sum
                 sum = 0
-                for bt in buffList[:-1]:
+                for bt in buffList[2:-1]:
                     sum = (sum + bt) % 256
                 if sum == buffList[-1]:
                     dc = {}
