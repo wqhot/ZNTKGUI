@@ -152,7 +152,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.recv = RecvIMU(port=port_imu)
             self.save_th = threading.Thread(target=self.save, daemon=True)
             self.save_th.start()
-            ss.run(-1)
+            ss.run(500)
         else:
             if port is None:
                 self.progressBar.setEnabled(True)
