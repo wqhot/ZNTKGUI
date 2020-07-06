@@ -12,6 +12,7 @@ import time
 import csv
 import threading
 import queue
+import json
 from zt920et import ztScheduler as ztScheduler_zt920et
 from zt920et import ztTaskType as ztTaskType_zt920et
 from zt901et import ztScheduler as ztScheduler_zt901et
@@ -42,11 +43,19 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.pushButton_5.setStyleSheet("QPushButton{border-image: url(res/复制.png)}"
                                         "QPushButton:hover{border-image: url(res/复制1.png)}"
                                         "QPushButton:pressed{border-image: url(res/复制.png)}")
+        self.pushButton_7.setStyleSheet("QPushButton{border-image: url(res/保存.png)}"
+                                        "QPushButton:hover{border-image: url(res/保存1.png)}"
+                                        "QPushButton:pressed{border-image: url(res/保存.png)}")
+        self.pushButton_8.setStyleSheet("QPushButton{border-image: url(res/打开.png)}"
+                                        "QPushButton:hover{border-image: url(res/打开1.png)}"
+                                        "QPushButton:pressed{border-image: url(res/打开.png)}")
         self.pushButton.clicked.connect(self.addBtn)
         self.pushButton_2.clicked.connect(self.moveUpBtn)
         self.pushButton_3.clicked.connect(self.moveDownBtn)
         self.pushButton_4.clicked.connect(self.delBtn)
         self.pushButton_5.clicked.connect(self.copyBtn)
+        self.pushButton_7.clicked.connect(self.saveConfig)
+        self.pushButton_8.clicked.connect(self.openConfig)
         self.pushButton_5.setShortcut('Ctrl+C')
         self.radioButton_2.clicked.connect(self.clearLst)
         self.radioButton.clicked.connect(self.clearLst)
@@ -66,6 +75,51 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         if len(self.port_list) > 0:
             self.pushButton_6.setEnabled(True)
     
+    def saveConfig(self):
+        directory1 = QFileDialog.getSaveFileName(None, "选择文件", "config/", "*.json")
+        dct = {}
+        dct["zttype"] = 0 if self.radioButton.isChecked() else 1
+        dct["lst"] = self.lst
+        str_json = json.dumps(dct, ensure_ascii=False)
+        save_path = directory1[0]
+        with open(file=save_path, mode='w', encoding='utf-8') as file:
+                file.write(str_json)
+
+    
+    def openConfig(self):
+        directory1 = QFileDialog.getOpenFileName(None, "选择文件", "config/", "*.json")
+        open_path = directory1[0]
+        if open_path is not None:
+            with open(file=open_path, mode='r+', encoding='utf-8') as file:
+                str_json = file.read()
+                dct = json.loads(str_json, encoding='utf-8')
+                self.lst = dct["lst"].copy()
+                if dct["zttype"] == 0:
+                    self.radioButton.setChecked(True)
+                else:
+                    self.radioButton_2.setChecked(True)             
+                self.listWidget.clear()
+                currentRow = -1
+                for task in self.lst:
+                    if self.radioButton_2.isChecked():
+                        opt1_s = ztTaskType_zt920et.type[task["id"]]["opt1name"] + ": " + str(task["opt1"]) if ztTaskType_zt920et.type[task["id"]]["opt1"] else ""
+                        opt2_s = ztTaskType_zt920et.type[task["id"]]["opt2name"] + ": " + str(task["opt2"]) if ztTaskType_zt920et.type[task["id"]]["opt2"] else ""
+                        opt3_s = ztTaskType_zt920et.type[task["id"]]["opt3name"] + ": " + str(task["opt3"]) if ztTaskType_zt920et.type[task["id"]]["opt3"] else ""
+                        opt4_s = ztTaskType_zt920et.type[task["id"]]["opt4name"] + ": " + str(task["opt4"]) if ztTaskType_zt920et.type[task["id"]]["opt4"] else ""
+                    else:
+                        opt1_s = ztTaskType_zt901et.type[task["id"]]["opt1name"] + ": " + str(task["opt1"]) if ztTaskType_zt901et.type[task["id"]]["opt1"] else ""
+                        opt2_s = ztTaskType_zt901et.type[task["id"]]["opt2name"] + ": " + str(task["opt2"]) if ztTaskType_zt901et.type[task["id"]]["opt2"] else ""
+                        opt3_s = ztTaskType_zt901et.type[task["id"]]["opt3name"] + ": " + str(task["opt3"]) if ztTaskType_zt901et.type[task["id"]]["opt3"] else ""
+                        opt4_s = ztTaskType_zt901et.type[task["id"]]["opt4name"] + ": " + str(task["opt4"]) if ztTaskType_zt901et.type[task["id"]]["opt4"] else ""    
+                    s = "模式: " + str(task["text"]) + \
+                        "\t轴: " + str(task["axis"]) + \
+                        "\t" + opt1_s + "\t" + opt2_s + "\t" + opt3_s + "\t" + opt4_s
+                    newrow = currentRow + 1
+                    self.listWidget.insertItem(newrow, s)
+                    currentRow += 1
+                
+        
+
     def clearLst(self):
         self.lst.clear()
         self.listWidget.clear()
@@ -116,6 +170,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.radioButton_2.setEnabled(True)
         self.listWidget.setEnabled(True)
         self.comboBox_2.setEnabled(True)
+        self.pushButton_8.setEnabled(True)
         msgBox = QMessageBox.information(self, "执行结束", "转台运动结束，结果保存在history文件夹下")
 
     def finishCallback(self):
@@ -171,6 +226,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.radioButton_2.setEnabled(False)
             self.listWidget.setEnabled(False)
             self.comboBox_2.setEnabled(False)
+            self.pushButton_8.setEnabled(False)
             self.issave = True
             self.recv = RecvIMU(port=port_imu, dir_name=self.dir_name, event=self.createNewFileEvent_2)
             self.save_th = threading.Thread(target=self.save, daemon=True)
