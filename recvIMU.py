@@ -27,13 +27,17 @@ class RecvIMU():
         self.pause = False
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
-        self.serial = serial.Serial(
-            port=portName, baudrate=230400, timeout=0.5)
+        self.recvData = None
+        try:
+            self.serial = serial.Serial(
+                port=portName, baudrate=230400, timeout=0.5)
+        except:
+            return     
         self.th = threading.Thread(target=self.recv, daemon=True)
         self.th.start()
         self.th_2 = threading.Thread(target=self.save, daemon=True)
         self.th_2.start()
-        self.recvData = None
+        
 
     def getIMUdata(self):
         if self.recvData is None:

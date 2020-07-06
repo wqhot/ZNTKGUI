@@ -77,10 +77,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl('cd /home/wq/zntk/zntk_core/build/',
-                          '127.0.0.1',
-                          'wq',
-                          'wq')
+        self.ssh = sshCtl(command='cd /home/shipei/zntk/zntk_core/build/',
+                          host='10.42.0.109',
+                          username='shipei',
+                          password='shipei',
+                          port=2222)
         for key in DICT_NAME_LIST:
             self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
             index = index + 1
@@ -401,9 +402,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         setDialog = Ui_Dialog_set()
         setDialog.setupUi(dialog)
         host = '10.42.0.1'
-        port = 22
-        username = 'zhangtian'
-        password = 'zhangtian'
+        port = 2222
+        username = 'shipei'
+        password = 'shipei'
         if dialog.exec():
             host = setDialog.lineEdit.text()
             port = int(setDialog.spinBox.value())
@@ -532,7 +533,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def startRecv(self):
         if not hasattr(self, "recv"):
             self.recv = RecvData()
-            self.recvImu = RecvIMU(portName='/dev/ttyUSB1', save=False)
+            self.recvImu = RecvIMU(portName='/dev/ttyUSB0', save=False)
             # self.recvThread = threading.Thread(target=self.update)
             # self.recvThread.start()
             self.timer.timeout.connect(self.update)
@@ -630,7 +631,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                     self.tk_lsts[key].append(imudata[key])
                     while len(self.tk_lsts[key]) > TIME_LENGTH:
                         self.tk_lsts[key].pop(0)
-            if data is not None and imudata is None:
+            elif data is not None and imudata is None:
                 for key in DICT_NAME_LIST:
                     self.lsts[key].append(data[key])
                     while len(self.lsts[key]) > TIME_LENGTH:
@@ -639,7 +640,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                     self.tk_lsts[key].append(0.0)
                     while len(self.tk_lsts[key]) > TIME_LENGTH:
                         self.tk_lsts[key].pop(0)
-            if data is None and imudata is not None:
+            elif data is None and imudata is not None:
                 index = 0
                 for key in DICT_NAME_LIST:
                     self.lsts[key].append(DICT_TYPE_LIST[index])
