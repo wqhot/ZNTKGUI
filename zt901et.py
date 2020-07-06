@@ -287,11 +287,12 @@ class ztTask():
     # repeat 循环次数
     def __init__(self, type, axis=0, runType_1=0, runType_2=0,
                  pos_p=0, pos_v=0, pos_a=0, vel_v=0, vel_a=0,
-                 swing_range=0, swing_freq=0, swing_dur=0, delay=0, repeat=0):
+                 swing_range=0, swing_freq=0, swing_dur=0, delay=0, repeat=0, fatherID=-1):
         self.type = type
         self.command = bytearray(14)
         self.delay = abs(delay)
         self.repeat = abs(int(repeat))
+        self.fatherID = fatherID # 保存主界面中列表序号，用于回显
         for c in self.command:
             c = 0
         self.command[1] = type
@@ -359,141 +360,142 @@ class ztScheduler():
         taskLst = []
         runtype1 = 5
         runtype2 = 5
+        fatherID = 0
         for t in oriTasks:
             # 开机一条龙
             if t["id"] == 0:
-                task = ztTask(type=1, axis=t["axis"])
+                task = ztTask(type=1, axis=t["axis"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=3, axis=t["axis"])
+                task = ztTask(type=3, axis=t["axis"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
                 if t["axis"] & 1 != 0:
-                    task = ztTask(type=0x0b, axis=1)
+                    task = ztTask(type=0x0b, axis=1, fatherID=fatherID)
                     taskLst.append(task)
-                    task = ztTask(type=0xd, delay=100)
+                    task = ztTask(type=0xd, delay=100, fatherID=fatherID)
                     taskLst.append(task)
                 if t["axis"] & 2 != 0:
-                    task = ztTask(type=0x0b, axis=2)
+                    task = ztTask(type=0x0b, axis=2, fatherID=fatherID)
                     taskLst.append(task)
-                    task = ztTask(type=0xd, delay=100)
+                    task = ztTask(type=0xd, delay=100, fatherID=fatherID)
                     taskLst.append(task)
             # 关机一条龙
             if t["id"] == 1:
-                task = ztTask(type=6, axis=t["axis"])
+                task = ztTask(type=6, axis=t["axis"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=4, axis=t["axis"])
+                task = ztTask(type=4, axis=t["axis"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=2, axis=t["axis"])
+                task = ztTask(type=2, axis=t["axis"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
 
             # 位置设置一条龙
             if t["id"] == 2:
                 task = ztTask(
-                    type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
+                    type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=5, axis=t["axis"], runType_1=5, runType_2=5)
+                task = ztTask(type=5, axis=t["axis"], runType_1=5, runType_2=5, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0xd, delay=t["opt4"])
+                task = ztTask(type=0xd, delay=t["opt4"], fatherID=fatherID)
                 taskLst.append(task)
 
             # 速率设置一条龙
             if t["id"] == 3:
                 task = ztTask(type=8, axis=t["axis"],
-                              vel_v=t["opt1"], vel_a=t["opt2"])
+                              vel_v=t["opt1"], vel_a=t["opt2"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=5, axis=t["axis"], runType_1=6, runType_2=6)
+                task = ztTask(type=5, axis=t["axis"], runType_1=6, runType_2=6, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0xd, delay=t["opt4"])
+                task = ztTask(type=0xd, delay=t["opt4"], fatherID=fatherID)
                 taskLst.append(task)
 
             # 摇摆设置一条龙
             if t["id"] == 4:
                 task = ztTask(
-                    type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"])
+                    type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=5, axis=t["axis"], runType_1=7, runType_2=7)
+                task = ztTask(type=5, axis=t["axis"], runType_1=7, runType_2=7, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0xd, delay=t["opt3"] + 1)
+                task = ztTask(type=0xd, delay=t["opt3"] + 1, fatherID=fatherID)
                 taskLst.append(task)
 
             # 上电 下电 闭合 闲置 运行 停止
             if t["id"] in [5, 6, 7, 8, 9, 10]:
                 task = ztTask(type=t["id"] - 4, axis=t["axis"],
-                              runType_1=runtype1, runType_2=runtype2)
+                              runType_1=runtype1, runType_2=runtype2, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
 
             # 位置设置
             if t["id"] == 11:
                 task = ztTask(
-                    type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
+                    type=7, axis=t["axis"], pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"], fatherID=fatherID)
                 taskLst.append(task)
                 if t["axis"] & 1 != 0:
                     runtype1 = 5
                 if t["axis"] & 2 != 0:
                     runtype2 = 5
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
             # 速率设置
             if t["id"] == 12:
                 task = ztTask(type=8, axis=t["axis"],
-                              vel_v=t["opt1"], vel_a=t["opt2"])
+                              vel_v=t["opt1"], vel_a=t["opt2"], fatherID=fatherID)
                 taskLst.append(task)
                 if t["axis"] & 1 != 0:
                     runtype1 = 6
                 if t["axis"] & 2 != 0:
                     runtype2 = 6
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
 
             # 摇摆设置
             if t["id"] == 13:
                 task = ztTask(
-                    type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"])
+                    type=9, axis=t["axis"], swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"], fatherID=fatherID)
                 taskLst.append(task)
                 if t["axis"] & 1 != 0:
                     runtype1 = 7
                 if t["axis"] & 2 != 0:
                     runtype2 = 7
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
 
             # 归零 停止归零
             if t["id"] in [14, 15]:
-                task = ztTask(type=t["id"] - 3, axis=t["axis"])
+                task = ztTask(type=t["id"] - 3, axis=t["axis"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
 
             # 保持
             if t["id"] == 16:
-                task = ztTask(type=0x0d, delay=t["opt1"])
+                task = ztTask(type=0x0d, delay=t["opt1"], fatherID=fatherID)
                 taskLst.append(task)
 
             # 循环开始
             if t["id"] == 17:
-                task = ztTask(type=0x0e, repeat=t["opt1"])
+                task = ztTask(type=0x0e, repeat=t["opt1"], fatherID=fatherID)
                 taskLst.append(task)
 
             # 循环结束
             if t["id"] == 18:
-                task = ztTask(type=0x0f)
+                task = ztTask(type=0x0f, fatherID=fatherID)
                 taskLst.append(task)
         return taskLst
 

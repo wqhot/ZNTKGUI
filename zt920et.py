@@ -240,11 +240,12 @@ class ztTask():
     # repeat 循环次数
     def __init__(self, type, axis=0, runType_1=0, runType_2=0, load_type=0,
                  pos_p=0, pos_v=0, pos_a=0, vel_v=0, vel_a=0,
-                 swing_range=0, swing_freq=0, swing_dur=0, delay=0, repeat=0):
+                 swing_range=0, swing_freq=0, swing_dur=0, delay=0, repeat=0, fatherID=-1):
         self.type = type
         self.command = bytearray(9)
         self.delay = abs(delay)
         self.repeat = abs(int(repeat))
+        self.fatherID = fatherID # 保存主界面中列表序号，用于回显
         for c in self.command:
             c = 0
         self.command[0] = type
@@ -339,122 +340,125 @@ class ztScheduler():
         taskLst = []
         runtype1 = 5
         runtype2 = 5
+        fatherID = 0
         for t in oriTasks:
             # 开机一条龙
             if t["id"] == 0:
-                task = ztTask(type=0x55)  # 建立通信
+                task = ztTask(type=0x55, fatherID=fatherID)  # 建立通信
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)  # 延时
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)  # 延时
                 taskLst.append(task)
-                task = ztTask(type=1)  # 闭合
+                task = ztTask(type=1, fatherID=fatherID)  # 闭合
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)  # 延时
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)  # 延时
                 taskLst.append(task)
-                task = ztTask(type=0x04)  # 归零
+                task = ztTask(type=0x04, fatherID=fatherID)  # 归零
                 taskLst.append(task)
-                task = ztTask(type=0xd, delay=100)  # 延时
+                task = ztTask(type=0xd, delay=100, fatherID=fatherID)  # 延时
                 taskLst.append(task)
             # 关机一条龙(停止->闲置->断开)
             if t["id"] == 1:
-                task = ztTask(type=0x03)
+                task = ztTask(type=0x03, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=2)
+                task = ztTask(type=2, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x66)
+                task = ztTask(type=0x66, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
 
             # 位置运动模式
             if t["id"] == 2:
                 task = ztTask(
-                    type=7, pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
+                    type=7, pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0xd, delay=t["opt4"])
+                task = ztTask(type=0xd, delay=t["opt4"], fatherID=fatherID)
                 taskLst.append(task)
 
             # 速度运动模式
             if t["id"] == 3:
                 task = ztTask(type=0x06,
-                              vel_v=t["opt1"], vel_a=t["opt2"])
+                              vel_v=t["opt1"], vel_a=t["opt2"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0xd, delay=t["opt4"])
+                task = ztTask(type=0xd, delay=t["opt4"], fatherID=fatherID)
                 taskLst.append(task)
 
             # 正弦运动模式
             if t["id"] == 4:
                 task = ztTask(
-                    type=0x15, swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"])
+                    type=0x15, swing_range=t["opt1"], swing_freq=t["opt2"], swing_dur=t["opt3"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0xd, delay=t["opt3"] + 1)
+                task = ztTask(type=0xd, delay=t["opt3"] + 1, fatherID=fatherID)
                 taskLst.append(task)
 
             # 增量运动模式
             if t["id"] == 5:
                 task = ztTask(
-                    type=0x33, pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"])
+                    type=0x33, pos_p=t["opt1"], pos_v=t["opt2"], pos_a=t["opt3"], fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0xd, delay=t["opt3"] + 1)
+                task = ztTask(type=0xd, delay=t["opt3"] + 1, fatherID=fatherID)
                 taskLst.append(task)
 
             # 建立通信 闭合 闲置 断开通讯 停止 归零
             if t["id"] == 6:
-                task = ztTask(type=0x55)
+                task = ztTask(type=0x55, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
             if t["id"] == 7:
-                task = ztTask(type=0x01)
+                task = ztTask(type=0x01, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
             if t["id"] == 8:
-                task = ztTask(type=0x02)
+                task = ztTask(type=0x02, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
             if t["id"] == 9:
-                task = ztTask(type=0x66)
+                task = ztTask(type=0x66, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
             if t["id"] == 10:
-                task = ztTask(type=0x03)
+                task = ztTask(type=0x03, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
             if t["id"] == 11:
-                task = ztTask(type=0x04)
+                task = ztTask(type=0x04, fatherID=fatherID)
                 taskLst.append(task)
-                task = ztTask(type=0x0d, delay=5.0)
+                task = ztTask(type=0x0d, delay=5.0, fatherID=fatherID)
                 taskLst.append(task)
 
             # 延时
             if t["id"] == 12:
-                task = ztTask(type=0x0d, delay=t["opt1"])
+                task = ztTask(type=0x0d, delay=t["opt1"], fatherID=fatherID)
                 taskLst.append(task)
 
             # 循环开始
             if t["id"] == 13:
-                task = ztTask(type=0x0e, repeat=t["opt1"])
+                task = ztTask(type=0x0e, repeat=t["opt1"], fatherID=fatherID)
                 taskLst.append(task)
 
             # 循环结束
             if t["id"] == 14:
-                task = ztTask(type=0x0f)
+                task = ztTask(type=0x0f, fatherID=fatherID)
                 taskLst.append(task)
+
+            fatherID += 1
         return taskLst
 
     def setProgressCallback(self, callback):
@@ -514,7 +518,7 @@ class ztScheduler():
             self.zt902e1.sendCommand(task.command)
             if self.enableCallback:
                 self.progressCallback(
-                    float(taskCount / len(self.unrollingTaskList)))
+                    float(taskCount / len(self.unrollingTaskList)), task.fatherID)
             time.sleep(0.5)
             self.waitCond.notifyAll()
             self.waitCond.release()

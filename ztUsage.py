@@ -21,7 +21,7 @@ from recvIMU import RecvIMU
 
 class ztUsage(QDialog, Ui_Dialog_zt):
     finishSignal = pyqtSignal()
-    progessSignal = pyqtSignal(int)
+    progessSignal = pyqtSignal(int, int)
     
     def __init__(self):
         super().__init__()
@@ -104,6 +104,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.pushButton_6.setEnabled(True)
         self.radioButton.setEnabled(True)
         self.radioButton_2.setEnabled(True)
+        self.listWidget.setEnabled(True)
+        self.comboBox_2.setEnabled(True)
         msgBox = QMessageBox.information(self, "执行结束", "转台运动结束，结果保存在history文件夹下")
 
     def finishCallback(self):
@@ -112,11 +114,13 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.finishSignal.emit()
         print("执行结束")       
 
-    def progressCallback_mainThread(self, progress):
+    def progressCallback_mainThread(self, progress, fatherID):
         self.progressBar.setValue(progress)
+        if fatherID > -1:
+            self.listWidget.setCurrentRow(fatherID)
     
-    def progressCallback(self, progress):
-        self.progessSignal.emit(int(progress * 100))
+    def progressCallback(self, progress, fatherID):
+        self.progessSignal.emit(int(progress * 100), fatherID)
 
     def startRun(self): 
         if self.comboBox.currentIndex() > 0:
@@ -148,6 +152,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.pushButton_6.setEnabled(False)
             self.radioButton.setEnabled(False)
             self.radioButton_2.setEnabled(False)
+            self.listWidget.setEnabled(False)
+            self.comboBox_2.setEnabled(False)
             self.issave = True
             self.recv = RecvIMU(port=port_imu)
             self.save_th = threading.Thread(target=self.save, daemon=True)
