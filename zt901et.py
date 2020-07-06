@@ -233,6 +233,18 @@ class ztTaskType():
             "opt3name": "无效",
             "opt4name": "无效"
         },
+        {
+            "name": "保存文件截断",
+            "axis": False,
+            "opt1": False,
+            "opt2": False,
+            "opt3": False,
+            "opt4": False,
+            "opt1name": "无效",
+            "opt2name": "无效",
+            "opt3name": "无效",
+            "opt4name": "无效"
+        },
     ]
 
 class ztStatus():
@@ -276,6 +288,7 @@ class ztTask():
     # 0xd: 等待
     # 0xe: 循环开始
     # 0xf: 循环结束
+    # 0x10: 截断保存文件
     # axis:
     # 1 航向
     # 2 俯仰
@@ -339,12 +352,14 @@ class ztTask():
             self.command = bytearray(b'')
         if type == 0x0f: # 循环结束
             self.command = bytearray(b'')
+        if type == 0x10: # 截断保存文件
+            self.command = bytearray(b'')
 
 # 调度器负责两个任务：
 # 对转台写命令，并延时等待执行
 # 定时读取转台数据，通过回调函数范围
 class ztScheduler():
-    def __init__(self, readCallback, port, finishCallback=None):
+    def __init__(self, readCallback, port, event_1, event_2, finishCallback=None):
         self.callback = readCallback
         self.finishCallback = finishCallback
         self.taskList = []
@@ -352,6 +367,8 @@ class ztScheduler():
         self.readelay = 0.001
         self.readrun = True
         self.enableCallback = False
+        self.event_1 = event_1
+        self.event_2 = event_2
         self.waitCond = threading.Condition()
         self.zt902e1 = zt902e1(callback=self.callback, port=port)
         self.readth = threading.Thread(target=self.readProcess, daemon=True)
@@ -497,6 +514,12 @@ class ztScheduler():
             if t["id"] == 18:
                 task = ztTask(type=0x0f, fatherID=fatherID)
                 taskLst.append(task)
+
+            # 截断文件
+            if t["id"] == 19:
+                task = ztTask(type=0x10, fatherID=fatherID)
+                taskLst.append(task)
+            fatherID += 1
         return taskLst
 
     def setProgressCallback(self, callback):
@@ -551,12 +574,16 @@ class ztScheduler():
                 # print("delay")
                 time.sleep(task.delay)
                 continue
+            if task.type == 0x10:
+                self.event_1.set()
+                self.event_2.set()
             if task.type in [0x0e, 0x0f]:
                 continue
             self.waitCond.acquire()
             self.zt902e1.sendCommand(task.command)
             if self.enableCallback:
-                self.progressCallback(float(taskCount / len(self.unrollingTaskList)))
+                self.progressCallback(
+                    float(taskCount / len(self.unrollingTaskList)), task.fatherID)
             time.sleep(0.5)
             self.waitCond.notifyAll()
             self.waitCond.release()

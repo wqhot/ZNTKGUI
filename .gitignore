@@ -12,6 +12,7 @@ __pycache__/
 .Python
 build/
 history/*.csv
+history/*/*.csv
 develop-eggs/
 dist/
 downloads/

@@ -54,6 +54,10 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.listWidget.doubleClicked.connect(self.modifyBtn)
         self.issave = False
         self.cond = threading.Condition()
+        self.createNewFileEvent_1 = threading.Event() # 用于转台
+        self.createNewFileEvent_1.clear()
+        self.createNewFileEvent_2 = threading.Event() # 用于IMU
+        self.createNewFileEvent_2.clear()
         self.que = queue.Queue(1024)
         self.port_list = list(serial.tools.list_ports.comports())
         for port in self.port_list:
@@ -67,27 +71,33 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.listWidget.clear()
 
     def save(self):
-        headers = ['stamp', 'firstAxisPos', 'firstAxisVelocity', 'secondAxisPos', 'secondAxisVelocity']
-        csv_name = r'./history/' + \
-            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_zt.csv'
-        with open(csv_name, 'w') as f:
-            f_csv = csv.writer(f)
-            f_csv.writerow(headers)
-            while self.issave:
-                r = None
-                if self.cond.acquire():
-                    if self.que.empty():
-                        self.cond.wait(0.5)
-                    if not self.que.empty():
-                        r = self.que.get()
-                    self.cond.release()
-                if r is not None:
-                    line = [(r["STAMP"]),
-                            str(float(r["firstAxisPos"])),
-                            str(float(r["firstAxisVelocity"])),
-                            str(float(r["secondAxisPos"])),
-                            str(float(r["secondAxisVelocity"]))]
-                    f_csv.writerow(line)
+        index = 1
+        while self.issave:          
+            headers = ['stamp', 'firstAxisPos', 'firstAxisVelocity', 'secondAxisPos', 'secondAxisVelocity']
+            csv_name = self.dir_name + 'zt_' + str(index) + '.csv'
+            with open(csv_name, 'w') as f:
+                f_csv = csv.writer(f)
+                f_csv.writerow(headers)
+                while self.issave:
+                    r = None
+                    if self.cond.acquire():
+                        if self.que.empty():
+                            self.cond.wait(0.5)
+                        if not self.que.empty():
+                            r = self.que.get()
+                        self.cond.release()
+                    if r is not None:
+                        line = [(r["STAMP"]),
+                                str(float(r["firstAxisPos"])),
+                                str(float(r["firstAxisVelocity"])),
+                                str(float(r["secondAxisPos"])),
+                                str(float(r["secondAxisVelocity"]))]
+                        f_csv.writerow(line)
+                    if self.createNewFileEvent_1.is_set():
+                        print("创建新文件")
+                        self.createNewFileEvent_1.clear()
+                        break
+            index += 1
 
     def ztcallback(self, status):
         if self.cond.acquire():
@@ -123,6 +133,11 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.progessSignal.emit(int(progress * 100), fatherID)
 
     def startRun(self): 
+        # 创建文件夹
+        self.dir_name = r'./history/' + \
+            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '/'
+        if not os.path.exists(self.dir_name):
+            os.mkdir(self.dir_name)
         if self.comboBox.currentIndex() > 0:
             port = self.port_list[self.comboBox.currentIndex() - 1]
         else:
@@ -136,10 +151,12 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             return
         if self.radioButton_2.isChecked():
             ss = ztScheduler_zt920et(
-                readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port)
+                readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port,
+                event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_1)
         else:
             ss = ztScheduler_zt901et(
-                readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port)
+                readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port, 
+                event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_1)
         self.finishSignal.connect(self.finishCallback_mainThread)
         self.progessSignal.connect(self.progressCallback_mainThread)
         ss.setProgressCallback(self.progressCallback)
@@ -155,7 +172,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.listWidget.setEnabled(False)
             self.comboBox_2.setEnabled(False)
             self.issave = True
-            self.recv = RecvIMU(port=port_imu)
+            self.recv = RecvIMU(port=port_imu, dir_name=self.dir_name, event=self.createNewFileEvent_2)
             self.save_th = threading.Thread(target=self.save, daemon=True)
             self.save_th.start()
             ss.run(500)
@@ -166,7 +183,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                 self.pushButton_6.setEnabled(False)
                 self.radioButton.setEnabled(False)
                 self.radioButton_2.setEnabled(False)
-                self.recv = RecvIMU(port=port_imu)
+                self.recv = RecvIMU(port=port_imu, dir_name=self.dir_name, event=self.createNewFileEvent_2)
             else:
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("通信失败")

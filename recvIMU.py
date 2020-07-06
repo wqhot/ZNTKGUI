@@ -24,11 +24,13 @@ class RecvIMU():
     __CRC_SUM = 21
     __BUF_LENGTH = 22
 
-    def __init__(self, port):
+    def __init__(self, port, dir_name, event):
         # self.recvTh
         self.isRecv = True
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
+        self.dir_name = dir_name
+        self.event = event
         if port is None:
             return
         self.serial = serial.Serial(
@@ -39,28 +41,34 @@ class RecvIMU():
         self.th_2.start()
 
     def save(self):
-        headers = ['stamp', 'freq', 'amp', 'gyr', 'orthogonal']
-        csv_name = './history/' + \
-            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
-        with open(csv_name, 'w') as f:
-            f_csv = csv.writer(f)
-            f_csv.writerow(headers)
-            while self.isRecv:
-                r = None
-                if self.cond.acquire():
-                    if self.que.empty():
-                        self.cond.wait(0.5)
-                    if not self.que.empty():
-                        r = self.que.get()
-                        # print("getData")
-                    self.cond.release()
-                if r is not None:
-                    line = [r["stamp"],
-                            r["freq"],
-                            r["amp"],
-                            r["gyr"],
-                            r["ortgnl"]]
-                    f_csv.writerow(line)
+        index = 1
+        while self.isRecv:
+            headers = ['stamp', 'freq', 'amp', 'gyr', 'orthogonal']
+            csv_name = self.dir_name + 'imu_' + str(index) + '.csv'
+            with open(csv_name, 'w') as f:
+                f_csv = csv.writer(f)
+                f_csv.writerow(headers)
+                while self.isRecv:
+                    r = None
+                    if self.cond.acquire():
+                        if self.que.empty():
+                            self.cond.wait(0.5)
+                        if not self.que.empty():
+                            r = self.que.get()
+                            # print("getData")
+                        self.cond.release()
+                    if r is not None:
+                        line = [r["stamp"],
+                                r["freq"],
+                                r["amp"],
+                                r["gyr"],
+                                r["ortgnl"]]
+                        f_csv.writerow(line)
+                    if self.event.is_set():
+                        print("创建新文件")
+                        self.event.clear()
+                        break
+            index += 1
 
     def recv(self):
         remainLength = self.__BUF_LENGTH
