@@ -83,10 +83,10 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                     self.cond.release()
                 if r is not None:
                     line = [(r["STAMP"]),
-                            str(int(r["firstAxisPos"])),
-                            str(int(r["firstAxisVelocity"])),
-                            str(int(r["secondAxisPos"])),
-                            str(int(r["secondAxisVelocity"]))]
+                            str(float(r["firstAxisPos"])),
+                            str(float(r["firstAxisVelocity"])),
+                            str(float(r["secondAxisPos"])),
+                            str(float(r["secondAxisVelocity"]))]
                     f_csv.writerow(line)
 
     def ztcallback(self, status):

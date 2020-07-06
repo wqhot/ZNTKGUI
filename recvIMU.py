@@ -41,7 +41,7 @@ class RecvIMU():
     def save(self):
         headers = ['stamp', 'freq', 'amp', 'gyr', 'orthogonal']
         csv_name = './history/' + \
-            str(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())) + '_imu.csv'
+            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
         with open(csv_name, 'w') as f:
             f_csv = csv.writer(f)
             f_csv.writerow(headers)
