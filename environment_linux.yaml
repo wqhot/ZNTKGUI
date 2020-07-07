@@ -1,0 +1,14 @@
+name: ztcontrol
+channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/pro
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/msys2
+dependencies:
+  - python=3.8.3
+  - pip=20.1.1
+  - pyserial=3.4
+  - pip:
+    - pyqt5==5.15.0
+

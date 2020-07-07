@@ -59,6 +59,11 @@
                   <height>16777215</height>
                  </size>
                 </property>
+                <item>
+                 <property name="text">
+                  <string>不使用</string>
+                 </property>
+                </item>
                </widget>
               </item>
              </layout>
@@ -89,6 +94,11 @@
                   <height>16777215</height>
                  </size>
                 </property>
+                <item>
+                 <property name="text">
+                  <string>不使用</string>
+                 </property>
+                </item>
                </widget>
               </item>
              </layout>
@@ -127,7 +137,7 @@
                  <string>zt920et</string>
                 </property>
                 <property name="checked">
-                 <bool>false</bool>
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -135,16 +145,6 @@
                <widget class="QRadioButton" name="radioButton">
                 <property name="text">
                  <string>zt902e1</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QRadioButton" name="radioButton_3">
-                <property name="text">
-                 <string>无转台</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
                 </property>
                </widget>
               </item>

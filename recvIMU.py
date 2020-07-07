@@ -6,11 +6,9 @@ import queue
 import struct
 import math
 import base64
-import cv2
 import csv
 import copy
 import time
-import numpy as np
 
 
 class RecvIMU():
@@ -97,7 +95,7 @@ class RecvIMU():
             if len(buffList) == self.__BUF_LENGTH:
                 # check sum
                 sum = 0
-                for bt in buffList[:-1]:
+                for bt in buffList[2:-1]:
                     sum = (sum + bt) % 256
                 if sum == buffList[-1]:
                     dc = {}

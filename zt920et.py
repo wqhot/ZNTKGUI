@@ -242,13 +242,12 @@ class ztTask():
                  pos_p=0, pos_v=0, pos_a=0, vel_v=0, vel_a=0,
                  swing_range=0, swing_freq=0, swing_dur=0, delay=0, repeat=0):
         self.type = type
-        self.command = bytearray(10)
+        self.command = bytearray(9)
         self.delay = abs(delay)
         self.repeat = abs(int(repeat))
         for c in self.command:
             c = 0
-        self.command[1] = type
-        self.command[0] = axis
+        self.command[0] = type
         c_p = 0
         c_v = 0
         c_a = 0
@@ -309,7 +308,7 @@ class ztTask():
 
 
 class ztScheduler():
-    def __init__(self, readCallback, finishCallback=None, portname='/dev/ttyUSB1'):
+    def __init__(self, readCallback, port, finishCallback=None):
         self.callback = readCallback
         self.finishCallback = finishCallback
         self.taskList = []
@@ -318,7 +317,7 @@ class ztScheduler():
         self.readrun = True
         self.enableCallback = False
         self.waitCond = threading.Condition()
-        self.zt902e1 = zt902e1(callback=self.callback, portname=portname)
+        self.zt902e1 = zt902e1(callback=self.callback, port=port)
         self.readth = threading.Thread(target=self.readProcess, daemon=True)
         self.th = threading.Thread(target=self.process, daemon=True)
 
@@ -526,12 +525,14 @@ class ztScheduler():
 
 
 class zt902e1():
-    def __init__(self, callback, portname='/dev/ttyUSB1'):
-        portName = portname
+    def __init__(self, callback, port):
         bps = 9600
         time = 0.005
         self.mutex = threading.Lock()
-        self.ser = serial.Serial(port=portName, baudrate=bps, timeout=0.5)
+        if port is None:
+            self.connected = False
+            return
+        self.ser = serial.Serial(port=port.device, baudrate=bps, timeout=0.5)
         self.recvrun = True
         # self.ser.open()
         # self.th_recv = threading.Thread(target=self.recv, daemon=True)
