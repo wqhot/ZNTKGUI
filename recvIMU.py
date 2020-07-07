@@ -76,7 +76,7 @@ class RecvIMU():
         buffList = []
         while self.isRecv:
             # TEST
-            if True:
+            if False:
                 time.sleep(0.05)
                 buff = b'\x90\xEB\x10\xF1\xC8\x8B\xCD\x03\x1D\xC4\x0A\x00\xEA\xFE\xFF\xFF\x76\xFC\x7F\x85\x00\x6B'
             else:
