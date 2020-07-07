@@ -26,6 +26,7 @@ class RecvIMU():
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
         self.dir_name = dir_name
+        self.recvData = None
         if event is None:
             self.event = threading.Event()
         else:
@@ -50,38 +51,26 @@ class RecvIMU():
         return r
 
     def save(self):
-        index = 1
-        while self.isRecv:
-            headers = ['stamp', 'freq', 'amp', 'gyr', 'orthogonal']
-            if self.dir_name == './history/':
-                csv_name = self.dir_name + \
-                    str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
-            else:
-                csv_name = self.dir_name + 'imu_' + str(index) + '.csv'
-            with open(csv_name, 'w') as f:
-                f_csv = csv.writer(f)
-                f_csv.writerow(headers)
-                while self.isRecv:
-                    r = None
-                    if self.cond.acquire():
-                        if self.que.empty():
-                            self.cond.wait(0.5)
-                        if not self.que.empty():
-                            r = self.que.get()
-                            # print("getData")
-                        self.cond.release()
-                    if r is not None:
-                        line = [r["stamp"],
-                                r["freq"],
-                                r["amp"],
-                                r["gyr"],
-                                r["ortgnl"]]
-                        f_csv.writerow(line)
-                    if self.event.is_set():
-                        print("创建新文件")
-                        self.event.clear()
-                        break
-            index += 1
+        headers = ['stamp', 'x_ang', 'z_ang']
+        csv_name = './history/' + \
+            str(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())) + '_imu.csv'
+        with open(csv_name, 'w') as f:
+            f_csv = csv.writer(f)
+            f_csv.writerow(headers)
+            while self.isRecv:
+                r = None
+                if self.cond.acquire():
+                    if self.que.empty():
+                        self.cond.wait(0.5)
+                    if not self.que.empty():
+                        r = self.que.get()
+                        # print("getData")
+                    self.cond.release()
+                if r is not None:
+                    line = [r["stamp"],
+                            r["x_ang"],
+                            r["z_ang"]]
+                    f_csv.writerow(line)
 
     def recv(self):
         remainLength = self.__BUF_LENGTH
@@ -112,7 +101,7 @@ class RecvIMU():
             if len(buffList) == self.__BUF_LENGTH:
                 # check sum
                 sum = 0
-                for bt in buffList[2:-1]:
+                for bt in buffList[:-1]:
                     sum = (sum + bt) % 256
                 if sum == buffList[-1]:
                     dc = {}
@@ -124,7 +113,7 @@ class RecvIMU():
                             (buffList[self.__Z_ANG + 1] << 8) +
                             (buffList[self.__Z_ANG + 0] << 0)) * 0.0001
                     dc["stamp"] = float(time.time())
-                    dc["x_ang"] = x_ang
+                    dc["x_ang"] = x_ang - 360.0
                     dc["z_ang"] = z_ang
                     # print(dc)
                     if not self.pause:

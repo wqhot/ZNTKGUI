@@ -82,12 +82,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                           username='shipei',
                           password='shipei',
                           port=2222)
+        self.last_dct = {}
         for key in DICT_NAME_LIST:
             self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
+            self.last_dct[key] = DICT_TYPE_LIST[index]
             index = index + 1
         index = 0
+        self.last_tk_dct = {}
         for key in TK_DICT_NAME_LIST:
             self.tk_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
+            self.last_tk_dct[key] = TK_DICT_TYPE_LIST[index]
             index = index + 1
         a_2 = pg.AxisItem("left")
         a_3 = pg.AxisItem("right")
@@ -533,7 +537,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def startRecv(self):
         if not hasattr(self, "recv"):
             self.recv = RecvData()
-            self.recvImu = RecvIMU(portName='/dev/ttyUSB0', save=False)
+            self.recvImu = RecvIMU(portName='/dev/ttyUSB0', save=True)
+            # self.recvImu = RecvIMU(save=False)
             # self.recvThread = threading.Thread(target=self.update)
             # self.recvThread.start()
             self.timer.timeout.connect(self.update)
@@ -627,23 +632,26 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                     self.lsts[key].append(data[key])
                     while len(self.lsts[key]) > TIME_LENGTH:
                         self.lsts[key].pop(0)
+                self.last_dct = data.copy()
                 for key in TK_DICT_NAME_LIST:
                     self.tk_lsts[key].append(imudata[key])
                     while len(self.tk_lsts[key]) > TIME_LENGTH:
                         self.tk_lsts[key].pop(0)
+                self.last_tk_dct = imudata.copy()
             elif data is not None and imudata is None:
                 for key in DICT_NAME_LIST:
                     self.lsts[key].append(data[key])
                     while len(self.lsts[key]) > TIME_LENGTH:
                         self.lsts[key].pop(0)
+                self.last_dct = data.copy()
                 for key in TK_DICT_NAME_LIST:
-                    self.tk_lsts[key].append(0.0)
+                    self.tk_lsts[key].append(self.last_tk_dct[key])
                     while len(self.tk_lsts[key]) > TIME_LENGTH:
                         self.tk_lsts[key].pop(0)
             elif data is None and imudata is not None:
                 index = 0
                 for key in DICT_NAME_LIST:
-                    self.lsts[key].append(DICT_TYPE_LIST[index])
+                    self.lsts[key].append(self.last_dct[key])
                     index = index + 1
                     while len(self.lsts[key]) > TIME_LENGTH:
                         self.lsts[key].pop(0)
@@ -651,6 +659,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                     self.tk_lsts[key].append(imudata[key])
                     while len(self.tk_lsts[key]) > TIME_LENGTH:
                         self.tk_lsts[key].pop(0)
+                self.last_tk_dct = imudata.copy()
                 # print(data)
             else:
                 return
