@@ -73,13 +73,14 @@ class RecvIMU():
         buffList = []
         while self.isRecv:
             buff = self.serial.read(remainLength)
-            if len(buff) != remainLength:
-                break
+            if len(buff) == 0:
+                continue
+            remainLength = len(buff)
             buffArray = bytearray(buff)
             # 找帧头
             headIndex = buffArray.find(bytearray(b'\x55\xff'))
             if headIndex != -1:
-                remainLength = remainLength - headIndex
+                remainLength = self.__BUF_LENGTH - (remainLength - headIndex)
                 buffList = []
                 buffList.extend(list(buffArray)[headIndex:])
             else:  # 无帧头时
