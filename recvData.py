@@ -159,7 +159,7 @@ class RecvData():
                    'cam_x', 'cam_y', 'cam_z', 'updt_x', 'updt_y', 'updt_z',
                    'imu_x', 'imu_y', 'imu_z']
         csv_name = './history/' + \
-            str(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())) + '.csv'
+            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
             f_csv = csv.writer(f)
             f_csv.writerow(headers)

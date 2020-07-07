@@ -726,7 +726,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def save(self):
         headers = ['stamp', 'firstAxisPos', 'firstAxisVelocity', 'secondAxisPos', 'secondAxisVelocity']
         csv_name = './history/' + \
-            str(time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime())) + '_zt.csv'
+            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_zt.csv'
         with open(csv_name, 'w') as f:
             f_csv = csv.writer(f)
             f_csv.writerow(headers)

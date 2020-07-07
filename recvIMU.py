@@ -18,7 +18,7 @@ class RecvIMU():
     __Z_ANG = 5
     __BUF_LENGTH = 11
 
-    def __init__(self, port, dir_name, event):
+    def __init__(self, port=None, portName='',dir_name='./history/', event=None, save=True):
         # self.recvTh
         self.isRecv = True
         self.isSave = save
@@ -26,11 +26,16 @@ class RecvIMU():
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
         self.dir_name = dir_name
-        self.event = event
-        if port is None:
+        if event is None:
+            self.event = threading.Event()
+        else:
+            self.event = event
+        if port is None and portName == '':
             return
+        if port is not None:
+            portName = port.device
         self.serial = serial.Serial(
-            port=port.device, baudrate=230400, timeout=0.5)
+            port=portName, baudrate=230400, timeout=0.5)
         self.th = threading.Thread(target=self.recv, daemon=True)
         self.th.start()
         self.th_2 = threading.Thread(target=self.save, daemon=True)
@@ -48,7 +53,11 @@ class RecvIMU():
         index = 1
         while self.isRecv:
             headers = ['stamp', 'freq', 'amp', 'gyr', 'orthogonal']
-            csv_name = self.dir_name + 'imu_' + str(index) + '.csv'
+            if self.dir_name == './history/':
+                csv_name = self.dir_name + \
+                    str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
+            else:
+                csv_name = self.dir_name + 'imu_' + str(index) + '.csv'
             with open(csv_name, 'w') as f:
                 f_csv = csv.writer(f)
                 f_csv.writerow(headers)
