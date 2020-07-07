@@ -200,7 +200,7 @@ class ztTaskType():
         {
             "name": "延时",
             "axis": False,
-            "opt1": False,
+            "opt1": True,
             "opt2": False,
             "opt3": False,
             "opt4": False,

@@ -32,6 +32,7 @@ class RecvIMU():
         self.dir_name = dir_name
         self.event = event
         if port is None:
+            self.serial = None
             return
         self.serial = serial.Serial(
             port=port.device, baudrate=230400, timeout=0.5)
@@ -74,7 +75,12 @@ class RecvIMU():
         remainLength = self.__BUF_LENGTH
         buffList = []
         while self.isRecv:
-            buff = self.serial.read(remainLength)           
+            # TEST
+            if True:
+                time.sleep(0.05)
+                buff = b'\x90\xEB\x10\xF1\xC8\x8B\xCD\x03\x1D\xC4\x0A\x00\xEA\xFE\xFF\xFF\x76\xFC\x7F\x85\x00\x6B'
+            else:
+                buff = self.serial.read(remainLength)           
             if len(buff) == 0:
                 continue
             remainLength = len(buff)

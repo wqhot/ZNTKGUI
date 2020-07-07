@@ -171,11 +171,13 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.listWidget.setEnabled(True)
         self.comboBox_2.setEnabled(True)
         self.pushButton_8.setEnabled(True)
-        msgBox = QMessageBox.information(self, "执行结束", "转台运动结束，结果保存在history文件夹下")
+        msgBox = QMessageBox.information(self, "执行结束", "转台运动结束，结果保存在" + self.dir_name +"下")
 
     def finishCallback(self):
         self.issave = False
         self.recv.isRecv = False
+        if self.recv.serial is not None:
+            self.recv.serial.close()
         self.finishSignal.emit()
         print("执行结束")       
 
@@ -207,11 +209,11 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         if self.radioButton_2.isChecked():
             ss = ztScheduler_zt920et(
                 readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port,
-                event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_1)
+                event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_2)
         else:
             ss = ztScheduler_zt901et(
                 readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port, 
-                event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_1)
+                event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_2)
         self.finishSignal.connect(self.finishCallback_mainThread)
         self.progessSignal.connect(self.progressCallback_mainThread)
         ss.setProgressCallback(self.progressCallback)
