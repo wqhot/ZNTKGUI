@@ -4,7 +4,7 @@
 
 1. 下载并安装Miniconda3。<https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-latest-Windows-x86_64.exe>
 
-2. 安装成功后，下载解压转台控制程序<https://github.com/wqhot/ZNTKGUI/archive/v1.1.2.zip>
+2. 安装成功后，下载解压转台控制程序<https://github.com/wqhot/ZNTKGUI/archive/latest.zip>
 
 3. 打开*Anaconda Prompt*（可以在开始菜单中找到），切换目录到第2步解压后的路径，后执行:
 
@@ -27,7 +27,7 @@ conda activate ztcontrol
 python ztUsage.py
 ```
 
-![界面图](https://github.com/wqhot/ZNTKGUI/blob/v1.1.2/docs/gui.PNG)
+![界面图](https://github.com/wqhot/ZNTKGUI/blob/latest/docs/gui.PNG)
 
 4. 选择转台型号、串口号
 
