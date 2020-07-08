@@ -53,7 +53,7 @@ class RecvIMU():
     def save(self):
         headers = ['stamp', 'x_ang', 'z_ang']
         csv_name = './history/' + \
-            str(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())) + '_imu.csv'
+            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
         with open(csv_name, 'w') as f:
             f_csv = csv.writer(f)
             f_csv.writerow(headers)
@@ -106,16 +106,15 @@ class RecvIMU():
                 if sum == buffList[-1]:
                     dc = {}
                     # hardcode...
-                    x_ang = ((buffList[self.__X_ANG + 2] << 16) if buffList[self.__X_ANG + 2] < 0x7f else ((buffList[self.__X_ANG + 2] - 0xff) << 16) +
+                    x_ang = (((buffList[self.__X_ANG + 2] << 16) if buffList[self.__X_ANG + 2] < 0x7f else ((buffList[self.__X_ANG + 2] - 0xff) << 16)) +
                             (buffList[self.__X_ANG + 1] << 8) +
                             (buffList[self.__X_ANG + 0] << 0)) * 0.0001
-                    z_ang = ((buffList[self.__Z_ANG + 2] << 16) if buffList[self.__Z_ANG + 2] < 0x7f else ((buffList[self.__Z_ANG + 2] - 0xff) << 16) +
+                    z_ang = (((buffList[self.__Z_ANG + 2] << 16) if buffList[self.__Z_ANG + 2] < 0x7f else ((buffList[self.__Z_ANG + 2] - 0xff) << 16)) +
                             (buffList[self.__Z_ANG + 1] << 8) +
                             (buffList[self.__Z_ANG + 0] << 0)) * 0.0001
                     dc["stamp"] = float(time.time())
                     dc["x_ang"] = x_ang - 360.0
                     dc["z_ang"] = z_ang
-                    # print(dc)
                     if not self.pause:
                         self.recvData = dc
                     if self.cond.acquire():
@@ -125,4 +124,5 @@ class RecvIMU():
                         self.cond.release()
                 else:
                     print("checkerror")
+                buffList = []
                     
