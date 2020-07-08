@@ -577,6 +577,7 @@ class ztScheduler():
             if task.type == 0x10:
                 self.event_1.set()
                 self.event_2.set()
+                continue
             if task.type in [0x0e, 0x0f]:
                 continue
             self.waitCond.acquire()
