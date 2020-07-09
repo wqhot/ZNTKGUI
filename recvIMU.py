@@ -15,8 +15,8 @@ class RecvIMU():
     __HEAD1 = 0
     __HEAD2 = 1
     __X_ANG = 2
-    __Z_ANG = 5
-    __BUF_LENGTH = 11
+    __Z_ANG = 6
+    __BUF_LENGTH = 13
 
     def __init__(self, port=None, portName='',dir_name='./history/', event=None, save=True):
         # self.recvTh
@@ -111,15 +111,14 @@ class RecvIMU():
                 if sum == buffList[-1]:
                     dc = {}
                     # hardcode...
-                    x_ang = (((buffList[self.__X_ANG + 2] << 16) if buffList[self.__X_ANG + 2] < 0x7f else ((buffList[self.__X_ANG + 2] - 0xff) << 16)) +
-                            (buffList[self.__X_ANG + 1] << 8) +
-                            (buffList[self.__X_ANG + 0] << 0)) * 0.0001
-                    z_ang = (((buffList[self.__Z_ANG + 2] << 16) if buffList[self.__Z_ANG + 2] < 0x7f else ((buffList[self.__Z_ANG + 2] - 0xff) << 16)) +
-                            (buffList[self.__Z_ANG + 1] << 8) +
-                            (buffList[self.__Z_ANG + 0] << 0)) * 0.0001
+                    x_ang = struct.unpack('f', bytes(
+                            buffList[self.__X_ANG:self.__X_ANG+4]))[0]
+                    z_ang = struct.unpack('f', bytes(
+                            buffList[self.__Z_ANG:self.__Z_ANG+4]))[0]
                     dc["stamp"] = float(time.time())
-                    dc["x_ang"] = x_ang - 360.0
+                    dc["x_ang"] = x_ang
                     dc["z_ang"] = z_ang
+                    # print(dc)
                     if not self.pause:
                         self.recvData = dc
                     if self.cond.acquire():
