@@ -425,6 +425,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def closeRemote(self):
         self.ssh.sendCommand('x')
         self.recv.close_start()
+        self.recvImu.pause = True
         self.ztresave.set()
         self.toolBtnReset.setEnabled(False)
         self.toolBtnClose.setEnabled(False)
@@ -449,6 +450,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnIMUInit.setEnabled(False)
 
     def normalRun(self):
+        self.recvImu.pause = False
         self.ssh.sendCommand(
             './zntk_core')
         self.toolBtnReset.setEnabled(True)

@@ -22,7 +22,7 @@ class RecvIMU():
         # self.recvTh
         self.isRecv = True
         self.isSave = save
-        self.pause = False
+        self.pause = True
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
         self.dir_name = dir_name
@@ -123,7 +123,7 @@ class RecvIMU():
                     if not self.pause:
                         self.recvData = dc
                     if self.cond.acquire():
-                        if (self.isRecv and self.isSave):
+                        if (self.isRecv and self.isSave and not self.pause):
                             self.que.put(dc)
                             self.cond.notify_all()
                         self.cond.release()
