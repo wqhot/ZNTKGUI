@@ -341,6 +341,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.stop = False
 
         self.timer = QTimer()
+        self.ztresave =  threading.Event()
         self.camera.add_pose([0, 0, 0], [0.0, 0.0, 0.0, 1.0])
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal())
@@ -424,6 +425,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def closeRemote(self):
         self.ssh.sendCommand('x')
         self.recv.close_start()
+        self.ztresave.set()
         self.toolBtnReset.setEnabled(False)
         self.toolBtnClose.setEnabled(False)
         self.toolBtnPlay.setEnabled(True)
@@ -537,7 +539,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def startRecv(self):
         if not hasattr(self, "recv"):
             self.recv = RecvData()
-            self.recvImu = RecvIMU(portName='/dev/ttyUSB0', save=True)
+            self.recvImu = RecvIMU(portName='/dev/ttyUSB0', save=True, event=self.ztresave)
             # self.recvImu = RecvIMU(save=False)
             # self.recvThread = threading.Thread(target=self.update)
             # self.recvThread.start()

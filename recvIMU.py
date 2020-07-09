@@ -52,25 +52,30 @@ class RecvIMU():
 
     def save(self):
         headers = ['stamp', 'x_ang', 'z_ang']
-        csv_name = './history/' + \
-            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
-        with open(csv_name, 'w') as f:
-            f_csv = csv.writer(f)
-            f_csv.writerow(headers)
-            while self.isRecv:
-                r = None
-                if self.cond.acquire():
-                    if self.que.empty():
-                        self.cond.wait(0.5)
-                    if not self.que.empty():
-                        r = self.que.get()
-                        # print("getData")
-                    self.cond.release()
-                if r is not None:
-                    line = [r["stamp"],
-                            r["x_ang"],
-                            r["z_ang"]]
-                    f_csv.writerow(line)
+        while self.isRecv:
+            csv_name = './history/' + \
+                str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
+            with open(csv_name, 'w') as f:
+                f_csv = csv.writer(f)
+                f_csv.writerow(headers)
+                while self.isSave:
+                    r = None
+                    if self.cond.acquire():
+                        if self.que.empty():
+                            self.cond.wait(0.5)
+                        if not self.que.empty():
+                            r = self.que.get()
+                            # print("getData")
+                        self.cond.release()
+                    if r is not None:
+                        line = [r["stamp"],
+                                r["x_ang"],
+                                r["z_ang"]]
+                        f_csv.writerow(line)
+                    if self.event.is_set():
+                        print("创建新文件")
+                        self.event.clear()
+                        break
 
     def recv(self):
         remainLength = self.__BUF_LENGTH
