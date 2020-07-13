@@ -303,9 +303,10 @@ class RecvData():
             dc["COST_OF_IMG"] = struct.unpack('d', bytes(
                 data[self.__COST_OF_IMG:self.__COST_OF_IMG+8]))[0]
 
-            dc["STAMP"] = float(time.time())
-            # dc["STAMP"] = struct.unpack('d', bytes(
-            #     data[self.__STAMP:self.__STAMP+8]))[0]
+            # dc["STAMP"] = float(time.time())
+            dc["STAMP"] = struct.unpack('d', bytes(
+                data[self.__STAMP:self.__STAMP+8]))[0]
+            print(1000.0 * (time.time() - dc["STAMP"]))
 
             dc["ANGLE_BY_IMU"] = [0.0, 0.0, 0.0, 0.0]
             dc["ANGLE_BY_IMU"][0] = struct.unpack('f', bytes(
