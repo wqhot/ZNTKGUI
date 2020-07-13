@@ -367,3 +367,8 @@ class RecvData():
             #     self.que.put(dc)
             #     self.mutex.release()
         self.sock.close()
+
+if __name__ == '__main__':
+    recv = RecvData()
+    while True:
+        time.sleep(0.01)
