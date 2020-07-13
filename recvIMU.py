@@ -118,7 +118,8 @@ class RecvIMU():
                     dc["stamp"] = float(time.time())
                     dc["x_ang"] = x_ang
                     dc["z_ang"] = z_ang
-                    # print(dc)
+                    print(buffList[self.__Z_ANG:self.__Z_ANG+4], end='')
+                    print(" " + str(dc["z_ang"]))
                     if not self.pause:
                         self.recvData = dc
                     if self.cond.acquire():
