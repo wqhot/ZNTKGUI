@@ -541,7 +541,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def startRecv(self):
         if not hasattr(self, "recv"):
             self.recv = RecvData()
-            self.recvImu = RecvIMU(portName='/dev/ttyUSB0', save=True, event=self.ztresave)
+            self.recvImu = RecvIMU(usesock=True, save=True, event=self.ztresave)
             # self.recvImu = RecvIMU(save=False)
             # self.recvThread = threading.Thread(target=self.update)
             # self.recvThread.start()

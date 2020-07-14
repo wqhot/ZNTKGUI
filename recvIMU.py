@@ -2,6 +2,7 @@
 import sys
 import serial
 import threading
+import socket
 import queue
 import struct
 import math
@@ -16,9 +17,10 @@ class RecvIMU():
     __HEAD2 = 1
     __X_ANG = 2
     __Z_ANG = 6
-    __BUF_LENGTH = 13
+    __STAMP = 10
+    __BUF_LENGTH = 19
 
-    def __init__(self, port=None, portName='',dir_name='./history/', event=None, save=True):
+    def __init__(self, usesock=False, port=None, portName='',dir_name='./history/', event=None, save=True):
         # self.recvTh
         self.isRecv = True
         self.isSave = save
@@ -27,16 +29,24 @@ class RecvIMU():
         self.cond = threading.Condition()
         self.dir_name = dir_name
         self.recvData = None
+        self.usesock = usesock
+        
+        if self.usesock:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.bind(("0.0.0.0", 5580))
+        else:
+            self.sock = None
         if event is None:
             self.event = threading.Event()
         else:
             self.event = event
-        if port is None and portName == '':
+        if port is None and portName == '' and not self.usesock:
             return
         if port is not None:
             portName = port.device
-        self.serial = serial.Serial(
-            port=portName, baudrate=230400, timeout=0.5)
+        if not self.usesock:
+            self.serial = serial.Serial(
+                port=portName, baudrate=230400, timeout=0.5)
         self.th = threading.Thread(target=self.recv, daemon=True)
         self.th.start()
         self.th_2 = threading.Thread(target=self.save, daemon=True)
@@ -81,9 +91,12 @@ class RecvIMU():
         remainLength = self.__BUF_LENGTH
         buffList = []
         while self.isRecv:
-            buff = self.serial.read(remainLength)
+            if self.usesock:
+                buff = self.sock.recv(remainLength)
+            else:
+                buff = self.serial.read(remainLength)
             if len(buff) == 0:
-                continue
+                continue           
             remainLength = len(buff)
             buffArray = bytearray(buff)
             # 找帧头
@@ -115,7 +128,9 @@ class RecvIMU():
                             buffList[self.__X_ANG:self.__X_ANG+4]))[0]
                     z_ang = struct.unpack('f', bytes(
                             buffList[self.__Z_ANG:self.__Z_ANG+4]))[0]
-                    dc["stamp"] = float(time.time())
+                    stamp = struct.unpack('d', bytes(
+                            buffList[self.__STAMP:self.__STAMP+8]))[0]
+                    dc["stamp"] = stamp
                     dc["x_ang"] = x_ang
                     dc["z_ang"] = z_ang
                     # print(buffList[self.__Z_ANG:self.__Z_ANG+4], end='')
