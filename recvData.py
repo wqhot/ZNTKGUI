@@ -159,7 +159,7 @@ class RecvData():
                    'cam_x', 'cam_y', 'cam_z', 'updt_x', 'updt_y', 'updt_z',
                    'imu_x', 'imu_y', 'imu_z']
         csv_name = './history/' + \
-            str(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())) + '.csv'
+            str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
             f_csv = csv.writer(f)
             f_csv.writerow(headers)
@@ -303,6 +303,7 @@ class RecvData():
             dc["COST_OF_IMG"] = struct.unpack('d', bytes(
                 data[self.__COST_OF_IMG:self.__COST_OF_IMG+8]))[0]
 
+            # dc["STAMP"] = float(time.time())
             dc["STAMP"] = struct.unpack('d', bytes(
                 data[self.__STAMP:self.__STAMP+8]))[0]
 
@@ -365,3 +366,8 @@ class RecvData():
             #     self.que.put(dc)
             #     self.mutex.release()
         self.sock.close()
+
+if __name__ == '__main__':
+    recv = RecvData()
+    while True:
+        time.sleep(0.01)

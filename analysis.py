@@ -187,11 +187,11 @@ class analysisData():
                 np.tile(self.analysisDataZeros[key], self.analysisData[key][index_data].shape)
         # 对于zt数据需要插值
         for key in self.analysisZtData.keys():
-            temp = self.analysisZtData[key][index_ztData] - \
+            analysisZtData[key] = self.analysisZtData[key][index_ztData] - \
                 np.tile(self.analysisZtDataZeros[key], self.analysisZtData[key][index_ztData].shape)
-            analysisZtData[key] = np.interp(data_stamp,
-                                                 ztData_stamp,
-                                                 temp)
+            # analysisZtData[key] = np.interp(data_stamp,
+            #                                      ztData_stamp,
+            #                                      temp)
 
         # 开始绘图
         self.fig.clear()
@@ -213,12 +213,12 @@ class analysisData():
             self.endY = self.endY if self.endY > maxy else maxy
         for key in analysisZtData.keys():
             if key in self.fuData:
-                self.axes.plot(data_stamp,
+                self.axes.plot(ztData_stamp,
                                -analysisZtData[key], label=key)
                 maxy = (-analysisZtData[key]).max()
                 miny = (-analysisZtData[key]).min()
             else:
-                self.axes.plot(data_stamp,
+                self.axes.plot(ztData_stamp,
                                analysisZtData[key], label=key)
                 maxy = (analysisZtData[key]).max()
                 miny = (analysisZtData[key]).min()
