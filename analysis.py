@@ -12,8 +12,38 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import numpy as np
 import matplotlib
+from scipy.optimize import minimize
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 
+class Estimate():
+    def __init__(self, analysisData = {}, analysisZtData = {}, data_stamp = np.array([])):
+        self.analysisData = analysisData
+        self.analysisZtData = analysisZtData
+        self.data_stamp = data_stamp
+        res = minimize(fun=self.func, x0=[0.0], method='BFGS',
+                options={'maxiter':1000, 'gtol': 1e-6, 'disp':True, 'return_all':True})
+        print(res)
+        print(self.func([0.0]))
+
+    def func(self, x):
+        errors = []
+        delay = x[0]
+        if delay > 0:
+            index = np.where(self.data_stamp > delay)[0]
+        else:
+            index = np.where(self.data_stamp < self.data_stamp[-1] + delay)[0]
+        for key, ztKey in zip(self.analysisData.keys(), self.analysisZtData.keys()):           
+            delayAnalysisData = self.analysisData[key][index]
+            delayAnalysisZtData = self.analysisZtData[ztKey][:len(index)]
+            errNorm = self.analysisData[key] - self.analysisZtData[ztKey]
+            error = delayAnalysisData - delayAnalysisZtData
+            e = np.average(np.abs(error))
+            eNorm = np.average(np.abs(errNorm))
+            
+            errors.append(e)
+        err = sum(errors) / len(errors)
+        print([delay, err])
+        return err
 
 class analysisData():
     def __init__(self, width=5, height=4, dpi=100):
@@ -29,8 +59,27 @@ class analysisData():
         self.analysisZtDataZeros = {}
         self.fuData = []
         self.startStamp = 0
-        cid = self.canvas.mpl_connect('button_press_event', self.onclick)
-
+        # 标志值设为none
+        self._ind = None
+        self.moveFlag = False
+        self.startX = -1.0
+        self.endX = 1.0
+        self.startY = -10.0
+        self.endY = 10.0
+        self.line1 = None
+        self.line2 = None
+        self.drawLine()
+        self.canvas.mpl_connect('button_press_event', self.onclick)
+        self.canvas.mpl_connect('button_release_event', self.button_release_callback)
+        self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+    
+    def drawLine(self):
+        x1 = np.tile(self.startX, 100)
+        x2 = np.tile(self.endX, 100)
+        y1 = np.arange(self.startY, self.endY, (self.endY - self.startY) / 100)
+        self.line1, = self.axes.plot(x1, y1, marker='3', color='k')
+        self.line2, = self.axes.plot(x2, y1, marker='4', color='k')
+    
     def importData(self, fileName):
         title = []
         with open(fileName, newline='') as f:
@@ -72,21 +121,53 @@ class analysisData():
     def setFuData(self, labels):
         self.fuData = labels
 
+    def estimateDelay(self):
+        indexStart_data = np.where(self.data['stamp'] >= self.startX + self.startStamp)[0]
+        indexStart_ztData = np.where(self.ztData['stamp'] >= self.startX + self.startStamp)[0]
+        indexEnd_data = np.where(self.data['stamp'] <= self.endX + self.startStamp)[0]
+        indexEnd_ztData = np.where(self.ztData['stamp'] <= self.endX + self.startStamp)[0]
+        index_data = np.intersect1d(indexStart_data, indexEnd_data)
+        index_ztData = np.intersect1d(indexStart_ztData, indexEnd_ztData)
+        data_stamp = self.data['stamp'][index_data]
+        ztData_stamp = self.ztData['stamp'][index_ztData]
+        analysisData = {}
+        analysisZtData = {}
+        # 时间戳减去初始值
+        data_stamp = data_stamp - \
+            np.tile(self.startStamp, (len(index_data),))
+        ztData_stamp = ztData_stamp - \
+            np.tile(self.startStamp, (len(index_ztData),))
+        for key in self.analysisData.keys():
+            analysisData[key] = self.analysisData[key][index_data] - \
+                np.tile(self.analysisDataZeros[key], self.analysisData[key][index_data].shape)
+            if key in self.fuData:
+                analysisData[key] = -analysisData[key]
+        # 对于zt数据需要插值
+        for key in self.analysisZtData.keys():
+            temp = self.analysisZtData[key][index_ztData] - \
+                np.tile(self.analysisZtDataZeros[key], self.analysisZtData[key][index_ztData].shape)
+            analysisZtData[key] = np.interp(data_stamp,
+                                                 ztData_stamp,
+                                                 temp)
+            if key in self.fuData:
+                analysisZtData[key] = -analysisZtData[key]
+        estimate = Estimate(analysisData, analysisZtData, data_stamp)
+
     def analysis(self):
         # 对齐时间戳，取交集
         startStamp_data = self.data['stamp'][0]
         startStamp_ztData = self.ztData['stamp'][0]
         self.startStamp = startStamp_data if startStamp_data > startStamp_ztData else startStamp_ztData
-
-        indexStart_data = np.where(self.data['stamp'] >= self.startStamp)
-        indexStart_ztData = np.where(self.ztData['stamp'] >= self.startStamp)
+        
+        
+        indexStart_data = np.where(self.data['stamp'] >= self.startStamp)[0]
+        indexStart_ztData = np.where(self.ztData['stamp'] >= self.startStamp)[0]
 
         endStamp_data = self.data['stamp'][-1]
         endStamp_ztData = self.ztData['stamp'][-1]
         endStamp = endStamp_data if endStamp_data < endStamp_ztData else endStamp_ztData
-
-        indexEnd_data = np.where(self.data['stamp'] <= endStamp)
-        indexEnd_ztData = np.where(self.ztData['stamp'] <= endStamp)
+        indexEnd_data = np.where(self.data['stamp'] <= endStamp)[0]
+        indexEnd_ztData = np.where(self.ztData['stamp'] <= endStamp)[0]
 
         index_data = np.intersect1d(indexStart_data, indexEnd_data)
         index_ztData = np.intersect1d(indexStart_ztData, indexEnd_ztData)
@@ -99,7 +180,8 @@ class analysisData():
             np.tile(self.startStamp, (len(index_data),))
         ztData_stamp = ztData_stamp - \
             np.tile(self.startStamp, (len(index_ztData),))
-
+        self.startX = 0.0
+        self.endX = endStamp -  self.startStamp
         for key in self.analysisData.keys():
             analysisData[key] = self.analysisData[key][index_data] - \
                 np.tile(self.analysisDataZeros[key], self.analysisData[key][index_data].shape)
@@ -114,29 +196,58 @@ class analysisData():
         # 开始绘图
         self.fig.clear()
         self.axes = self.fig.add_subplot(111)
+        self.startY = 360.0
+        self.endY = -360.0
         for key in analysisData.keys():
             if key in self.fuData:
                 self.axes.plot(data_stamp,
                                -analysisData[key], label=key)
+                maxy = (-analysisData[key]).max()
+                miny = (-analysisData[key]).min()
             else:
                 self.axes.plot(data_stamp,
                                analysisData[key], label=key)
+                maxy = (analysisData[key]).max()
+                miny = (analysisData[key]).min()
+            self.startY = self.startY if self.startY < miny else miny
+            self.endY = self.endY if self.endY > maxy else maxy
         for key in analysisZtData.keys():
             if key in self.fuData:
                 self.axes.plot(data_stamp,
                                -analysisZtData[key], label=key)
+                maxy = (-analysisZtData[key]).max()
+                miny = (-analysisZtData[key]).min()
             else:
                 self.axes.plot(data_stamp,
                                analysisZtData[key], label=key)
+                maxy = (analysisZtData[key]).max()
+                miny = (analysisZtData[key]).min()
+            self.startY = self.startY if self.startY < miny else miny
+            self.endY = self.endY if self.endY > maxy else maxy
         self.axes.legend()
+        self.drawLine()
         self.canvas.draw()
         self.canvas.flush_events()
         # self.axes.show()
         # plt.show()
-        print(self.startStamp)
+
 
     def onclick(self, event):
-        # print(event)
+  
+        if event.button == 1 and event.dblclick == False:
+            x, y = event.xdata, event.ydata
+            if x is None or y is None:
+                return
+            if abs(x - self.startX) < 0.5:
+                self._ind = 0
+                self.moveFlag = True
+            elif abs(x - self.endX) < 0.5:
+                self._ind = 1
+                self.moveFlag = True
+            else:
+                self._ind = None
+                self.moveFlag = False
+ 
         if event.button == 1 and event.dblclick == True:
             x = event.xdata
             stamp = x + self.startStamp
@@ -153,6 +264,29 @@ class analysisData():
             self.analysis()
             print(self.analysisDataZeros)
             print(self.analysisZtDataZeros)
+    
+    def button_release_callback(self, event):
+        if event.button == 1:
+            self.moveFlag = True
+            self._ind = None
+   
+    def motion_notify_callback(self, event):
+        x,y = event.xdata, event.ydata
+        if not self.moveFlag:
+            return
+        if x is None or y is None:
+            return
+        if self._ind is None:
+            return
+        if self._ind == 0:
+            self.startX = x
+        elif self._ind == 1:
+            self.endX = x
+        self.line1.remove()
+        self.line2.remove()
+        self.drawLine()
+        self.canvas.draw()
+        self.canvas.flush_events()
 
 
 class analysisDialog(QDialog, Ui_Dialog):
@@ -188,6 +322,7 @@ class analysisDialog(QDialog, Ui_Dialog):
         self.pushButton_2.clicked.connect(self.addData)
         self.pushButton.clicked.connect(self.delData)
         self.pushButton_3.clicked.connect(self.addFuData)
+        self.pushButton_4.clicked.connect(self.estimateDelay)
         # 补充：另创建一个实例绘图并显示
         # self.plotother()
 
@@ -200,6 +335,11 @@ class analysisDialog(QDialog, Ui_Dialog):
         # self.figureLayout.removeWidget(self.F.canvas)
         # self.figureLayout.addWidget(self.toolbar)
         # self.figureLayout.addWidget(self.F.canvas)
+
+    def estimateDelay(self):
+        if len(self.selectDatalabels) != len(self.selectZtDatalabels):
+            return
+        self.F.estimateDelay()
 
     def addFuData(self):
         row = self.listWidget_1.currentRow()
