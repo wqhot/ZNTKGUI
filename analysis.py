@@ -20,10 +20,9 @@ class Estimate():
         self.analysisData = analysisData
         self.analysisZtData = analysisZtData
         self.data_stamp = data_stamp
-        res = minimize(fun=self.func, x0=[0.0], method='Nelder-Mead', tol = 1e-10, 
+        self.res = minimize(fun=self.func, x0=[0.0], method='Nelder-Mead', tol = 1e-10, 
                 options={'maxiter':1000, 'gtol': 1e-6, 'disp':True, 
                 'return_all':True, 'eps':0.001, 'initial_simplex':[[0.0],[0.003]]})
-        return res
 
     def func(self, x):
         errors = []
@@ -151,6 +150,9 @@ class analysisData():
             if key in self.fuData:
                 analysisZtData[key] = -analysisZtData[key]
         estimate = Estimate(analysisData, analysisZtData, data_stamp)
+        res = estimate.res
+        self.axes.text(self.startX, self.endY, "test")
+        
 
     def analysis(self):
         # 对齐时间戳，取交集
