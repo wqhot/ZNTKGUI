@@ -20,29 +20,28 @@ class Estimate():
         self.analysisData = analysisData
         self.analysisZtData = analysisZtData
         self.data_stamp = data_stamp
-        res = minimize(fun=self.func, x0=[0.0], method='BFGS',
-                options={'maxiter':1000, 'gtol': 1e-6, 'disp':True, 'return_all':True})
-        print(res)
-        print(self.func([0.0]))
+        res = minimize(fun=self.func, x0=[0.0], method='Nelder-Mead', tol = 1e-10, 
+                options={'maxiter':1000, 'gtol': 1e-6, 'disp':True, 
+                'return_all':True, 'eps':0.001, 'initial_simplex':[[0.0],[0.003]]})
+        return res
 
     def func(self, x):
         errors = []
         delay = x[0]
-        if delay > 0:
-            index = np.where(self.data_stamp > delay)[0]
+        if delay >= 0:
+            index = np.where(self.data_stamp <= self.data_stamp[-1] - delay)[0] # 取前部
+            indexZt = range(len(self.data_stamp) - len(index), len(self.data_stamp), 1) # 取后部
         else:
-            index = np.where(self.data_stamp < self.data_stamp[-1] + delay)[0]
+            index = np.where(self.data_stamp >= -delay)[0] # 取后部
+            indexZt = range(0, len(index), 1) # 取前部
         for key, ztKey in zip(self.analysisData.keys(), self.analysisZtData.keys()):           
             delayAnalysisData = self.analysisData[key][index]
-            delayAnalysisZtData = self.analysisZtData[ztKey][:len(index)]
-            errNorm = self.analysisData[key] - self.analysisZtData[ztKey]
+            delayAnalysisZtData = self.analysisZtData[ztKey][indexZt]
             error = delayAnalysisData - delayAnalysisZtData
-            e = np.average(np.abs(error))
-            eNorm = np.average(np.abs(errNorm))
-            
+            e = np.std(error)
             errors.append(e)
         err = sum(errors) / len(errors)
-        print([delay, err])
+        # print([delay, err, errors])
         return err
 
 class analysisData():
@@ -187,11 +186,11 @@ class analysisData():
                 np.tile(self.analysisDataZeros[key], self.analysisData[key][index_data].shape)
         # 对于zt数据需要插值
         for key in self.analysisZtData.keys():
-            analysisZtData[key] = self.analysisZtData[key][index_ztData] - \
+            temp = self.analysisZtData[key][index_ztData] - \
                 np.tile(self.analysisZtDataZeros[key], self.analysisZtData[key][index_ztData].shape)
-            # analysisZtData[key] = np.interp(data_stamp,
-            #                                      ztData_stamp,
-            #                                      temp)
+            analysisZtData[key] = np.interp(data_stamp,
+                                                 ztData_stamp,
+                                                 temp)
 
         # 开始绘图
         self.fig.clear()
@@ -213,12 +212,12 @@ class analysisData():
             self.endY = self.endY if self.endY > maxy else maxy
         for key in analysisZtData.keys():
             if key in self.fuData:
-                self.axes.plot(ztData_stamp,
+                self.axes.plot(data_stamp,
                                -analysisZtData[key], label=key)
                 maxy = (-analysisZtData[key]).max()
                 miny = (-analysisZtData[key]).min()
             else:
-                self.axes.plot(ztData_stamp,
+                self.axes.plot(data_stamp,
                                analysisZtData[key], label=key)
                 maxy = (analysisZtData[key]).max()
                 miny = (analysisZtData[key]).min()
