@@ -191,7 +191,7 @@ class RecvData():
                             r["EUL_BY_IMU_Y"],
                             r["EUL_BY_IMU_Z"],
                             r["COST_OF_PRE"],
-                            r["COST_OF_CAM"]]
+                            r["COST_OF_IMG"]]
                     f_csv.writerow(line)
 
     def run(self):
@@ -358,6 +358,10 @@ class RecvData():
 
             save_dc["POSE_BY_PRE"] = dc["POSE_BY_PRE"]
             save_dc["STAMP"] = dc["STAMP"]
+
+            save_dc["COST_OF_IMG"] = dc["COST_OF_IMG"]
+            save_dc["COST_OF_PRE"] = dc["COST_OF_PRE"]
+
             self.contsum = self.contsum + 1
             if (self.issend):
                 self.displayDict = dc

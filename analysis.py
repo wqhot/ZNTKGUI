@@ -20,8 +20,8 @@ class Estimate():
         self.analysisData = analysisData
         self.analysisZtData = analysisZtData
         self.data_stamp = data_stamp
-        self.res = minimize(fun=self.func, x0=[0.0], method='Nelder-Mead', tol = 1e-10, 
-                options={'maxiter':1000, 'gtol': 1e-6, 'disp':True, 
+        self.res = minimize(fun=self.func, x0=[0.0], method='Nelder-Mead', 
+                options={'maxiter':1000, 'disp':True, 
                 'return_all':True, 'eps':0.001, 'initial_simplex':[[0.0],[0.003]]})
 
     def func(self, x):
@@ -46,9 +46,15 @@ class Estimate():
 class analysisData():
     def __init__(self, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
+        self.figHist = Figure(figsize=(width, height), dpi=dpi)
         self.canvas = FigureCanvas(self.fig)
+        self.canvasHist = FigureCanvas(self.figHist)
         # self.toolbar = NavigationToolbar(self.canvas, self)
         self.axes = self.fig.add_subplot(111)
+        self.axesHist1 = self.figHist.add_subplot(121)
+        self.axesHist1.set_title("cost of eul")
+        self.axesHist2 = self.figHist.add_subplot(122)
+        self.axesHist2.set_title("cost of cam")
         self.data = {}
         self.ztData = {}
         self.analysisData = {}
@@ -71,10 +77,28 @@ class analysisData():
         self.canvas.mpl_connect('button_release_event', self.button_release_callback)
         self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
     
+    def drawHist(self):
+        if 'cost_of_eul' in self.data.keys():
+            self.axesHist1.hist(x=self.data['cost_of_eul'], orientation='horizontal', histtype='stepfilled')
+            avg = np.average(self.data['cost_of_eul'])
+            std = np.std(self.data['cost_of_eul'])
+            s = 'avg: %.2fms \nstd: %.2f' % (avg, std) 
+            maxx = self.data['cost_of_eul'].max()
+            self.axesHist1.text(0.0, maxx - 0.2, s)
+        if 'cost_of_cam' in self.data.keys():
+            self.axesHist2.hist(x=self.data['cost_of_cam'], orientation='horizontal', histtype='stepfilled')
+            avg = np.average(self.data['cost_of_cam'])
+            std = np.std(self.data['cost_of_cam'])
+            s = 'avg: %.2fms \nstd: %.2f' % (avg, std) 
+            maxx = self.data['cost_of_cam'].max()
+            self.axesHist2.text(0.0, maxx - 0.15, s)
+        self.canvasHist.draw()
+        self.canvasHist.flush_events()
+
     def drawLine(self):
         x1 = np.tile(self.startX, 100)
         x2 = np.tile(self.endX, 100)
-        y1 = np.arange(self.startY, self.endY, (self.endY - self.startY) / 100)
+        y1 = np.linspace(self.startY, self.endY, 100)
         self.line1, = self.axes.plot(x1, y1, marker='3', color='k')
         self.line2, = self.axes.plot(x2, y1, marker='4', color='k')
     
@@ -88,6 +112,7 @@ class analysisData():
         for t in title:
             self.data[t] = arr[:, col]
             col = col + 1
+        self.drawHist()
         return title
 
     def importZtData(self, fileName):
@@ -303,7 +328,7 @@ class analysisDialog(QDialog, Ui_Dialog):
         self.selectZtDatalabels = []
         self.fuDatalabels = []
         # 第五步：定义MyFigure类的一个实例
-        self.F = analysisData(width=3, height=2, dpi=100)
+        self.F = analysisData(width=3, height=2, dpi=100)      
         # self.F.importData('./history/2020_06_18_13_44_04(fy1).csv')
         # self.F.importZtData('./history/2020-06-16-15_51_55_zt(fy).csv')
         # datacols1 = ['eul_x', 'cam_x', 'imu_x']
@@ -315,7 +340,7 @@ class analysisDialog(QDialog, Ui_Dialog):
         self.toolbar = NavigationToolbar(self.F.canvas, self)
         self.figureLayout.addWidget(self.toolbar)
         self.figureLayout.addWidget(self.F.canvas)
-
+        self.histLayout.addWidget(self.F.canvasHist)
         self.pushButton_opendata.clicked.connect(self.openData)
         self.pushButton_openztdata.clicked.connect(self.openZtData)
         self.listWidget_1.doubleClicked.connect(self.addData)
@@ -341,9 +366,10 @@ class analysisDialog(QDialog, Ui_Dialog):
         if len(self.selectDatalabels) != len(self.selectZtDatalabels):
             return
         res = self.F.estimateDelay()
+        print(res)
         std = res.fun
         delay = res.x[0]
-        self.doubleSpinBox.setValue(std)
+        self.doubleSpinBox_2.setValue(std)
         self.doubleSpinBox.setValue(delay)
 
     def addFuData(self):
@@ -419,7 +445,8 @@ class analysisDialog(QDialog, Ui_Dialog):
         labels.extend(self.ztdatalabels)
         self.listWidget_1.clear()
         for item in labels:
-            self.listWidget_1.addItem(item)
+            if item not in ['cost_of_eul', 'cost_of_cam']:
+                self.listWidget_1.addItem(item)
         self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
 
     def openZtData(self):
@@ -437,7 +464,8 @@ class analysisDialog(QDialog, Ui_Dialog):
         labels.extend(self.ztdatalabels)
         self.listWidget_1.clear()
         for item in labels:
-            self.listWidget_1.addItem(item)
+            if item not in ['cost_of_eul', 'cost_of_cam']:
+                self.listWidget_1.addItem(item)
         self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
 
 

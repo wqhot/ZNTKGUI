@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1300</width>
-    <height>784</height>
+    <width>1660</width>
+    <height>758</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -216,23 +216,47 @@
         <layout class="QHBoxLayout" name="horizontalLayout_5">
          <item>
           <widget class="QLabel" name="label_3">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>估计延时</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+          <widget class="QDoubleSpinBox" name="doubleSpinBox">
+           <property name="decimals">
+            <number>5</number>
+           </property>
+          </widget>
          </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
          <item>
           <widget class="QLabel" name="label_4">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>误差</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
+           <property name="decimals">
+            <number>5</number>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>
@@ -255,6 +279,27 @@
        <layout class="QVBoxLayout" name="verticalLayout_8">
         <item>
          <layout class="QVBoxLayout" name="figureLayout"/>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="frame_2">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>5</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <layout class="QVBoxLayout" name="histLayout"/>
         </item>
        </layout>
       </widget>
