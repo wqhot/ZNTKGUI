@@ -26,12 +26,13 @@ class RecvData():
     __DT_OF_FRAME = 112
     __THRESOLD = 120
     __COST_OF_IMG = 124
-    __STAMP = 132
-    __ANGLE_BY_IMU = 140
-    __LENGTH = 181
-    __OLDLENGTH = 157
-    __IMAGE_FEATURE_POINT_X = 156
-    __IMAGE_FEATURE_POINT_Y = 160
+    __COST_OF_PRE = 132
+    __STAMP = 140
+    __ANGLE_BY_IMU = 148
+    __LENGTH = 189
+    __OLDLENGTH = 165
+    __IMAGE_FEATURE_POINT_X = 164
+    __IMAGE_FEATURE_POINT_Y = 168
 
     def __init__(self):
         self.mutex = threading.Lock()
@@ -157,7 +158,7 @@ class RecvData():
     def save(self):
         headers = ['stamp', 'eul_x', 'eul_y', 'eul_z', 't_x', 't_y', 't_z',
                    'cam_x', 'cam_y', 'cam_z', 'updt_x', 'updt_y', 'updt_z',
-                   'imu_x', 'imu_y', 'imu_z']
+                   'imu_x', 'imu_y', 'imu_z', 'cost_of_eul', 'cost_of_cam']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
@@ -188,7 +189,9 @@ class RecvData():
                             r["EUL_BY_UPDATE_Z"],
                             r["EUL_BY_IMU_X"],
                             r["EUL_BY_IMU_Y"],
-                            r["EUL_BY_IMU_Z"]]
+                            r["EUL_BY_IMU_Z"],
+                            r["COST_OF_PRE"],
+                            r["COST_OF_CAM"]]
                     f_csv.writerow(line)
 
     def run(self):
@@ -302,6 +305,9 @@ class RecvData():
 
             dc["COST_OF_IMG"] = struct.unpack('d', bytes(
                 data[self.__COST_OF_IMG:self.__COST_OF_IMG+8]))[0]
+
+            dc["COST_OF_PRE"] = struct.unpack('d', bytes(
+                data[self.__COST_OF_PRE:self.__COST_OF_PRE+8]))[0]    
 
             # dc["STAMP"] = float(time.time())
             dc["STAMP"] = struct.unpack('d', bytes(
