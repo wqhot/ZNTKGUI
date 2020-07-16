@@ -151,7 +151,7 @@ class analysisData():
                 analysisZtData[key] = -analysisZtData[key]
         estimate = Estimate(analysisData, analysisZtData, data_stamp)
         res = estimate.res
-        self.axes.text(self.startX, self.endY, "test")
+        return res
         
 
     def analysis(self):
@@ -340,7 +340,11 @@ class analysisDialog(QDialog, Ui_Dialog):
     def estimateDelay(self):
         if len(self.selectDatalabels) != len(self.selectZtDatalabels):
             return
-        self.F.estimateDelay()
+        res = self.F.estimateDelay()
+        std = res.fun
+        delay = res.x[0]
+        self.doubleSpinBox.setValue(std)
+        self.doubleSpinBox.setValue(delay)
 
     def addFuData(self):
         row = self.listWidget_1.currentRow()
