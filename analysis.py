@@ -210,14 +210,44 @@ class analysisData():
         self.fuData = labels
 
     def estimateDelay(self):
-        indexStart_data = np.where(self.data['stamp'] >= self.startX + self.startStamp)[0]
-        indexStart_ztData = np.where(self.ztData['stamp'] >= self.startX + self.startStamp)[0]
-        indexEnd_data = np.where(self.data['stamp'] <= self.endX + self.startStamp)[0]
-        indexEnd_ztData = np.where(self.ztData['stamp'] <= self.endX + self.startStamp)[0]
+        data1 = []
+        data2 = []
+        analysisdata1 = []
+        analysisdata2 = []
+        analysisdatazero1 = []
+        analysisdatazero2 = []
+        if len(self.analysisData.keys()) == 0 and len(self.analysisZtData.keys()) == len(self.analysisZxData.keys()):
+            data1 = self.zxData
+            data2 = self.ztData
+            analysisdata1 = self.analysisZxData
+            analysisdata2 = self.analysisZtData
+            analysisdatazero1 = self.analysisZxDataZeros
+            analysisdatazero2 = self.analysisZtDataZeros
+        elif len(self.analysisZtData.keys()) == 0 and len(self.analysisData.keys()) == len(self.analysisZxData.keys()):
+            data1 = self.zxData
+            data2 = self.data
+            analysisdata1 = self.analysisZxData
+            analysisdata2 = self.analysisData
+            analysisdatazero1 = self.analysisZxDataZeros
+            analysisdatazero2 = self.analysisDataZeros
+        elif len(self.analysisZxData.keys()) == 0 and len(self.analysisData.keys()) == len(self.analysisZtData.keys()):
+            data1 = self.data
+            data2 = self.ztData
+            analysisdata1 = self.analysisData
+            analysisdata2 = self.analysisZtData
+            analysisdatazero1 = self.analysisDataZeros
+            analysisdatazero2 = self.analysisZtDataZeros
+        else:
+            return None
+        indexStart_data = np.where(data1['stamp'] >= self.startX + self.startStamp)[0]
+        indexStart_ztData = np.where(data2['stamp'] >= self.startX + self.startStamp)[0]
+        
+        indexEnd_data = np.where(data1['stamp'] <= self.endX + self.startStamp)[0]
+        indexEnd_ztData = np.where(data2['stamp'] <= self.endX + self.startStamp)[0]
         index_data = np.intersect1d(indexStart_data, indexEnd_data)
         index_ztData = np.intersect1d(indexStart_ztData, indexEnd_ztData)
-        data_stamp = self.data['stamp'][index_data]
-        ztData_stamp = self.ztData['stamp'][index_ztData]
+        data_stamp = data1['stamp'][index_data]
+        ztData_stamp = data2['stamp'][index_ztData]
         analysisData = {}
         analysisZtData = {}
         # 时间戳减去初始值
@@ -225,15 +255,15 @@ class analysisData():
             np.tile(self.startStamp, (len(index_data),))
         ztData_stamp = ztData_stamp - \
             np.tile(self.startStamp, (len(index_ztData),))
-        for key in self.analysisData.keys():
-            analysisData[key] = self.analysisData[key][index_data] - \
-                np.tile(self.analysisDataZeros[key], self.analysisData[key][index_data].shape)
+        for key in analysisdata1.keys():
+            analysisData[key] = analysisdata1[key][index_data] - \
+                np.tile(analysisdatazero1[key], analysisdata1[key][index_data].shape)
             if key in self.fuData:
                 analysisData[key] = -analysisData[key]
         # 对于zt数据需要插值
-        for key in self.analysisZtData.keys():
-            temp = self.analysisZtData[key][index_ztData] - \
-                np.tile(self.analysisZtDataZeros[key], self.analysisZtData[key][index_ztData].shape)
+        for key in analysisdata2.keys():
+            temp = analysisdata2[key][index_ztData] - \
+                np.tile(analysisdatazero2[key], analysisdata2[key][index_ztData].shape)
             analysisZtData[key] = np.interp(data_stamp,
                                                  ztData_stamp,
                                                  temp)
@@ -390,17 +420,18 @@ class analysisData():
                             np.tile(stamp, self.data['stamp'].shape))
             delta2 = np.abs(
                 self.ztData['stamp'] - np.tile(stamp, self.ztData['stamp'].shape))
-            delta3 = np.abs(
-                self.zxData['stamp'] - np.tile(stamp, self.zxData['stamp'].shape))
             index1 = np.argmin(delta1)
-            index2 = np.argmin(delta2)
-            index3 = np.argmin(delta3)
+            index2 = np.argmin(delta2)           
             for key in self.data.keys():
                 self.analysisDataZeros[key] = self.data[key][index1]
             for key in self.ztData.keys():
                 self.analysisZtDataZeros[key] = self.ztData[key][index2]
-            for key in self.zxData.keys():
-                self.analysisZxDataZeros[key] = self.zxData[key][index3]
+            if 'stamp' in self.zxData.keys():
+                delta3 = np.abs(
+                    self.zxData['stamp'] - np.tile(stamp, self.zxData['stamp'].shape))
+                index3 = np.argmin(delta3)
+                for key in self.zxData.keys():
+                    self.analysisZxDataZeros[key] = self.zxData[key][index3]          
             self.analysis()
             # print(self.analysisDataZeros)
             # print(self.analysisZtDataZeros)
@@ -497,9 +528,9 @@ class analysisDialog(QDialog, Ui_Dialog):
         # self.figureLayout.addWidget(self.F.canvas)
 
     def estimateDelay(self):
-        if len(self.selectDatalabels) != len(self.selectZtDatalabels):
-            return
         res = self.F.estimateDelay()
+        if res is None:
+            return
         print(res)
         std = res.fun
         delay = res.x[0]

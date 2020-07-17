@@ -170,6 +170,7 @@ class Ui_Dialog(object):
         self.horizontalLayout_5.addWidget(self.label_3)
         self.doubleSpinBox = QtWidgets.QDoubleSpinBox(Dialog)
         self.doubleSpinBox.setDecimals(5)
+        self.doubleSpinBox.setMinimum(-99.0)
         self.doubleSpinBox.setObjectName("doubleSpinBox")
         self.horizontalLayout_5.addWidget(self.doubleSpinBox)
         self.verticalLayout.addLayout(self.horizontalLayout_5)
