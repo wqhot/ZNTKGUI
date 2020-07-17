@@ -12,6 +12,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import numpy as np
 import matplotlib
+import math
 from scipy.optimize import minimize
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 
@@ -77,20 +78,32 @@ class analysisData():
         self.canvas.mpl_connect('button_release_event', self.button_release_callback)
         self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
     
-    def drawHist(self):
+    def drawHist(self, emin = None, emax = None, cmin = None, cmax = None):
         if 'cost_of_eul' in self.data.keys():
-            self.axesHist1.hist(x=self.data['cost_of_eul'], orientation='horizontal', histtype='stepfilled')
+            self.axesHist1.clear()
+            if emin is None or emax is None:
+                self.axesHist1.hist(x=self.data['cost_of_eul'], bins=4000, orientation='horizontal', histtype='step')
+            else:
+                if emin > emax:
+                    emax = emin
+                self.axesHist1.hist(x=self.data['cost_of_eul'], bins=4000, range=(emin, emax), orientation='horizontal', histtype='step')
             avg = np.average(self.data['cost_of_eul'])
             std = np.std(self.data['cost_of_eul'])
             s = 'avg: %.2fms \nstd: %.2f' % (avg, std) 
-            maxx = self.data['cost_of_eul'].max()
+            maxx = self.data['cost_of_eul'].max() if emax is None else emax
             self.axesHist1.text(0.0, maxx - 0.2, s)
         if 'cost_of_cam' in self.data.keys():
-            self.axesHist2.hist(x=self.data['cost_of_cam'], orientation='horizontal', histtype='stepfilled')
+            self.axesHist2.clear()
+            if cmin is None or cmax is None:
+                self.axesHist2.hist(x=self.data['cost_of_cam'], bins=4000, orientation='horizontal', histtype='step')
+            else:
+                if cmin > cmax:
+                    cmax = cmin
+                self.axesHist2.hist(x=self.data['cost_of_cam'], bins=4000, range=(cmin, cmax), orientation='horizontal', histtype='step')
             avg = np.average(self.data['cost_of_cam'])
             std = np.std(self.data['cost_of_cam'])
             s = 'avg: %.2fms \nstd: %.2f' % (avg, std) 
-            maxx = self.data['cost_of_cam'].max()
+            maxx = self.data['cost_of_cam'].max() if cmax is None else cmax
             self.axesHist2.text(0.0, maxx - 0.15, s)
         self.canvasHist.draw()
         self.canvasHist.flush_events()
@@ -102,6 +115,15 @@ class analysisData():
         self.line1, = self.axes.plot(x1, y1, marker='3', color='k')
         self.line2, = self.axes.plot(x2, y1, marker='4', color='k')
     
+    # 返回pre cam的延时范围
+    def getBoundary(self):
+        if 'cost_of_eul' in self.data.keys() and 'cost_of_cam' in self.data.keys():
+            return [self.data['cost_of_eul'].min(), self.data['cost_of_eul'].max(), 
+                    self.data['cost_of_cam'].min(), self.data['cost_of_cam'].max()]
+        else:
+            return [0, 0, 0, 0]
+
+
     def importData(self, fileName):
         title = []
         with open(fileName, newline='') as f:
@@ -349,8 +371,24 @@ class analysisDialog(QDialog, Ui_Dialog):
         self.pushButton.clicked.connect(self.delData)
         self.pushButton_3.clicked.connect(self.addFuData)
         self.pushButton_4.clicked.connect(self.estimateDelay)
+        self.horizontalSlider.valueChanged.connect(self.eulBaundaryChange)
+        self.horizontalSlider_2.valueChanged.connect(self.camBaundaryChange)
         # 补充：另创建一个实例绘图并显示
         # self.plotother()
+
+    def eulBaundaryChange(self):
+        self.lineEdit_3.setText(str(self.horizontalSlider.value()))
+        [emin, emax, cmin, cmax] = self.F.getBoundary()
+        emax = self.horizontalSlider.value()
+        cmax = self.horizontalSlider_2.value()
+        self.F.drawHist(emin = emin, emax = emax, cmin = cmin, cmax = cmax)
+
+    def camBaundaryChange(self):
+        self.lineEdit_4.setText(str(self.horizontalSlider_2.value()))
+        [emin, emax, cmin, cmax] = self.F.getBoundary()
+        emax = self.horizontalSlider.value()
+        cmax = self.horizontalSlider_2.value()
+        self.F.drawHist(emin = emin, emax = emax, cmin = cmin, cmax = cmax)
 
     def refresh(self):
         self.F.selectDataCols(self.selectDatalabels)
@@ -448,6 +486,15 @@ class analysisDialog(QDialog, Ui_Dialog):
             if item not in ['cost_of_eul', 'cost_of_cam']:
                 self.listWidget_1.addItem(item)
         self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+        [emin, emax, cmin, cmax] = self.F.getBoundary()
+        self.horizontalSlider.setMinimum(math.floor(emin))
+        self.horizontalSlider.setMaximum(math.ceil(emax))
+        self.horizontalSlider.setValue(math.ceil(emax))
+        self.lineEdit_3.setText(str(math.ceil(emax)))
+        self.horizontalSlider_2.setMinimum(math.floor(cmin))
+        self.horizontalSlider_2.setMaximum(math.ceil(cmax))
+        self.horizontalSlider_2.setValue(math.ceil(cmax))
+        self.lineEdit_4.setText(str(math.ceil(cmax)))
 
     def openZtData(self):
         directory = QFileDialog.getOpenFileName(self,
