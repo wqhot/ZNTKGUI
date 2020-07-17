@@ -73,6 +73,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.setupUi(self)
         self.lsts = {}
         self.tk_lsts = {}
+        self.zx_lsts = {}
         index = 0
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
@@ -92,6 +93,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         for key in TK_DICT_NAME_LIST:
             self.tk_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
             self.last_tk_dct[key] = TK_DICT_TYPE_LIST[index]
+            index = index + 1
+        index = 0
+        self.last_zx_dct = {}
+        for key in TK_DICT_NAME_LIST:
+            self.zx_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
+            self.last_zx_dct[key] = TK_DICT_TYPE_LIST[index]
             index = index + 1
         a_2 = pg.AxisItem("left")
         a_3 = pg.AxisItem("right")
@@ -182,6 +189,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p4_x.setPen((0, 0, 255))
         self.p5_x = self.pw_x.plot(_callSync='off')
         self.p5_x.setPen((128, 128, 128))
+        self.p6_x = self.pw_x.plot(_callSync='off')
+        self.p6_x.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
 
         self.p1_y = self.pw_y.plot(_callSync='off')
         self.p1_y.setPen((255, 0, 0))
@@ -193,6 +202,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p4_y.setPen((0, 0, 255))
         self.p5_y = self.pw_y.plot(_callSync='off')
         self.p5_y.setPen((128, 128, 128))
+        self.p6_y = self.pw_y.plot(_callSync='off')
+        self.p6_y.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
 
         self.p1_z = self.pw_z.plot(_callSync='off')
         self.p1_z.setPen((255, 0, 0))
@@ -204,6 +215,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p4_z.setPen((0, 0, 255))
         self.p5_z = pg.PlotDataItem()
         self.p5_z.setPen((128, 128, 128))
+        self.p6_z = self.pw_z.plot(_callSync='off')
+        self.p6_z.setPen((255, 255, 0))
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
@@ -341,7 +354,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.stop = False
 
         self.timer = QTimer()
-        self.ztresave =  threading.Event()
+        self.ztresave = threading.Event()
+        self.zxresave = threading.Event()
         self.camera.add_pose([0, 0, 0], [0.0, 0.0, 0.0, 1.0])
         # self.tab_2 = QtWidgets.QWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal())
@@ -426,7 +440,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.ssh.sendCommand('x')
         self.recv.close_start()
         self.recvImu.pause = True
+        self.recvZxzt.pause = True
         self.ztresave.set()
+        self.zxresave.set()
         self.toolBtnReset.setEnabled(False)
         self.toolBtnClose.setEnabled(False)
         self.toolBtnPlay.setEnabled(True)
@@ -451,6 +467,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def normalRun(self):
         self.recvImu.pause = False
+        self.recvZxzt.pause = False
         self.ssh.sendCommand(
             './zntk_core')
         self.toolBtnReset.setEnabled(True)
@@ -541,7 +558,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def startRecv(self):
         if not hasattr(self, "recv"):
             self.recv = RecvData()
-            self.recvImu = RecvIMU(usesock=True, save=True, event=self.ztresave)
+            self.recvImu = RecvIMU(usesock=True, socketPort=5580, saveName='_cl', save=True, event=self.ztresave)
+            self.recvZxzt = RecvIMU(usesock=True, socketPort=5581, saveName='_zx', save=True, event=self.zxresave)
             # self.recvImu = RecvIMU(save=False)
             # self.recvThread = threading.Thread(target=self.update)
             # self.recvThread.start()
@@ -553,6 +571,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         elif self.recv.issend:
             self.recv.pause()
             self.recvImu.pause=True
+            self.recvZxzt.pause=True
             self.toolBtnStart.setIcon(QIcon('./res/播放.png'))
             self.toolBtnStart.setText('恢复')
             # self.pushButton.setStyleSheet('QWidget{background-color:%s}'%color.name())
@@ -560,6 +579,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             self.recv.start()
             self.recvImu.pause=False
+            self.recvZxzt.pause=False
             self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
             self.toolBtnStart.setText('暂停')
 
@@ -593,7 +613,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.p4_x.setData(x=x, y=y4)
         y5 = self.tk_lsts["x_ang"]
         self.p5_x.setData(x=x, y=y5)
-
+        y6 = self.zx_lsts["x_ang"]
+        self.p6_x.setData(x=x, y=y6)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Y"]
@@ -609,6 +630,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.p4_y.setData(x=x, y=y4)
         y5 = self.tk_lsts["z_ang"]
         self.p5_y.setData(x=x, y=y5)
+        y6 = self.zx_lsts["z_ang"]
+        self.p6_y.setData(x=x, y=y6)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Z"]
@@ -631,6 +654,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             # 接收数据
             data = self.recv.getData()
             imudata = self.recvImu.getIMUdata()
+            zxztdata = self.recvZxzt.getIMUdata()
             if data is not None and imudata is not None:
                 for key in DICT_NAME_LIST:
                     self.lsts[key].append(data[key])
@@ -668,6 +692,13 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             else:
                 return
             
+            if zxztdata is not None:
+                for key in TK_DICT_NAME_LIST:
+                    self.zx_lsts[key].append(zxztdata[key])
+                    while len(self.zx_lsts[key]) > TIME_LENGTH:
+                        self.zx_lsts[key].pop(0)
+                self.last_zx_dct = zxztdata.copy()
+
             if data is not None:
                 # 绘图类
                 image = np.zeros((480, 640, 3), np.uint8)
@@ -730,6 +761,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if hasattr(self, "recv"):
             self.recv.stop()
             self.recvImu.isRecv = False
+            self.recvZxzt.isRecv = False
         if self.timer.isActive():
             self.timer.stop()
         self.ssh.isRun = False

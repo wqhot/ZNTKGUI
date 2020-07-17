@@ -20,11 +20,12 @@ class RecvIMU():
     __STAMP = 10
     __BUF_LENGTH = 19
 
-    def __init__(self, usesock=False, port=None, portName='',dir_name='./history/', event=None, save=True):
+    def __init__(self, usesock=False, port=None, socketPort=5580, saveName='', portName='',dir_name='./history/', event=None, save=True):
         # self.recvTh
         self.isRecv = True
         self.isSave = save
         self.pause = True
+        self.saveName = saveName
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
         self.dir_name = dir_name
@@ -33,7 +34,7 @@ class RecvIMU():
         
         if self.usesock:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.sock.bind(("0.0.0.0", 5580))
+            self.sock.bind(("0.0.0.0", socketPort))
         else:
             self.sock = None
         if event is None:
@@ -61,10 +62,10 @@ class RecvIMU():
         return r
 
     def save(self):
-        headers = ['stamp', 'x_ang', 'z_ang']
+        headers = ['stamp', 'x_ang' + self.saveName, 'z_ang' + self.saveName]
         while self.isRecv:
             csv_name = './history/' + \
-                str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
+                str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu' + self.saveName + '.csv'
             with open(csv_name, 'w') as f:
                 f_csv = csv.writer(f)
                 f_csv.writerow(headers)
