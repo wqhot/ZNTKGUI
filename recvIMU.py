@@ -2,6 +2,7 @@
 import sys
 import serial
 import threading
+import socket
 import queue
 import struct
 import math
@@ -15,27 +16,38 @@ class RecvIMU():
     __HEAD1 = 0
     __HEAD2 = 1
     __X_ANG = 2
-    __Z_ANG = 5
-    __BUF_LENGTH = 11
+    __Z_ANG = 6
+    __STAMP = 10
+    __BUF_LENGTH = 19
 
-    def __init__(self, port=None, portName='',dir_name='./history/', event=None, save=True):
+    def __init__(self, usesock=False, port=None, socketPort=5580, saveName='', portName='',dir_name='./history/', event=None, save=True):
         # self.recvTh
         self.isRecv = True
         self.isSave = save
-        self.pause = False
+        self.pause = True
+        self.saveName = saveName
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
         self.dir_name = dir_name
+        self.recvData = None
+        self.usesock = usesock
+        
+        if self.usesock:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.bind(("0.0.0.0", socketPort))
+        else:
+            self.sock = None
         if event is None:
             self.event = threading.Event()
         else:
             self.event = event
-        if port is None and portName == '':
+        if port is None and portName == '' and not self.usesock:
             return
         if port is not None:
             portName = port.device
-        self.serial = serial.Serial(
-            port=portName, baudrate=230400, timeout=0.5)
+        if not self.usesock:
+            self.serial = serial.Serial(
+                port=portName, baudrate=230400, timeout=0.5)
         self.th = threading.Thread(target=self.recv, daemon=True)
         self.th.start()
         self.th_2 = threading.Thread(target=self.save, daemon=True)
@@ -50,18 +62,14 @@ class RecvIMU():
         return r
 
     def save(self):
-        index = 1
+        headers = ['stamp', 'x_ang' + self.saveName, 'z_ang' + self.saveName]
         while self.isRecv:
-            headers = ['stamp', 'freq', 'amp', 'gyr', 'orthogonal']
-            if self.dir_name == './history/':
-                csv_name = self.dir_name + \
-                    str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu.csv'
-            else:
-                csv_name = self.dir_name + 'imu_' + str(index) + '.csv'
+            csv_name = './history/' + \
+                str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '_imu' + self.saveName + '.csv'
             with open(csv_name, 'w') as f:
                 f_csv = csv.writer(f)
                 f_csv.writerow(headers)
-                while self.isRecv:
+                while self.isSave:
                     r = None
                     if self.cond.acquire():
                         if self.que.empty():
@@ -72,24 +80,24 @@ class RecvIMU():
                         self.cond.release()
                     if r is not None:
                         line = [r["stamp"],
-                                r["freq"],
-                                r["amp"],
-                                r["gyr"],
-                                r["ortgnl"]]
+                                r["x_ang"],
+                                r["z_ang"]]
                         f_csv.writerow(line)
                     if self.event.is_set():
                         print("创建新文件")
                         self.event.clear()
                         break
-            index += 1
 
     def recv(self):
         remainLength = self.__BUF_LENGTH
         buffList = []
         while self.isRecv:
-            buff = self.serial.read(remainLength)
+            if self.usesock:
+                buff = self.sock.recv(remainLength)
+            else:
+                buff = self.serial.read(remainLength)
             if len(buff) == 0:
-                continue
+                continue           
             remainLength = len(buff)
             buffArray = bytearray(buff)
             # 找帧头
@@ -112,28 +120,30 @@ class RecvIMU():
             if len(buffList) == self.__BUF_LENGTH:
                 # check sum
                 sum = 0
-                for bt in buffList[2:-1]:
+                for bt in buffList[:-1]:
                     sum = (sum + bt) % 256
                 if sum == buffList[-1]:
                     dc = {}
                     # hardcode...
-                    x_ang = ((buffList[self.__X_ANG + 2] << 16) if buffList[self.__X_ANG + 2] < 0x7f else ((buffList[self.__X_ANG + 2] - 0xff) << 16) +
-                            (buffList[self.__X_ANG + 1] << 8) +
-                            (buffList[self.__X_ANG + 0] << 0)) * 0.0001
-                    z_ang = ((buffList[self.__Z_ANG + 2] << 16) if buffList[self.__Z_ANG + 2] < 0x7f else ((buffList[self.__Z_ANG + 2] - 0xff) << 16) +
-                            (buffList[self.__Z_ANG + 1] << 8) +
-                            (buffList[self.__Z_ANG + 0] << 0)) * 0.0001
-                    dc["stamp"] = float(time.time())
+                    x_ang = struct.unpack('f', bytes(
+                            buffList[self.__X_ANG:self.__X_ANG+4]))[0]
+                    z_ang = struct.unpack('f', bytes(
+                            buffList[self.__Z_ANG:self.__Z_ANG+4]))[0]
+                    stamp = struct.unpack('d', bytes(
+                            buffList[self.__STAMP:self.__STAMP+8]))[0]
+                    dc["stamp"] = stamp
                     dc["x_ang"] = x_ang
                     dc["z_ang"] = z_ang
-                    # print(dc)
+                    # print(buffList[self.__Z_ANG:self.__Z_ANG+4], end='')
+                    # print(" " + str(dc["z_ang"]))
                     if not self.pause:
                         self.recvData = dc
                     if self.cond.acquire():
-                        if (self.isRecv and self.isSave):
+                        if (self.isRecv and self.isSave and not self.pause):
                             self.que.put(dc)
                             self.cond.notify_all()
                         self.cond.release()
                 else:
                     print("checkerror")
+                buffList = []
                     

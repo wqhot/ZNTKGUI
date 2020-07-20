@@ -25,7 +25,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
     progessSignal = pyqtSignal(int, int)
     
     def __init__(self):
-        super().__init__()
+        super(ztUsage, self).__init__()
         self.lst = []
         self.setupUi(self)
         self.pushButton.setStyleSheet("QPushButton{border-image: url(res/添加.png)}"

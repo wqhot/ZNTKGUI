@@ -53,6 +53,7 @@ class sshCtl(threading.Thread):
                 recv = self.shell.recv(512).decode()
                 if recv:
                     print(recv, end="")
+                    # pass
                 else:
                     continue
             except:
