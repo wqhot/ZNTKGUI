@@ -400,8 +400,49 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         index = 0
         for key in TK_DICT_NAME_LIST:
             self.tk_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
+            self.zx_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
             index = index + 1
-        self.reflash()
+        x = list(range(1 - TIME_LENGTH, 1))
+        y1 = self.lsts["DT_BY_CAM"]
+        self.p1.setData(x=x, y=y1)
+        y2 = self.lsts["DT_BY_UPDATE"]
+        self.p2.setData(x=x, y=y2)
+        y3 = self.lsts["DT_BY_PRE"]            
+        self.p3.setData(x=x, y=y3)
+        # 角度类
+        y1 = self.lsts["EUL_BY_CAM_X"]
+        self.p1_x.setData(x=x, y=y1)
+        y2 = self.lsts["EUL_BY_UPDATE_X"]
+        self.p2_x.setData(x=x, y=y2)
+        y3 = self.lsts["EUL_BY_PRE_X"]            
+        self.p3_x.setData(x=x, y=y3)
+        y4 = self.lsts["EUL_BY_IMU_X"]            
+        self.p4_x.setData(x=x, y=y4)
+        y5 = self.tk_lsts["x_ang"]
+        self.p5_x.setData(x=x, y=y5)
+        y6 = self.zx_lsts["x_ang"]
+        self.p6_x.setData(x=x, y=y6)
+        y1 = self.lsts["EUL_BY_CAM_Y"]
+        self.p1_y.setData(x=x, y=y1)
+        y2 = self.lsts["EUL_BY_UPDATE_Y"]
+        self.p2_y.setData(x=x, y=y2)
+        y3 = self.lsts["EUL_BY_PRE_Y"]            
+        self.p3_y.setData(x=x, y=y3)
+        y4 = self.lsts["EUL_BY_IMU_Y"]            
+        self.p4_y.setData(x=x, y=y4)
+        y5 = self.tk_lsts["z_ang"]
+        self.p5_y.setData(x=x, y=y5)
+        y6 = self.zx_lsts["z_ang"]
+        self.p6_y.setData(x=x, y=y6)
+
+        y1 = self.lsts["EUL_BY_CAM_Z"]
+        self.p1_z.setData(x=x, y=y1)
+        y2 = self.lsts["EUL_BY_UPDATE_Z"]
+        self.p2_z.setData(x=x, y=y2)
+        y3 = self.lsts["EUL_BY_PRE_Z"]            
+        self.p3_z.setData(x=x, y=y3)
+        y4 = self.lsts["EUL_BY_IMU_Z"]            
+        self.p4_z.setData(x=x, y=y4)
 
     def toggleRed(self):
         self.redON = not(self.redON)
