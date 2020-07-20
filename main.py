@@ -46,7 +46,7 @@ import queue
 
 TK_DICT_NAME_LIST = ["x_ang", "z_ang"]
 TK_DICT_TYPE_LIST = [0.0, 0]
-DICT_NAME_LIST = ["POSE_BY_CAM", "ANGLE_BY_CAM", "DT_BY_CAM",
+DICT_NAME_LIST = ["POSE_BY_CAM",  "ANGLE_BY_CAM", "DT_BY_CAM",
                   "POSE_BY_UPDATE", "ANGLE_BY_UPDATE", "DT_BY_UPDATE",
                   "POSE_BY_PRE", "ANGLE_BY_PRE", "DT_BY_PRE",
                   "DT_OF_FRAME", "THRESOLD", "COST_OF_IMG", "COST_OF_PRE",
@@ -84,21 +84,27 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                           password='shipei',
                           port=2222)
         self.last_dct = {}
+        self.zero_lsts = {}
         for key in DICT_NAME_LIST:
             self.lsts[key] = [DICT_TYPE_LIST[index]] * TIME_LENGTH
             self.last_dct[key] = DICT_TYPE_LIST[index]
+            self.zero_lsts[key] = DICT_TYPE_LIST[index]
             index = index + 1
         index = 0
         self.last_tk_dct = {}
+        self.zero_tk_dct = {}
         for key in TK_DICT_NAME_LIST:
             self.tk_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
             self.last_tk_dct[key] = TK_DICT_TYPE_LIST[index]
+            self.zero_tk_dct[key] = TK_DICT_TYPE_LIST[index]
             index = index + 1
         index = 0
         self.last_zx_dct = {}
+        self.zero_zx_dct = {}
         for key in TK_DICT_NAME_LIST:
             self.zx_lsts[key] = [TK_DICT_TYPE_LIST[index]] * TIME_LENGTH
             self.last_zx_dct[key] = TK_DICT_TYPE_LIST[index]
+            self.zero_zx_dct[key] = TK_DICT_TYPE_LIST[index]
             index = index + 1
         a_2 = pg.AxisItem("left")
         a_3 = pg.AxisItem("right")
@@ -289,7 +295,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnViewGreen.triggered.connect(self.toggleGreen)
         self.toolBtnViewGreen.setEnabled(True)
 
-        self.toolBtnViewBlue = QAction(QIcon('./res/过滤蓝.png'), '预测', self)
+        self.toolBtnViewBlue = QAction(QIcon('./res/过滤白.png'), '预测', self)
         self.toolBtnViewBlue.triggered.connect(self.toggleBlue)
         self.toolBtnViewBlue.setEnabled(True)
 
@@ -297,9 +303,21 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnViewIMU.triggered.connect(self.toggleIMU)
         self.toolBtnViewIMU.setEnabled(True)
 
+        self.toolBtnViewCLZT = QAction(QIcon('./res/过滤灰.png'), '测量转台', self)
+        self.toolBtnViewCLZT.triggered.connect(self.toggleCLZT)
+        self.toolBtnViewCLZT.setEnabled(True)
+
+        self.toolBtnViewZXZT = QAction(QIcon('./res/过滤灰.png'), '执行转台', self)
+        self.toolBtnViewZXZT.triggered.connect(self.toggleZXZT)
+        self.toolBtnViewZXZT.setEnabled(True)
+
         self.toolBtnClearChart = QAction(QIcon('./res/删除.png'), '清空', self)
         self.toolBtnClearChart.triggered.connect(self.clearChart)
         self.toolBtnClearChart.setEnabled(True)
+
+        self.toolBtnAlign = QAction(QIcon('./res/对齐.png'), '对齐一次', self)
+        self.toolBtnAlign.triggered.connect(self.alignOnce)
+        self.toolBtnAlign.setEnabled(True)
 
         self.toolBtnZTDialog = QAction(QIcon('./res/旋转.png'), '转台', self)
         self.toolBtnZTDialog.triggered.connect(self.settingZT)
@@ -313,6 +331,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.greenON = True
         self.blueON = True
         self.imuON = True
+        self.clZTON =True
+        self.zxZTON =True
 
         self.toolBar.addAction(self.toolBtnStart)
         self.toolBar.addAction(self.toolBtnConnect)
@@ -331,10 +351,13 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_4.addAction(self.toolBtnSetting)
 
         self.toolbar_5 = self.addToolBar('折线')
+        self.toolbar_5.addAction(self.toolBtnAlign)
         self.toolbar_5.addAction(self.toolBtnViewRed)
         self.toolbar_5.addAction(self.toolBtnViewGreen)
         self.toolbar_5.addAction(self.toolBtnViewBlue)
         self.toolbar_5.addAction(self.toolBtnViewIMU)
+        self.toolbar_5.addAction(self.toolBtnViewCLZT)
+        self.toolbar_5.addAction(self.toolBtnViewZXZT)
         self.toolbar_5.addAction(self.toolBtnClearChart)
 
         self.toolbar_6 = self.addToolBar('转台')
@@ -361,6 +384,13 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # self.verticalLayout_3.addWidget(EmbTerminal())
         # self.verticalLayout_3.addWidget(EmbTerminal_2())
         # self.tabWidget.addTab(EmbTerminal(), "EmbTerminal")
+
+    def alignOnce(self):
+        for key in DICT_NAME_LIST:
+            self.zero_lsts[key] = self.lsts[key][-1]
+        for key in TK_DICT_NAME_LIST:
+            self.zero_tk_dct[key] = self.tk_lsts[key][-1]
+            self.zero_zx_dct[key] = self.zx_lsts[key][-1]
 
     def clearChart(self):
         index = 0
@@ -393,7 +423,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.blueON = not(self.blueON)
         self.reflash()
         if self.blueON:
-            self.toolBtnViewBlue.setIcon(QIcon('./res/过滤蓝.png'))
+            self.toolBtnViewBlue.setIcon(QIcon('./res/过滤白.png'))
         else:
             self.toolBtnViewBlue.setIcon(QIcon('./res/过滤关.png'))
 
@@ -404,6 +434,22 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewIMU.setIcon(QIcon('./res/过滤蓝.png'))
         else:
             self.toolBtnViewIMU.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleCLZT(self):
+        self.clZTON = not(self.clZTON)
+        self.reflash()
+        if self.clZTON:
+            self.toolBtnViewCLZT.setIcon(QIcon('./res/过滤灰.png'))
+        else:
+            self.toolBtnViewCLZT.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleZXZT(self):
+        self.zxZTON = not(self.zxZTON)
+        self.reflash()
+        if self.zxZTON:
+            self.toolBtnViewZXZT.setIcon(QIcon('./res/过滤灰.png'))
+        else:
+            self.toolBtnViewZXZT.setIcon(QIcon('./res/过滤关.png'))
 
     def analysis(self):
         dialog = analysisDialog()
@@ -611,10 +657,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.imuON:
             y4 = self.lsts["EUL_BY_IMU_X"]            
             self.p4_x.setData(x=x, y=y4)
-        y5 = self.tk_lsts["x_ang"]
-        self.p5_x.setData(x=x, y=y5)
-        y6 = self.zx_lsts["x_ang"]
-        self.p6_x.setData(x=x, y=y6)
+        if self.clZTON:
+            y5 = self.tk_lsts["x_ang"]
+            self.p5_x.setData(x=x, y=y5)
+        if self.zxZTON:
+            y6 = self.zx_lsts["x_ang"]
+            self.p6_x.setData(x=x, y=y6)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Y"]
@@ -628,10 +676,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.imuON:
             y4 = self.lsts["EUL_BY_IMU_Y"]            
             self.p4_y.setData(x=x, y=y4)
-        y5 = self.tk_lsts["z_ang"]
-        self.p5_y.setData(x=x, y=y5)
-        y6 = self.zx_lsts["z_ang"]
-        self.p6_y.setData(x=x, y=y6)
+        if self.clZTON:
+            y5 = self.tk_lsts["z_ang"]
+            self.p5_y.setData(x=x, y=y5)
+        if self.zxZTON:
+            y6 = self.zx_lsts["z_ang"]
+            self.p6_y.setData(x=x, y=y6)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Z"]
@@ -692,9 +742,18 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             else:
                 return
             
+            for key in DICT_NAME_LIST:
+                if isinstance(self.zero_lsts[key], list):
+                    for i in range(len(self.zero_lsts[key])):
+                        self.lsts[key][-1][i] = self.lsts[key][-1][i] - self.zero_lsts[key][i]
+                else:
+                    self.lsts[key][-1] = self.lsts[key][-1] - self.zero_lsts[key]
+            for key in TK_DICT_NAME_LIST:
+                self.tk_lsts[key][-1] = self.tk_lsts[key][-1] - self.zero_tk_dct[key]
+
             if zxztdata is not None:
                 for key in TK_DICT_NAME_LIST:
-                    self.zx_lsts[key].append(zxztdata[key])
+                    self.zx_lsts[key].append(zxztdata[key] - self.zero_zx_dct[key])
                     while len(self.zx_lsts[key]) > TIME_LENGTH:
                         self.zx_lsts[key].pop(0)
                 self.last_zx_dct = zxztdata.copy()
