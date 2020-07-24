@@ -24,13 +24,14 @@ class RecvIMU():
     __CRC_SUM = 21
     __BUF_LENGTH = 22
 
-    def __init__(self, port, dir_name, event):
+    def __init__(self, port, dir_name, event, event_save):
         # self.recvTh
         self.isRecv = True
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
         self.dir_name = dir_name
         self.event = event
+        self.event_save = event_save
         if port is None:
             self.serial = None
             return
@@ -130,7 +131,7 @@ class RecvIMU():
                     dc["gyr"] = gyr
                     dc["ortgnl"] = ortgnl
                     if self.cond.acquire():
-                        if (self.isRecv):
+                        if (self.isRecv and self.event_save.is_set()):
                             self.que.put(dc)
                         self.cond.notify_all()
                         self.cond.release()

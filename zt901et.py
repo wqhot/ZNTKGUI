@@ -359,7 +359,7 @@ class ztTask():
 # 对转台写命令，并延时等待执行
 # 定时读取转台数据，通过回调函数范围
 class ztScheduler():
-    def __init__(self, readCallback, port, event_1, event_2, finishCallback=None):
+    def __init__(self, readCallback, port, event_1, event_2, finishCallback=None, event_save=None):
         self.callback = readCallback
         self.finishCallback = finishCallback
         self.taskList = []
@@ -373,6 +373,8 @@ class ztScheduler():
         self.zt902e1 = zt902e1(callback=self.callback, port=port)
         self.readth = threading.Thread(target=self.readProcess, daemon=True)
         self.th = threading.Thread(target=self.process, daemon=True)
+        self.event_save = event_save
+
     def createTasks(self, oriTasks):
         taskLst = []
         runtype1 = 5
@@ -610,6 +612,10 @@ class zt902e1():
         self.send() # 建立链接
         self.connected = self.recv() # 接收建立连接返回信号
         self.connected = True
+        # 保存最近10个时刻的数值
+        self.history_pos1 = []
+        self.history_pos2 = []
+
 
 
     def getValue(self):
@@ -622,6 +628,11 @@ class zt902e1():
         command = b'\x02\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         if self.sendCommand(command):
             self.recv(status=status)
+        if self.event_save is not None:
+            if (min(self.history_pos1) != max(self.history_pos1)) or (min(self.history_pos2) != max(self.history_pos2)): # 位置发生变化
+                self.event_save.clear()
+            else:
+                self.event_save.set()
         # callback
         self.callback(status.toDict())
 
@@ -655,6 +666,14 @@ class zt902e1():
                 pos *= 0.0001
                 velocity *= 0.0001
                 status.setAxisValue(buffArray[0], pos, velocity)
+                if buffArray[0] == 1:
+                    self.history_pos1.append(pos)
+                    if len(self.history_pos1) > 10:
+                        self.history_pos1.remove(self.history_pos1[0])
+                else:
+                    self.history_pos2.append(pos)
+                    if len(self.history_pos2) > 10:
+                        self.history_pos2.remove(self.history_pos2[0])
                 return True
         else:
             print("校验失败")

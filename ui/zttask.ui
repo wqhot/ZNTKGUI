@@ -134,7 +134,7 @@
               <item>
                <widget class="QRadioButton" name="radioButton_2">
                 <property name="text">
-                 <string>zt920et</string>
+                 <string>&amp;zt920et</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>
@@ -144,7 +144,21 @@
               <item>
                <widget class="QRadioButton" name="radioButton">
                 <property name="text">
-                 <string>zt902e1</string>
+                 <string>z&amp;t902e1</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="Line" name="line">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="checkBox">
+                <property name="text">
+                 <string>只保存静止时期数据</string>
                 </property>
                </widget>
               </item>

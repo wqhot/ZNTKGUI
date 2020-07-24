@@ -67,6 +67,8 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         self.createNewFileEvent_1.clear()
         self.createNewFileEvent_2 = threading.Event() # 用于IMU
         self.createNewFileEvent_2.clear()
+        self.saveEvent = threading.Event() # 用于设置是否保存数据
+        self.saveEvent.set()
         self.que = queue.Queue(1024)
         self.port_list = list(serial.tools.list_ports.comports())
         for port in self.port_list:
@@ -157,8 +159,9 @@ class ztUsage(QDialog, Ui_Dialog_zt):
         if self.cond.acquire():
             status["STAMP"] = str(time.time())
             print(status)
-            self.que.put(status)
-            self.cond.notify_all()
+            if self.saveEvent.is_set():
+                self.que.put(status)
+                self.cond.notify_all()
             self.cond.release()
 
     def finishCallback_mainThread(self):
@@ -207,13 +210,23 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             msgBox = QMessageBox.warning(self, "串口选择错误", "不能选择同样的串口")
             return
         if self.radioButton_2.isChecked():
-            ss = ztScheduler_zt920et(
-                readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port,
-                event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_2)
+            if self.checkBox.isChecked():
+                ss = ztScheduler_zt920et(
+                    readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port,
+                    event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_2, event_save=self.saveEvent)
+            else:
+                ss = ztScheduler_zt920et(
+                    readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port,
+                    event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_2)
         else:
-            ss = ztScheduler_zt901et(
-                readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port, 
-                event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_2)
+            if self.checkBox.isChecked():
+                ss = ztScheduler_zt901et(
+                    readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port, 
+                    event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_2, event_save=self.saveEvent)
+            else:
+                ss = ztScheduler_zt901et(
+                    readCallback=self.ztcallback, finishCallback=self.finishCallback, port=port, 
+                    event_1=self.createNewFileEvent_1, event_2=self.createNewFileEvent_2)
         self.finishSignal.connect(self.finishCallback_mainThread)
         self.progessSignal.connect(self.progressCallback_mainThread)
         ss.setProgressCallback(self.progressCallback)
@@ -230,7 +243,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
             self.comboBox_2.setEnabled(False)
             self.pushButton_8.setEnabled(False)
             self.issave = True
-            self.recv = RecvIMU(port=port_imu, dir_name=self.dir_name, event=self.createNewFileEvent_2)
+            self.recv = RecvIMU(port=port_imu, dir_name=self.dir_name, event=self.createNewFileEvent_2, event_save=self.saveEvent)
             self.save_th = threading.Thread(target=self.save, daemon=True)
             self.save_th.start()
             ss.run(500)
@@ -241,7 +254,7 @@ class ztUsage(QDialog, Ui_Dialog_zt):
                 self.pushButton_6.setEnabled(False)
                 self.radioButton.setEnabled(False)
                 self.radioButton_2.setEnabled(False)
-                self.recv = RecvIMU(port=port_imu, dir_name=self.dir_name, event=self.createNewFileEvent_2)
+                self.recv = RecvIMU(port=port_imu, dir_name=self.dir_name, event=self.createNewFileEvent_2, event_save=self.saveEvent)
             else:
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("通信失败")
