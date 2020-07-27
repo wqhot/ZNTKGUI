@@ -219,10 +219,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_z.setPen((255, 255, 255))
         self.p4_z = self.pw_z.plot(_callSync='off')
         self.p4_z.setPen((0, 0, 255))
-        self.p5_z = pg.PlotDataItem()
+        self.p5_z = self.pw_z.plot(_callSync='off')
         self.p5_z.setPen((128, 128, 128))
         self.p6_z = self.pw_z.plot(_callSync='off')
-        self.p6_z.setPen((255, 255, 0))
+        self.p6_z.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
