@@ -430,10 +430,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_y.setData(x=x, y=y3)
         y4 = self.lsts["EUL_BY_IMU_Y"]            
         self.p4_y.setData(x=x, y=y4)
-        y5 = self.tk_lsts["z_ang"]
-        self.p5_y.setData(x=x, y=y5)
-        y6 = self.zx_lsts["z_ang"]
-        self.p6_y.setData(x=x, y=y6)
+        # y5 = self.tk_lsts["z_ang"]
+        # self.p5_y.setData(x=x, y=y5)
+        # y6 = self.zx_lsts["z_ang"]
+        # self.p6_y.setData(x=x, y=y6)
 
         y1 = self.lsts["EUL_BY_CAM_Z"]
         self.p1_z.setData(x=x, y=y1)
@@ -443,6 +443,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_z.setData(x=x, y=y3)
         y4 = self.lsts["EUL_BY_IMU_Z"]            
         self.p4_z.setData(x=x, y=y4)
+        y5 = self.tk_lsts["z_ang"]
+        self.p5_z.setData(x=x, y=y5)
+        y6 = self.zx_lsts["z_ang"]
+        self.p6_z.setData(x=x, y=y6)
 
     def toggleRed(self):
         self.redON = not(self.redON)
@@ -717,12 +721,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.imuON:
             y4 = self.lsts["EUL_BY_IMU_Y"]            
             self.p4_y.setData(x=x, y=y4)
-        if self.clZTON:
-            y5 = self.tk_lsts["z_ang"]
-            self.p5_y.setData(x=x, y=y5)
-        if self.zxZTON:
-            y6 = self.zx_lsts["z_ang"]
-            self.p6_y.setData(x=x, y=y6)
+        # if self.clZTON:
+        #     y5 = self.tk_lsts["z_ang"]
+        #     self.p5_y.setData(x=x, y=y5)
+        # if self.zxZTON:
+        #     y6 = self.zx_lsts["z_ang"]
+        #     self.p6_y.setData(x=x, y=y6)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Z"]
@@ -736,6 +740,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.imuON:
             y4 = self.lsts["EUL_BY_IMU_Z"]            
             self.p4_z.setData(x=x, y=y4)
+        if self.clZTON:
+            y5 = self.tk_lsts["z_ang"]
+            self.p5_z.setData(x=x, y=y5)
+        if self.zxZTON:
+            y6 = self.zx_lsts["z_ang"]
+            self.p6_z.setData(x=x, y=y6)
         
 
         

@@ -109,7 +109,7 @@ class RecvIMU():
             else:  # 无帧头时
                 buffList.extend(list(buffArray))
                 remainLength = self.__BUF_LENGTH
-                print("head not fount")
+                print("head not fount " + self.saveName)
                 if len(buffList) > self.__BUF_LENGTH:
                     buffList = []
                     print("drop")

@@ -137,12 +137,12 @@ class RecvData():
         if r21 < -threshold or r21 > threshold:
             sign = 1 if r21 > 0 else -1
             eul[0] = 0
-            eul[1] = sign * math.pi / 2.0 * 180.0 / math.pi
-            eul[2] = -2 * sign * math.atan2(x, z) * 180.0 / math.pi
+            eul[2] = sign * math.pi / 2.0 * 180.0 / math.pi
+            eul[1] = -2 * sign * math.atan2(x, z) * 180.0 / math.pi
         else:
             eul[0] = math.atan2(r31, r32) * 180.0 / math.pi
-            eul[1] = math.asin(r21) * 180.0 / math.pi
-            eul[2] = math.atan2(r11, r12) * 180.0 / math.pi
+            eul[2] = math.asin(r21) * 180.0 / math.pi
+            eul[1] = math.atan2(r11, r12) * 180.0 / math.pi
         return eul
 
     def close_start(self):
