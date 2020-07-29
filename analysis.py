@@ -23,7 +23,7 @@ class Estimate():
         self.data_stamp = data_stamp
         self.res = minimize(fun=self.func, x0=[0.0], method='Nelder-Mead', 
                 options={'maxiter':1000, 'disp':True, 
-                'return_all':True, 'eps':0.001, 'initial_simplex':[[0.0],[-0.085]]})
+                'return_all':True, 'eps':0.001, 'initial_simplex':[[0.0],[-3 * (self.data_stamp[1] - self.data_stamp[0])]]})
 
     def func(self, x):
         errors = []
@@ -32,7 +32,7 @@ class Estimate():
             index = np.where(self.data_stamp <= self.data_stamp[-1] - delay)[0] # 取前部
             indexZt = range(len(self.data_stamp) - len(index), len(self.data_stamp), 1) # 取后部
         else:
-            index = np.where(self.data_stamp >= -delay)[0] # 取后部
+            index = np.where(self.data_stamp >= self.data_stamp[0] -delay)[0] # 取后部
             indexZt = range(0, len(index), 1) # 取前部
         for key, ztKey in zip(self.analysisData.keys(), self.analysisZtData.keys()):           
             delayAnalysisData = self.analysisData[key][index]
@@ -41,7 +41,7 @@ class Estimate():
             e = np.std(error)
             errors.append(e)
         err = sum(errors) / len(errors)
-        # print([delay, err, errors])
+        print([delay, err, errors])
         return err
 
 class analysisData():
@@ -252,9 +252,9 @@ class analysisData():
         analysisZtData = {}
         # 时间戳减去初始值
         data_stamp = data_stamp - \
-            np.tile(self.startStamp, (len(index_data),))
+            np.tile(self.startStamp, data_stamp.shape)
         ztData_stamp = ztData_stamp - \
-            np.tile(self.startStamp, (len(index_ztData),))
+            np.tile(self.startStamp, ztData_stamp.shape)
         for key in analysisdata1.keys():
             analysisData[key] = analysisdata1[key][index_data] - \
                 np.tile(analysisdatazero1[key], analysisdata1[key][index_data].shape)
@@ -271,6 +271,7 @@ class analysisData():
                 analysisZtData[key] = -analysisZtData[key]
         estimate = Estimate(analysisData, analysisZtData, data_stamp)
         res = estimate.res
+        print(data_stamp[0])
         return res
         
 
@@ -620,7 +621,7 @@ class analysisDialog(QDialog, Ui_Dialog):
         labels.extend(self.zxdatalabels)
         self.listWidget_1.clear()
         for item in labels:
-            if item not in ['cost_of_eul', 'cost_of_cam']:
+            if item not in ['cost_of_eul', 'cost_of_cam', 'cost_of_update']:
                 self.listWidget_1.addItem(item)
         self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
         [emin, emax, cmin, cmax] = self.F.getBoundary()
@@ -649,7 +650,7 @@ class analysisDialog(QDialog, Ui_Dialog):
         labels.extend(self.zxdatalabels)
         self.listWidget_1.clear()
         for item in labels:
-            if item not in ['cost_of_eul', 'cost_of_cam']:
+            if item not in ['cost_of_eul', 'cost_of_cam', 'cost_of_update']:
                 self.listWidget_1.addItem(item)
         self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
 
@@ -669,7 +670,7 @@ class analysisDialog(QDialog, Ui_Dialog):
         labels.extend(self.zxdatalabels)
         self.listWidget_1.clear()
         for item in labels:
-            if item not in ['cost_of_eul', 'cost_of_cam']:
+            if item not in ['cost_of_eul', 'cost_of_cam', 'cost_of_update']:
                 self.listWidget_1.addItem(item)
         self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
 
