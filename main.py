@@ -83,6 +83,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                           username='shipei',
                           password='shipei',
                           port=2222)
+        self.ssh_trans = sshCtl(command='cd /home/shipei/zntk/zntk_core/build/',
+                          host='10.42.0.109',
+                          username='shipei',
+                          password='shipei',
+                          port=2222)
         self.last_dct = {}
         self.zero_lsts = {}
         for key in DICT_NAME_LIST:
@@ -248,6 +253,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnConnect.setEnabled(False)
         self.toolBtnConnect.setShortcut('Ctrl+N')
 
+        self.toolBtnTrans = QAction(QIcon('./res/透传.png'), '转台透传', self)
+        self.toolBtnTrans.triggered.connect(self.connectTrans)
+        self.toolBtnTrans.setEnabled(False)
+
         self.toolBtnNormal = QAction(QIcon('./res/加速.png'), '正常运行', self)
         self.toolBtnNormal.triggered.connect(self.normalRun)
         self.toolBtnNormal.setEnabled(False)
@@ -336,6 +345,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
         self.toolBar.addAction(self.toolBtnStart)
         self.toolBar.addAction(self.toolBtnConnect)
+        self.toolBar.addAction(self.toolBtnTrans)
         self.toolbar_2 = self.addToolBar('模式')
         self.toolbar_2.addAction(self.toolBtnNormal)
         self.toolbar_2.addAction(self.toolBtnRecord)
@@ -640,6 +650,13 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnSetting.setEnabled(False)
         self.ssh.start()
 
+    def connectTrans(self):
+        self.toolBtnTrans.setEnabled(False)
+        self.ssh_trans.start()
+        time.sleep(1.0)
+        self.ssh_trans.sendCommand('./zxzt_trans&')
+        self.ssh_trans.sendCommand('./zt_trans&')
+
     def updateViews(self):
         self.v_2.setGeometry(self.v_1.sceneBoundingRect())
         self.v_3.setGeometry(self.v_2.sceneBoundingRect())
@@ -668,6 +685,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
             self.toolBtnStart.setText('暂停')
             self.toolBtnConnect.setEnabled(True)
+            self.toolBtnTrans.setEnabled(True)
         elif self.recv.issend:
             self.recv.pause()
             self.recvImu.pause=True
@@ -884,6 +902,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.timer.isActive():
             self.timer.stop()
         self.ssh.isRun = False
+        self.ssh_trans.isRun = False
         self.stop = True       
         event.accept()
 
