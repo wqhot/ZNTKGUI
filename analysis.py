@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib
 import math
 from scipy.optimize import minimize
-matplotlib.use("Qt5Agg")  # 声明使用QT5
+# matplotlib.use("Qt5Agg")  # 声明使用QT5
 
 class Estimate():
     def __init__(self, analysisData = {}, analysisZtData = {}, data_stamp = np.array([])):

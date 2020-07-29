@@ -529,6 +529,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def closeRemote(self):
         self.ssh.sendCommand('x')
+        time.sleep(0.1)
+        cvstrs = self.ssh.cbstrs
+        
         self.recv.close_start()
         self.recvImu.pause = True
         self.recvZxzt.pause = True
@@ -541,6 +544,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnNormal.setEnabled(True)
         self.toolBtnInit.setEnabled(True)
         self.toolBtnIMUInit.setEnabled(True)
+        if len(cvstrs) > 0:
+            s = "".join(cvstrs)
+            s = s[s.find('--') : s.rfind('--')]
+            msgBox = QMessageBox.information(self, "执行结束", s)
+        self.ssh.startpushflag = False
+        self.ssh.cbstrs.clear()
 
     def resetRemote(self):
         self.ssh.sendCommand('r')
@@ -560,7 +569,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.recvImu.pause = False
         self.recvZxzt.pause = False
         self.ssh.sendCommand(
-            './zntk_core')
+            './zntk_core -b')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -581,7 +590,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             return
         self.ssh.sendCommand(
-            './zntk_core -p ' + bagname + ' -rate ' + str(rate))
+            './zntk_core -b -p ' + bagname + ' -rate ' + str(rate))
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
