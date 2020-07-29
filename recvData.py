@@ -26,12 +26,13 @@ class RecvData():
     __THRESOLD = 120
     __COST_OF_IMG = 124
     __COST_OF_PRE = 132
-    __STAMP = 140
-    __ANGLE_BY_IMU = 148
-    __LENGTH = 189
-    __OLDLENGTH = 165
-    __IMAGE_FEATURE_POINT_X = 164
-    __IMAGE_FEATURE_POINT_Y = 168
+    __COST_OF_UPDT = 140
+    __STAMP = 148
+    __ANGLE_BY_IMU = 156
+    __LENGTH = 197
+    __OLDLENGTH = 173
+    __IMAGE_FEATURE_POINT_X = 172
+    __IMAGE_FEATURE_POINT_Y = 176
 
     def __init__(self):
         self.mutex = threading.Lock()
@@ -157,7 +158,7 @@ class RecvData():
     def save(self):
         headers = ['stamp', 'eul_x', 'eul_y', 'eul_z', 't_x', 't_y', 't_z',
                    'cam_x', 'cam_y', 'cam_z', 'updt_x', 'updt_y', 'updt_z',
-                   'imu_x', 'imu_y', 'imu_z', 'cost_of_eul', 'cost_of_cam']
+                   'imu_x', 'imu_y', 'imu_z', 'cost_of_eul', 'cost_of_cam', 'cost_of_update']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
@@ -190,7 +191,8 @@ class RecvData():
                             r["EUL_BY_IMU_Y"],
                             r["EUL_BY_IMU_Z"],
                             r["COST_OF_PRE"],
-                            r["COST_OF_IMG"]]
+                            r["COST_OF_IMG"],
+                            r["COST_OF_UPDT"]]
                     f_csv.writerow(line)
 
     def run(self):
@@ -306,7 +308,10 @@ class RecvData():
                 data[self.__COST_OF_IMG:self.__COST_OF_IMG+8]))[0]
 
             dc["COST_OF_PRE"] = struct.unpack('d', bytes(
-                data[self.__COST_OF_PRE:self.__COST_OF_PRE+8]))[0]    
+                data[self.__COST_OF_PRE:self.__COST_OF_PRE+8]))[0]
+
+            dc["COST_OF_UPDT"] = struct.unpack('d', bytes(
+                data[self.__COST_OF_UPDT:self.__COST_OF_UPDT+8]))[0] 
 
             # dc["STAMP"] = float(time.time())
             dc["STAMP"] = struct.unpack('d', bytes(
@@ -360,6 +365,7 @@ class RecvData():
 
             save_dc["COST_OF_IMG"] = dc["COST_OF_IMG"]
             save_dc["COST_OF_PRE"] = dc["COST_OF_PRE"]
+            save_dc["COST_OF_UPDT"] = dc["COST_OF_UPDT"]
 
             self.contsum = self.contsum + 1
             if (self.issend):
