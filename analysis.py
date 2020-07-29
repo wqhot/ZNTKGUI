@@ -23,7 +23,7 @@ class Estimate():
         self.data_stamp = data_stamp
         self.res = minimize(fun=self.func, x0=[0.0], method='Nelder-Mead', 
                 options={'maxiter':1000, 'disp':True, 
-                'return_all':True, 'eps':0.001, 'initial_simplex':[[0.0],[0.003]]})
+                'return_all':True, 'eps':0.001, 'initial_simplex':[[0.0],[-0.085]]})
 
     def func(self, x):
         errors = []

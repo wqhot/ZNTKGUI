@@ -6,12 +6,11 @@ import queue
 import struct
 import math
 import base64
-import cv2
 import csv
 import copy
 import time
 import numpy as np
-
+# import cv2
 
 class RecvData():
     __POSE_BY_CAM = 4
