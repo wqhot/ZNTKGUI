@@ -25,7 +25,10 @@ class recvAR():
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # self.sock.bind((self.__GROUP_IP_ADDRESS, 10001))
-        self.sock.bind(("0.0.0.0", 10001))
+        self.sock.bind(("0.0.0.0", 10005))
+        # status = self.sock.setsockopt(socket.IPPROTO_IP,
+        #                 socket.IP_ADD_MEMBERSHIP,
+        #                 socket.inet_aton(self.__GROUP_IP_ADDRESS) + socket.inet_aton("0.0.0.0"))
 
     def start(self):
         self.th = threading.Thread(target=self.__recv_img_thread, daemon=True)
@@ -46,14 +49,19 @@ class recvAR():
                 image_buff = image_buff + buff
                 recv_length = recv_length + len(buff)
             if recv_length != total_length:
-                print("Received unexpected size pack: {1}, except {2}".format(
+                print("Received unexpected size pack: {0}, except {1}".format(
                     recv_length, total_length))
                 continue
             else:
                 raw_data = np.array(list(bytearray(image_buff)), dtype=np.int8)
-                image = cv2.imdecode(raw_data, cv2.IMREAD_COLOR)
-                cv2.imshow("aaa", image)
-                cv2.waitKey(1)
+                try:
+                    image = cv2.imdecode(raw_data, cv2.IMREAD_COLOR)
+                    cv2.imshow("aaa", image)
+                    cv2.waitKey(1)
+                except ...:
+                    print("fffff")
+                    continue
+                
 
     def __recv_detect_thread(self):
         while(self.isrun):
