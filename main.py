@@ -78,16 +78,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl(command='cd /home/shipei/zntk/zntk_core/build/',
-                          host='10.42.0.109',
-                          username='shipei',
-                          password='shipei',
-                          port=2222)
-        self.ssh_trans = sshCtl(command='cd /home/shipei/zntk/zntk_core/build/',
-                          host='10.42.0.109',
-                          username='shipei',
-                          password='shipei',
-                          port=2222)
+        self.ssh = sshCtl(command='cd /home/kylin/zntk/zntk_core/build/',
+                          host='192.168.50.61',
+                          username='kylin',
+                          password='123123',
+                          port=22)
+        self.ssh_trans = sshCtl(command='cd /home/kylin/zntk/zntk_core/build/',
+                          host='192.168.50.61',
+                          username='kylin',
+                          password='123123',
+                          port=22)
         self.last_dct = {}
         self.zero_lsts = {}
         for key in DICT_NAME_LIST:
