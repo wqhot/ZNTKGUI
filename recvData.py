@@ -34,7 +34,7 @@ class RecvData():
     __IMAGE_FEATURE_POINT_X = 172
     __IMAGE_FEATURE_POINT_Y = 176
 
-    def __init__(self):
+    def __init__(self, enable_save=True):
         self.mutex = threading.Lock()
         # self.img_mutex = threading.Lock()
         self.que = queue.Queue(1024)
@@ -47,7 +47,7 @@ class RecvData():
         # self.sock_2.bind(("0.0.0.0", 5578))
         # self.sock_2.listen()
         self.isrun = True
-        self.issave = True
+        self.issave = enable_save
         self.issend = True
         self.displayDict = None
         self.contsum = 0
@@ -371,7 +371,7 @@ class RecvData():
             if (self.issend):
                 self.displayDict = dc
             if self.cond.acquire():
-                if (self.issend):
+                if (self.issave):
                     self.que.put(save_dc)
                 self.cond.notify_all()
                 self.cond.release()

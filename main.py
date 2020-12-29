@@ -674,7 +674,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def startRecv(self):
         if not hasattr(self, "recv"):
-            self.recv = RecvData()
+            self.recv = RecvData(enable_save=False)
             self.recvImu = RecvIMU(usesock=True, socketPort=5580, saveName='_cl', save=True, event=self.ztresave)
             self.recvZxzt = RecvIMU(usesock=True, socketPort=5581, saveName='_zx', save=True, event=self.zxresave)
             # self.recvImu = RecvIMU(save=False)
@@ -838,11 +838,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
             if data is not None:
                 # 绘图类
-                image = np.zeros((480, 640, 3), np.uint8)
+                image = np.zeros((400, 640, 3), np.uint8)
                 for i in range(len(data["IMAGE_FEATURE_POINT_X"])):
                     cv2.circle(image,
                             (int(data["IMAGE_FEATURE_POINT_X"][i] * 640 / 2 + 320),
-                                int(data["IMAGE_FEATURE_POINT_Y"][i] * 480 / 2 + 240)),
+                                int(data["IMAGE_FEATURE_POINT_Y"][i] * 400 / 2 + 200)),
                             10, (255, 255, 255), 3)
                 convertToQtFormat = QtGui.QImage(
                     image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
