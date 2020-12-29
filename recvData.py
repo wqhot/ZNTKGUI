@@ -29,10 +29,11 @@ class RecvData():
     __COST_OF_UPDT = 140
     __STAMP = 148
     __ANGLE_BY_IMU = 156
+    __ANGLE_BY_INTEGRAL = 172
     __LENGTH = 197
-    __OLDLENGTH = 173
-    __IMAGE_FEATURE_POINT_X = 172
-    __IMAGE_FEATURE_POINT_Y = 176
+    __OLDLENGTH = 189
+    __IMAGE_FEATURE_POINT_X = 188
+    __IMAGE_FEATURE_POINT_Y = 192
 
     def __init__(self, enable_save=True):
         self.mutex = threading.Lock()
@@ -331,6 +332,21 @@ class RecvData():
             dc["EUL_BY_IMU_X"] = eul[0]
             dc["EUL_BY_IMU_Y"] = eul[1]
             dc["EUL_BY_IMU_Z"] = eul[2]
+
+            dc["ANGLE_BY_INTEGRAL"] = [0.0, 0.0, 0.0, 0.0]
+            dc["ANGLE_BY_INTEGRAL"][0] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_INTEGRAL + 0:self.__ANGLE_BY_INTEGRAL + 4]))[0]
+            dc["ANGLE_BY_INTEGRAL"][1] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_INTEGRAL + 4:self.__ANGLE_BY_INTEGRAL + 8]))[0]
+            dc["ANGLE_BY_INTEGRAL"][2] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_INTEGRAL + 8:self.__ANGLE_BY_INTEGRAL + 12]))[0]
+            dc["ANGLE_BY_INTEGRAL"][3] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_INTEGRAL + 12:self.__ANGLE_BY_INTEGRAL + 16]))[0]
+
+            eul = self.qua2eul(dc["ANGLE_BY_INTEGRAL"])
+            dc["EUL_BY_INTEGRAL_X"] = eul[0]
+            dc["EUL_BY_INTEGRAL_Y"] = eul[1]
+            dc["EUL_BY_INTEGRAL_Z"] = eul[2]
 
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []
