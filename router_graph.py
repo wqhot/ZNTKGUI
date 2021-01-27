@@ -1,7 +1,7 @@
 import math
 
-from PyQt5.QtWidgets import QGraphicsPathItem, QGraphicsItem, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView
-from PyQt5.QtGui import QColor, QPen, QBrush, QPainterPath, QPixmap, QPainter
+from PyQt5.QtWidgets import QGraphicsPathItem, QGraphicsItem, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGraphicsTextItem
+from PyQt5.QtGui import QColor, QPen, QBrush, QPainterPath, QPixmap, QPainter, QFont
 from PyQt5.QtCore import Qt, QPointF, QLine
 import socket
 import json
@@ -111,16 +111,26 @@ class GraphicEdge(QGraphicsPathItem):
 
 class GraphicItem(QGraphicsPixmapItem):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, text='', left=True):
         super().__init__(parent)
         self.pix = QPixmap("./res/Model.png")
         self.width = 85
         self.height = 85
-        self.setPixmap(self.pix)
+        self.setPixmap(self.pix.scaled(self.width, self.height))
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemIsMovable)
-        self.left = True
+        self.left = left
         self.index = 0
+        self.text = QGraphicsTextItem(self)
+        self.text.setPlainText(text)
+        if self.left:
+            self.text.setDefaultTextColor(QColor(236, 190, 92))
+        else:
+            self.text.setDefaultTextColor(QColor(255, 59, 48))
+        font = QFont() 
+        font.setBold(True)
+        font.setPixelSize(16)
+        self.text.setFont(font)
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
@@ -229,6 +239,7 @@ class GraphicView(QGraphicsView):
         self.recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.recv_sock.bind(("0.0.0.0", 5502))
         self.init_ui()
+        self.get_router_rules()
 
     def init_ui(self):
         self.setScene(self.gr_scene)
@@ -243,6 +254,7 @@ class GraphicView(QGraphicsView):
         self.setDragMode(self.RubberBandDrag)
 
     def get_router_rules(self):
+        self.gr_scene.remove_all_node()
         self.send_sock.sendto(b"GET", ("192.168.50.61", 5501))
         recv_data, source_ip = self.recv_sock.recvfrom(1024)
         recv_str = recv_data.decode()
@@ -265,30 +277,30 @@ class GraphicView(QGraphicsView):
                     self.right_list[index] = {"index": index, "right_name": v[str(index)]["right_name"]}
         # self.left_list = sorted(self.left_list)
         # self.right_list = sorted(self.right_list)
-
+        max_size = max(len(self.right_list.keys()), len(self.left_list.keys()))
+        height = 500 / (max_size)
+        # right
+        right_items = []
+        for i, r in enumerate(sorted(self.right_list)):
+            item = GraphicItem(text=self.right_list[r]["right_name"], left=False)
+            item.setPos(300, i * height)
+            item.index = r
+            self.gr_scene.add_node(item)
+            right_items.append(item)
+        # left
+        for i, l in enumerate(sorted(self.left_list)):
+            item = GraphicItem(text=self.left_list[l]["left_name"], left=True)
+            item.setPos(0, i * height)
+            self.gr_scene.add_node(item)
+            item.left = True
+            item.index = l
+            for c in self.left_list[l]["connect"]:
+                self.edge_drag_start(item)
+                self.edge_drag_end(right_items[c], True)     
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_N:
-            self.gr_scene.remove_all_node()
+        if event.key() == Qt.Key_N:           
             self.get_router_rules()     
-            max_size = max(len(self.right_list.keys()), len(self.left_list.keys()))
-            print(max_size)
-            height = 500 / (max_size)
-            # right
-            right_items = []
-            for i, r in enumerate(sorted(self.right_list)):
-                item = GraphicItem()
-                item.setPos(300, i * height)
-                self.gr_scene.add_node(item)
-                right_items.append(item)
-            # left
-            for i, l in enumerate(sorted(self.left_list)):
-                item = GraphicItem()
-                item.setPos(0, i * height)
-                self.gr_scene.add_node(item)
-                for c in self.left_list[l]["connect"]:
-                    self.edge_drag_start(item)
-                    self.edge_drag_end(right_items[c])     
         if event.key() == Qt.Key_E:
             self.edge_enable = ~self.edge_enable
 
@@ -296,6 +308,9 @@ class GraphicView(QGraphicsView):
         item = self.get_item_at_click(event)
         if event.button() == Qt.RightButton:
             if isinstance(item, GraphicEdge) and self.edge_enable:
+                com = b"SET:r:" + bytes(str(item.edge_wrap.start_item.index), encoding='ascii') + b':' + bytes(str(item.edge_wrap.end_item.index), encoding='ascii')
+                self.send_sock.sendto(com, ("192.168.50.61", 5501))
+                print(com)
                 self.gr_scene.remove_edge(item)
         elif self.edge_enable and event.button() == Qt.LeftButton:
             if isinstance(item, GraphicItem):
@@ -335,11 +350,18 @@ class GraphicView(QGraphicsView):
             super().mouseReleaseEvent(event)
 
     def edge_drag_start(self, item):
-        self.drag_start_item = item
-        self.drag_edge = Edge(self.gr_scene, self.drag_start_item, None)
+        if item.left:
+            self.drag_start_item = item
+            self.drag_edge = Edge(self.gr_scene, self.drag_start_item, None)
 
-    def edge_drag_end(self, item):
-        new_edge = Edge(self.gr_scene, self.drag_start_item, item)
+    def edge_drag_end(self, item, manual=False):
+        if not item.left:
+            new_edge = Edge(self.gr_scene, self.drag_start_item, item)   
+            new_edge.store()
+            if not manual:
+                com = b"SET:a:" + bytes(str(self.drag_start_item.index), encoding='ascii') + b':' + bytes(str(item.index), encoding='ascii')
+                self.send_sock.sendto(com, ("192.168.50.61", 5501))
+                print(com)
         self.drag_edge.remove()
         self.drag_edge = None
-        new_edge.store()
+
