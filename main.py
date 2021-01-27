@@ -28,6 +28,9 @@ import os
 import pyqtgraph.opengl as gl
 import cv2
 import queue
+from router_graph import GraphicScene
+from router_graph import GraphicView
+
 
 # __POSE_BY_CAM = 4
 # __ANGLE_BY_CAM = 16
@@ -409,6 +412,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # self.verticalLayout_3.addWidget(EmbTerminal_2())
         # self.tabWidget.addTab(EmbTerminal(), "EmbTerminal")
 
+        self.router_sence = GraphicScene(self.graphicsView)
+        self.router_view = GraphicView(self.router_sence, self.graphicsView)
+        
     def alignOnce(self):
         for key in DICT_NAME_LIST:
             self.zero_lsts[key] = self.lsts[key][-1]
