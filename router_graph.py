@@ -8,13 +8,14 @@ import json
 
 class Edge:
 
-    def __init__(self, scene, start_item, end_item):
+    def __init__(self, scene, start_item, end_item, delete=False):
         super().__init__()
         self.scene = scene
         self.start_item = start_item
         self.end_item = end_item
+        self.delete = delete
 
-        self.gr_edge = GraphicEdge(self)
+        self.gr_edge = GraphicEdge(self, delete=self.delete)
         # add edge on graphic scene
         self.scene.add_edge(self.gr_edge)
 
@@ -47,17 +48,20 @@ class Edge:
 
 class GraphicEdge(QGraphicsPathItem):
 
-    def __init__(self, edge_wrap, parent=None):
+    def __init__(self, edge_wrap, parent=None, delete=False):
         super().__init__(parent)
         self.edge_wrap = edge_wrap
-        self.width = 3.0
+        self.width = 5.0
         self.pos_src = [0, 0]
         self.pos_dst = [0, 0]
 
         self._pen = QPen(QColor("#000"))
         self._pen.setWidthF(self.width)
-
-        self._pen_dragging = QPen(QColor("#000"))
+        
+        if not delete:
+            self._pen_dragging = QPen(QColor("#000"))
+        else:
+            self._pen_dragging = QPen(QColor("#ff0000"))
         self._pen_dragging.setStyle(Qt.DashDotLine)
         self._pen_dragging.setWidthF(self.width)
 
@@ -163,6 +167,11 @@ class GraphicScene(QGraphicsScene):
         self.nodes = []
         self.edges = []
 
+    def remove_all_edge(self):
+        for edge in self.edges:
+            self.remove_edge(edge)
+        self.edges = []
+
     def remove_all_node(self):
         for node in self.nodes:
             for edge in self.edges:
@@ -186,6 +195,14 @@ class GraphicScene(QGraphicsScene):
     def add_edge(self, edge):
         self.edges.append(edge)
         self.addItem(edge)
+
+    def remove_edge_between(self, start_item, end_item):
+        print("left item {0}, right item {1}".format(start_item.index, end_item.index))
+        for edge in self.edges:
+            if edge.edge_wrap.start_item is start_item and edge.edge_wrap.end_item is end_item and not edge.edge_wrap.delete:
+                print("found left item {0}, right item {1}".format(edge.edge_wrap.start_item.index, edge.edge_wrap.end_item.index))
+                # self.remove_edge(edge)
+                # break
 
     def remove_edge(self, edge):
         self.edges.remove(edge)
@@ -235,6 +252,9 @@ class GraphicView(QGraphicsView):
         self.edge_enable = False
         self.drag_edge = None
 
+        self.right_items = {}
+        self.left_items = {}
+
         self.send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.recv_sock.bind(("0.0.0.0", 5502))
@@ -254,7 +274,7 @@ class GraphicView(QGraphicsView):
         self.setDragMode(self.RubberBandDrag)
 
     def get_router_rules(self):
-        self.gr_scene.remove_all_node()
+        self.gr_scene.remove_all_edge()
         self.send_sock.sendto(b"GET", ("192.168.50.61", 5501))
         recv_data, source_ip = self.recv_sock.recvfrom(1024)
         recv_str = recv_data.decode()
@@ -262,41 +282,40 @@ class GraphicView(QGraphicsView):
         self.left_list = {}
         self.right_list = {}
         for k, v in recv_json.items():
-            id = v["id"]
-            left_name = v["left_name"]
-            right_idxs = v["right_idxs"]
-            connect = []
-            index = 0
-            while right_idxs >> index:
-                if (right_idxs >> index) & 1 :
-                    connect.append(index)
-                index = index + 1
-            self.left_list[id] = {"index": id, "left_name": left_name, "right_idxs": right_idxs, "connect": connect}
-            for index in connect:
-                if str(index) in v.keys():
-                    self.right_list[index] = {"index": index, "right_name": v[str(index)]["right_name"]}
+            if v["type"] == "left":
+                id = v["id"]
+                name = v["name"]
+                connect = v["connect"]        
+                self.left_list[id] = {"index": id, "name": name, "connect": connect}
+            else:
+                id = v["id"]
+                name = v["name"]
+                self.right_list[id] = {"index": id, "name": name}
         # self.left_list = sorted(self.left_list)
         # self.right_list = sorted(self.right_list)
         max_size = max(len(self.right_list.keys()), len(self.left_list.keys()))
         height = 500 / (max_size)
         # right
-        right_items = []
+        
         for i, r in enumerate(sorted(self.right_list)):
-            item = GraphicItem(text=self.right_list[r]["right_name"], left=False)
-            item.setPos(300, i * height)
-            item.index = r
-            self.gr_scene.add_node(item)
-            right_items.append(item)
+            if sum([(r == item.index and not item.left) for item in self.gr_scene.nodes]) == 0:
+                item = GraphicItem(text=self.right_list[r]["name"], left=False)
+                item.setPos(300, i * height)
+                item.index = r
+                self.gr_scene.add_node(item)
+                self.right_items[r] = item
         # left
         for i, l in enumerate(sorted(self.left_list)):
-            item = GraphicItem(text=self.left_list[l]["left_name"], left=True)
-            item.setPos(0, i * height)
-            self.gr_scene.add_node(item)
-            item.left = True
-            item.index = l
+            if sum([(l == item.index and item.left) for item in self.gr_scene.nodes]) == 0:
+                item = GraphicItem(text=self.left_list[l]["name"], left=True)
+                item.setPos(0, i * height)
+                self.gr_scene.add_node(item)
+                item.left = True
+                item.index = l
+                self.left_items[l] = item
             for c in self.left_list[l]["connect"]:
-                self.edge_drag_start(item)
-                self.edge_drag_end(right_items[c], True)     
+                self.edge_drag_start(self.left_items[l])
+                self.edge_drag_end(self.right_items[c], True)     
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_N:           
@@ -306,12 +325,14 @@ class GraphicView(QGraphicsView):
 
     def mousePressEvent(self, event):
         item = self.get_item_at_click(event)
-        if event.button() == Qt.RightButton:
-            if isinstance(item, GraphicEdge) and self.edge_enable:
-                com = b"SET:r:" + bytes(str(item.edge_wrap.start_item.index), encoding='ascii') + b':' + bytes(str(item.edge_wrap.end_item.index), encoding='ascii')
-                self.send_sock.sendto(com, ("192.168.50.61", 5501))
-                print(com)
-                self.gr_scene.remove_edge(item)
+        if self.edge_enable and event.button() == Qt.RightButton:
+            if isinstance(item, GraphicItem):
+                self.edge_drag_start(item, delete=True)
+            # if isinstance(item, GraphicEdge) and self.edge_enable:
+            #     com = b"SET:r:" + bytes(str(item.edge_wrap.start_item.index), encoding='ascii') + b':' + bytes(str(item.edge_wrap.end_item.index), encoding='ascii')
+            #     self.send_sock.sendto(com, ("192.168.50.61", 5501))
+            #     print(com)
+            #     self.gr_scene.remove_edge(item)
         elif self.edge_enable and event.button() == Qt.LeftButton:
             if isinstance(item, GraphicItem):
                 self.edge_drag_start(item)
@@ -343,25 +364,31 @@ class GraphicView(QGraphicsView):
             item = self.get_item_at_click(event)
             if isinstance(item, GraphicItem) and item is not self.drag_start_item:
                 self.edge_drag_end(item)
+                self.get_router_rules()
             elif self.drag_edge is not None:
                 self.drag_edge.remove()
                 self.drag_edge = None
         else:
             super().mouseReleaseEvent(event)
 
-    def edge_drag_start(self, item):
+    def edge_drag_start(self, item, delete=False):
         if item.left:
             self.drag_start_item = item
-            self.drag_edge = Edge(self.gr_scene, self.drag_start_item, None)
+            self.drag_edge = Edge(self.gr_scene, self.drag_start_item, None, delete)
 
     def edge_drag_end(self, item, manual=False):
+        delete = self.drag_edge.delete
         if not item.left:
-            new_edge = Edge(self.gr_scene, self.drag_start_item, item)   
-            new_edge.store()
-            if not manual:
-                com = b"SET:a:" + bytes(str(self.drag_start_item.index), encoding='ascii') + b':' + bytes(str(item.index), encoding='ascii')
+            if not delete:
+                new_edge = Edge(self.gr_scene, self.drag_start_item, item, delete)   
+                new_edge.store()
+                if not manual:
+                    com = b"SET:a:" + bytes(str(self.drag_start_item.index), encoding='ascii') + b':' + bytes(str(item.index), encoding='ascii')
+                    self.send_sock.sendto(com, ("192.168.50.61", 5501))
+            else:
+                com = b"SET:r:" + bytes(str(self.drag_start_item.index), encoding='ascii') + b':' + bytes(str(item.index), encoding='ascii')
                 self.send_sock.sendto(com, ("192.168.50.61", 5501))
-                print(com)
         self.drag_edge.remove()
         self.drag_edge = None
+
 
