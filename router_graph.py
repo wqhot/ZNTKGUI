@@ -2,20 +2,22 @@ import math
 
 from PyQt5.QtWidgets import QGraphicsPathItem, QGraphicsItem, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QGraphicsTextItem
 from PyQt5.QtGui import QColor, QPen, QBrush, QPainterPath, QPixmap, QPainter, QFont
-from PyQt5.QtCore import Qt, QPointF, QLine
+from PyQt5.QtCore import Qt, QPointF, QLine, QTimer
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 import socket
 import json
 
 class Edge:
 
-    def __init__(self, scene, start_item, end_item, delete=False):
+    def __init__(self, scene, start_item, end_item, delete=False, flow=0):
         super().__init__()
         self.scene = scene
         self.start_item = start_item
         self.end_item = end_item
         self.delete = delete
 
-        self.gr_edge = GraphicEdge(self, delete=self.delete)
+        self.gr_edge = GraphicEdge(self, delete=self.delete, flow=flow)
         # add edge on graphic scene
         self.scene.add_edge(self.gr_edge)
 
@@ -48,12 +50,15 @@ class Edge:
 
 class GraphicEdge(QGraphicsPathItem):
 
-    def __init__(self, edge_wrap, parent=None, delete=False):
+    def __init__(self, edge_wrap, parent=None, delete=False, flow=0):
         super().__init__(parent)
         self.edge_wrap = edge_wrap
-        self.width = 5.0
+        self.width = 3.0
         self.pos_src = [0, 0]
         self.pos_dst = [0, 0]
+        color_map = mpl.cm.get_cmap()
+        color_index = int(flow % 256)
+        flow_color = color_map.colors[color_index]
 
         self._pen = QPen(QColor("#000"))
         self._pen.setWidthF(self.width)
@@ -65,7 +70,7 @@ class GraphicEdge(QGraphicsPathItem):
         self._pen_dragging.setStyle(Qt.DashDotLine)
         self._pen_dragging.setWidthF(self.width)
 
-        self._mark_pen = QPen(Qt.green)
+        self._mark_pen = QPen(QColor(flow_color[0] * 256, flow_color[1] * 256, flow_color[2] * 256))
         self._mark_pen.setWidthF(self.width)
         self._mark_brush = QBrush()
         self._mark_brush.setColor(Qt.green)
@@ -100,7 +105,7 @@ class GraphicEdge(QGraphicsPathItem):
         else:
             x1, y1 = self.pos_src
             x2, y2 = self.pos_dst
-            radius = 5    # marker radius
+            radius = 10    # marker radius
             length = 70   # marker length
             k = math.atan2(y2 - y1, x2 - x1)
             new_x = x2 - length * math.cos(k) - self.width
@@ -260,6 +265,9 @@ class GraphicView(QGraphicsView):
         self.recv_sock.bind(("0.0.0.0", 5502))
         self.init_ui()
         self.get_router_rules()
+        self.timer_flash = QTimer()
+        self.timer_flash.timeout.connect(self.get_router_rules)
+        self.timer_flash.start(500)
 
     def init_ui(self):
         self.setScene(self.gr_scene)
@@ -285,8 +293,9 @@ class GraphicView(QGraphicsView):
             if v["type"] == "left":
                 id = v["id"]
                 name = v["name"]
-                connect = v["connect"]        
-                self.left_list[id] = {"index": id, "name": name, "connect": connect}
+                connect = v["connect"]
+                flow = v["flow"]
+                self.left_list[id] = {"index": id, "name": name, "connect": connect, "flow":flow}
             else:
                 id = v["id"]
                 name = v["name"]
@@ -315,7 +324,7 @@ class GraphicView(QGraphicsView):
                 self.left_items[l] = item
             for c in self.left_list[l]["connect"]:
                 self.edge_drag_start(self.left_items[l])
-                self.edge_drag_end(self.right_items[c], True)     
+                self.edge_drag_end(self.right_items[c], manual=True, flow=self.left_list[l]["flow"])
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_N:           
@@ -327,6 +336,7 @@ class GraphicView(QGraphicsView):
         item = self.get_item_at_click(event)
         if self.edge_enable and event.button() == Qt.RightButton:
             if isinstance(item, GraphicItem):
+                self.timer_flash.stop()
                 self.edge_drag_start(item, delete=True)
             # if isinstance(item, GraphicEdge) and self.edge_enable:
             #     com = b"SET:r:" + bytes(str(item.edge_wrap.start_item.index), encoding='ascii') + b':' + bytes(str(item.edge_wrap.end_item.index), encoding='ascii')
@@ -335,6 +345,7 @@ class GraphicView(QGraphicsView):
             #     self.gr_scene.remove_edge(item)
         elif self.edge_enable and event.button() == Qt.LeftButton:
             if isinstance(item, GraphicItem):
+                self.timer_flash.stop()
                 self.edge_drag_start(item)
         else:
             super().mousePressEvent(event)
@@ -353,19 +364,23 @@ class GraphicView(QGraphicsView):
     def mouseMoveEvent(self, event):
         pos = event.pos()
         if self.edge_enable and self.drag_edge is not None:
+            self.timer_flash.stop()
             sc_pos = self.mapToScene(pos)
             self.drag_edge.gr_edge.set_dst(sc_pos.x(), sc_pos.y())
             self.drag_edge.gr_edge.update()
         super().mouseMoveEvent(event)
+        self.timer_flash.start(500)
 
     def mouseReleaseEvent(self, event):
         if self.edge_enable:
             self.edge_enable = False
             item = self.get_item_at_click(event)
             if isinstance(item, GraphicItem) and item is not self.drag_start_item:
+                self.timer_flash.start(500)
                 self.edge_drag_end(item)
                 self.get_router_rules()
             elif self.drag_edge is not None:
+                self.timer_flash.start(500)
                 self.drag_edge.remove()
                 self.drag_edge = None
         else:
@@ -376,11 +391,11 @@ class GraphicView(QGraphicsView):
             self.drag_start_item = item
             self.drag_edge = Edge(self.gr_scene, self.drag_start_item, None, delete)
 
-    def edge_drag_end(self, item, manual=False):
+    def edge_drag_end(self, item, manual=False, flow=0):
         delete = self.drag_edge.delete
         if not item.left:
             if not delete:
-                new_edge = Edge(self.gr_scene, self.drag_start_item, item, delete)   
+                new_edge = Edge(self.gr_scene, self.drag_start_item, item, delete, flow=flow)   
                 new_edge.store()
                 if not manual:
                     com = b"SET:a:" + bytes(str(self.drag_start_item.index), encoding='ascii') + b':' + bytes(str(item.index), encoding='ascii')
