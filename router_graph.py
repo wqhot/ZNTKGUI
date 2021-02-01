@@ -5,6 +5,7 @@ from PyQt5.QtGui import QColor, QPen, QBrush, QPainterPath, QPixmap, QPainter, Q
 from PyQt5.QtCore import Qt, QPointF, QLine, QTimer
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import time
 import socket
 import json
 
@@ -73,7 +74,7 @@ class GraphicEdge(QGraphicsPathItem):
         self._mark_pen = QPen(QColor(flow_color[0] * 256, flow_color[1] * 256, flow_color[2] * 256))
         self._mark_pen.setWidthF(self.width)
         self._mark_brush = QBrush()
-        self._mark_brush.setColor(Qt.green)
+        self._mark_brush.setColor(QColor(flow_color[0] * 256, flow_color[1] * 256, flow_color[2] * 256))
         self._mark_brush.setStyle(Qt.SolidPattern)
 
         self.setFlag(QGraphicsItem.ItemIsSelectable)
@@ -263,8 +264,9 @@ class GraphicView(QGraphicsView):
         self.send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.recv_sock.bind(("0.0.0.0", 5502))
+        self.recv_sock.settimeout(0.1)
         self.init_ui()
-        self.get_router_rules()
+        # self.get_router_rules()
         self.timer_flash = QTimer()
         self.timer_flash.timeout.connect(self.get_router_rules)
         self.timer_flash.start(500)
@@ -284,7 +286,11 @@ class GraphicView(QGraphicsView):
     def get_router_rules(self):
         self.gr_scene.remove_all_edge()
         self.send_sock.sendto(b"GET", ("192.168.50.61", 5501))
-        recv_data, source_ip = self.recv_sock.recvfrom(1024)
+        try:
+            recv_data = self.recv_sock.recv(1024)
+        except socket.timeout:
+            print("timeout")
+            return
         recv_str = recv_data.decode()
         recv_json = json.loads(recv_str)
         self.left_list = {}
@@ -378,7 +384,7 @@ class GraphicView(QGraphicsView):
             if isinstance(item, GraphicItem) and item is not self.drag_start_item:
                 self.timer_flash.start(500)
                 self.edge_drag_end(item)
-                self.get_router_rules()
+                # self.get_router_rules()
             elif self.drag_edge is not None:
                 self.timer_flash.start(500)
                 self.drag_edge.remove()
