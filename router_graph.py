@@ -9,6 +9,8 @@ import time
 import socket
 import json
 
+HEIGHT = 350
+WIDTH = 600
 class Edge:
 
     def __init__(self, scene, start_item, end_item, delete=False, flow=0):
@@ -124,8 +126,8 @@ class GraphicItem(QGraphicsPixmapItem):
     def __init__(self, parent=None, text='', left=True):
         super().__init__(parent)
         self.pix = QPixmap("./res/Model.png")
-        self.width = 85
-        self.height = 85
+        self.width = 55
+        self.height = 55
         self.setPixmap(self.pix.scaled(self.width, self.height))
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemIsMovable)
@@ -166,10 +168,9 @@ class GraphicScene(QGraphicsScene):
         self._pen_light.setWidth(1)
         self._pen_dark = QPen(self._color_dark)
         self._pen_dark.setWidth(2)
-
         self.setBackgroundBrush(self._color_background)
-        self.setSceneRect(0, 0, 700, 500)
-
+        self.setSceneRect(0, 0, WIDTH, HEIGHT)
+        print(self.width())
         self.nodes = []
         self.edges = []
 
@@ -258,6 +259,8 @@ class GraphicView(QGraphicsView):
         self.edge_enable = False
         self.drag_edge = None
 
+        
+
         self.right_items = {}
         self.left_items = {}
 
@@ -266,6 +269,7 @@ class GraphicView(QGraphicsView):
         self.recv_sock.bind(("0.0.0.0", 5502))
         self.recv_sock.settimeout(0.1)
         self.init_ui()
+        print(self.width())
         # self.get_router_rules()
         self.timer_flash = QTimer()
         self.timer_flash.timeout.connect(self.get_router_rules)
@@ -285,11 +289,10 @@ class GraphicView(QGraphicsView):
 
     def get_router_rules(self):
         self.gr_scene.remove_all_edge()
-        self.send_sock.sendto(b"GET", ("192.168.50.61", 5501))
+        self.send_sock.sendto(b"GET", ("192.168.50.245", 5501))
         try:
             recv_data = self.recv_sock.recv(1024)
         except socket.timeout:
-            print("timeout")
             return
         recv_str = recv_data.decode()
         recv_json = json.loads(recv_str)
@@ -309,7 +312,7 @@ class GraphicView(QGraphicsView):
         # self.left_list = sorted(self.left_list)
         # self.right_list = sorted(self.right_list)
         max_size = max(len(self.right_list.keys()), len(self.left_list.keys()))
-        height = 500 / (max_size)
+        height = HEIGHT / (max_size)
         # right
         
         for i, r in enumerate(sorted(self.right_list)):

@@ -58,12 +58,14 @@ DICT_NAME_LIST = ["POSE_BY_CAM",  "ANGLE_BY_CAM", "DT_BY_CAM",
                   "EUL_BY_CAM_X", "EUL_BY_UPDATE_X", "EUL_BY_PRE_X",
                   "EUL_BY_CAM_Y", "EUL_BY_UPDATE_Y", "EUL_BY_PRE_Y",
                   "EUL_BY_CAM_Z", "EUL_BY_UPDATE_Z", "EUL_BY_PRE_Z",
-                  "EUL_BY_INTEGRAL_X", "EUL_BY_INTEGRAL_Y", "EUL_BY_INTEGRAL_Z"]
+                  "EUL_BY_INTEGRAL_X", "EUL_BY_INTEGRAL_Y", "EUL_BY_INTEGRAL_Z",
+                  "EUL_BY_STABLE_X", "EUL_BY_STABLE_Y", "EUL_BY_STABLE_Z"]
 DICT_TYPE_LIST = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   0.0, 0.0, 0, 0.0, 0.0,
                   [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0],
+                  0.0, 0, 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0,
@@ -209,6 +211,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p6_x.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
         self.p7_x = self.pw_x.plot(_callSync='off')
         self.p7_x.setPen((212, 35, 122))
+        self.p8_x = self.pw_x.plot(_callSync='off')
+        self.p8_x.setPen((19, 34, 122))
 
         self.p1_y = self.pw_y.plot(_callSync='off')
         self.p1_y.setPen((255, 0, 0))
@@ -224,6 +228,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p6_y.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
         self.p7_y = self.pw_y.plot(_callSync='off')
         self.p7_y.setPen((212, 35, 122))
+        self.p8_y = self.pw_y.plot(_callSync='off')
+        self.p8_y.setPen((19, 34, 122))
 
         self.p1_z = self.pw_z.plot(_callSync='off')
         self.p1_z.setPen((255, 0, 0))
@@ -239,6 +245,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p6_z.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
         self.p7_z = self.pw_z.plot(_callSync='off')
         self.p7_z.setPen((212, 35, 122))
+        self.p8_z = self.pw_z.plot(_callSync='off')
+        self.p8_z.setPen((19, 34, 122))
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
@@ -327,6 +335,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnViewINT.triggered.connect(self.toggleINT)
         self.toolBtnViewINT.setEnabled(True)
 
+        self.toolBtnViewSTABLE = QAction(QIcon('./res/过滤-深蓝.png'), '自稳输出', self)
+        self.toolBtnViewSTABLE.triggered.connect(self.toggleSTABLE)
+        self.toolBtnViewSTABLE.setEnabled(True)
+
         self.toolBtnViewCLZT = QAction(QIcon('./res/过滤灰.png'), '测量转台', self)
         self.toolBtnViewCLZT.triggered.connect(self.toggleCLZT)
         self.toolBtnViewCLZT.setEnabled(True)
@@ -356,6 +368,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.blueON = True
         self.imuON = True
         self.intON = True
+        self.stableON = True
         self.clZTON =True
         self.zxZTON =True
 
@@ -383,6 +396,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_5.addAction(self.toolBtnViewBlue)
         self.toolbar_5.addAction(self.toolBtnViewIMU)
         self.toolbar_5.addAction(self.toolBtnViewINT)
+        self.toolbar_5.addAction(self.toolBtnViewSTABLE)
         self.toolbar_5.addAction(self.toolBtnViewCLZT)
         self.toolbar_5.addAction(self.toolBtnViewZXZT)
         self.toolbar_5.addAction(self.toolBtnClearChart)
@@ -508,6 +522,14 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewBlue.setIcon(QIcon('./res/过滤白.png'))
         else:
             self.toolBtnViewBlue.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleSTABLE(self):
+        self.stableON = not(self.stableON)
+        self.reflash()
+        if self.stableON:
+            self.toolBtnViewSTABLE.setIcon(QIcon('./res/过滤-深蓝.png'))
+        else:
+            self.toolBtnViewSTABLE.setIcon(QIcon('./res/过滤关.png'))
 
     def toggleINT(self):
         self.intON = not(self.intON)
@@ -774,6 +796,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.intON:
             y7 = self.lsts["EUL_BY_INTEGRAL_X"]
             self.p7_x.setData(x=x, y=y7)
+        if self.stableON:
+            y8 = self.lsts["EUL_BY_STABLE_X"]
+            self.p8_x.setData(x=x, y=y8)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Y"]
@@ -796,6 +821,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.intON:
             y7 = self.lsts["EUL_BY_INTEGRAL_Y"]
             self.p7_y.setData(x=x, y=y7)
+        if self.stableON:
+            y8 = self.lsts["EUL_BY_STABLE_Y"]
+            self.p8_y.setData(x=x, y=y8)
 
 
         if self.redON:
@@ -819,7 +847,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.intON:
             y7 = self.lsts["EUL_BY_INTEGRAL_Z"]
             self.p7_z.setData(x=x, y=y7)
-
+        if self.stableON:
+            y8 = self.lsts["EUL_BY_STABLE_Z"]
+            self.p8_x.setData(x=x, y=y8)
         
 
         

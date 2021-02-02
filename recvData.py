@@ -30,10 +30,11 @@ class RecvData():
     __STAMP = 148
     __ANGLE_BY_IMU = 156
     __ANGLE_BY_INTEGRAL = 172
-    __LENGTH = 197
-    __OLDLENGTH = 189
-    __IMAGE_FEATURE_POINT_X = 188
-    __IMAGE_FEATURE_POINT_Y = 192
+    __ANGLE_BY_STABLE = 188
+    __LENGTH = 213
+    __OLDLENGTH = 205
+    __IMAGE_FEATURE_POINT_X = 204
+    __IMAGE_FEATURE_POINT_Y = 208
 
     def __init__(self, enable_save=True):
         self.mutex = threading.Lock()
@@ -347,6 +348,21 @@ class RecvData():
             dc["EUL_BY_INTEGRAL_X"] = eul[0]
             dc["EUL_BY_INTEGRAL_Y"] = eul[1]
             dc["EUL_BY_INTEGRAL_Z"] = eul[2]
+
+            dc["ANGLE_BY_STABLE"] = [0.0, 0.0, 0.0, 0.0]
+            dc["ANGLE_BY_STABLE"][0] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_STABLE + 0:self.__ANGLE_BY_STABLE + 4]))[0]
+            dc["ANGLE_BY_STABLE"][1] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_STABLE + 4:self.__ANGLE_BY_STABLE + 8]))[0]
+            dc["ANGLE_BY_STABLE"][2] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_STABLE + 8:self.__ANGLE_BY_STABLE + 12]))[0]
+            dc["ANGLE_BY_STABLE"][3] = struct.unpack('f', bytes(
+                data[self.__ANGLE_BY_STABLE + 12:self.__ANGLE_BY_STABLE + 16]))[0]
+
+            eul = self.qua2eul(dc["ANGLE_BY_STABLE"])
+            dc["EUL_BY_STABLE_X"] = eul[0]
+            dc["EUL_BY_STABLE_Y"] = eul[1]
+            dc["EUL_BY_STABLE_Z"] = eul[2]
 
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []
