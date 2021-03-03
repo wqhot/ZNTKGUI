@@ -59,12 +59,14 @@ DICT_NAME_LIST = ["POSE_BY_CAM",  "ANGLE_BY_CAM", "DT_BY_CAM",
                   "EUL_BY_CAM_Y", "EUL_BY_UPDATE_Y", "EUL_BY_PRE_Y",
                   "EUL_BY_CAM_Z", "EUL_BY_UPDATE_Z", "EUL_BY_PRE_Z",
                   "EUL_BY_INTEGRAL_X", "EUL_BY_INTEGRAL_Y", "EUL_BY_INTEGRAL_Z",
-                  "EUL_BY_STABLE_X", "EUL_BY_STABLE_Y", "EUL_BY_STABLE_Z"]
+                  "EUL_BY_STABLE_X", "EUL_BY_STABLE_Y", "EUL_BY_STABLE_Z",
+                  "ANGLE_VELOCITY_X", "ANGLE_VELOCITY_Y", "ANGLE_VELOCITY_Z"]
 DICT_TYPE_LIST = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   0.0, 0.0, 0, 0.0, 0.0,
                   [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0],
+                  0.0, 0, 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0,
@@ -213,6 +215,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p7_x.setPen((212, 35, 122))
         self.p8_x = self.pw_x.plot(_callSync='off')
         self.p8_x.setPen((19, 34, 122))
+        self.p_angle_velocity_x = self.pw_x.plot(_callSync='off')
+        self.p_angle_velocity_x.setPen((19, 34, 122), style=QtCore.Qt.DashLine)
 
         self.p1_y = self.pw_y.plot(_callSync='off')
         self.p1_y.setPen((255, 0, 0))
@@ -230,6 +234,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p7_y.setPen((212, 35, 122))
         self.p8_y = self.pw_y.plot(_callSync='off')
         self.p8_y.setPen((19, 34, 122))
+        self.p_angle_velocity_y = self.pw_y.plot(_callSync='off')
+        self.p_angle_velocity_y.setPen((19, 34, 122), style=QtCore.Qt.DashLine)
 
         self.p1_z = self.pw_z.plot(_callSync='off')
         self.p1_z.setPen((255, 0, 0))
@@ -247,6 +253,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p7_z.setPen((212, 35, 122))
         self.p8_z = self.pw_z.plot(_callSync='off')
         self.p8_z.setPen((19, 34, 122))
+        self.p_angle_velocity_z = self.pw_z.plot(_callSync='off')
+        self.p_angle_velocity_z.setPen((19, 34, 122), style=QtCore.Qt.DashLine)
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
@@ -339,6 +347,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnViewSTABLE.triggered.connect(self.toggleSTABLE)
         self.toolBtnViewSTABLE.setEnabled(True)
 
+        self.toolBtnViewANGLEV = QAction(QIcon('./res/过滤-深蓝.png'), '自稳输出', self)
+        self.toolBtnViewANGLEV.triggered.connect(self.toggleANGLEV)
+        self.toolBtnViewANGLEV.setEnabled(True)
+
         self.toolBtnViewCLZT = QAction(QIcon('./res/过滤灰.png'), '测量转台', self)
         self.toolBtnViewCLZT.triggered.connect(self.toggleCLZT)
         self.toolBtnViewCLZT.setEnabled(True)
@@ -369,6 +381,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.imuON = True
         self.intON = True
         self.stableON = True
+        self.anglevON = True
         self.clZTON =True
         self.zxZTON =True
 
@@ -522,6 +535,14 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewBlue.setIcon(QIcon('./res/过滤白.png'))
         else:
             self.toolBtnViewBlue.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleANGLEV(self):
+        self.anglevON = not(self.anglevON)
+        self.reflash()
+        if self.anglevON:
+            self.toolBtnViewANGLEV.setIcon(QIcon('./res/过滤-深蓝.png'))
+        else:
+            self.toolBtnViewANGLEV.setIcon(QIcon('./res/过滤关.png'))
 
     def toggleSTABLE(self):
         self.stableON = not(self.stableON)
@@ -799,6 +820,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.stableON:
             y8 = self.lsts["EUL_BY_STABLE_X"]
             self.p8_x.setData(x=x, y=y8)
+        if self.anglevON:
+            y9 = self.lsts["ANGLE_VELOCITY_X"]
+            self.p_angle_velocity_x.setData(x=x, y=y9)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Y"]
@@ -824,6 +848,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.stableON:
             y8 = self.lsts["EUL_BY_STABLE_Y"]
             self.p8_y.setData(x=x, y=y8)
+        if self.anglevON:
+            y9 = self.lsts["ANGLE_VELOCITY_Y"]
+            self.p_angle_velocity_y.setData(x=x, y=y9)
 
 
         if self.redON:
@@ -850,6 +877,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.stableON:
             y8 = self.lsts["EUL_BY_STABLE_Z"]
             self.p8_x.setData(x=x, y=y8)
+        if self.anglevON:
+            y9 = self.lsts["ANGLE_VELOCITY_Z"]
+            self.p_angle_velocity_z.setData(x=x, y=y9)
         
 
         

@@ -31,10 +31,11 @@ class RecvData():
     __ANGLE_BY_IMU = 156
     __ANGLE_BY_INTEGRAL = 172
     __ANGLE_BY_STABLE = 188
-    __LENGTH = 213
-    __OLDLENGTH = 205
-    __IMAGE_FEATURE_POINT_X = 204
-    __IMAGE_FEATURE_POINT_Y = 208
+    __ANGLE_VELOCITY = 200
+    __LENGTH = 225
+    __OLDLENGTH = 217
+    __IMAGE_FEATURE_POINT_X = 216
+    __IMAGE_FEATURE_POINT_Y = 220
 
     def __init__(self, enable_save=True):
         self.mutex = threading.Lock()
@@ -363,6 +364,13 @@ class RecvData():
             dc["EUL_BY_STABLE_X"] = eul[0]
             dc["EUL_BY_STABLE_Y"] = eul[1]
             dc["EUL_BY_STABLE_Z"] = eul[2]
+
+            dc["ANGLE_VELOCITY_X"] = struct.unpack('f', bytes(
+                data[self.__ANGLE_VELOCITY + 0:self.__ANGLE_VELOCITY + 4]))[0]
+            dc["ANGLE_VELOCITY_Y"] = struct.unpack('f', bytes(
+                data[self.__ANGLE_VELOCITY + 4:self.__ANGLE_VELOCITY + 8]))[0]
+            dc["ANGLE_VELOCITY_Z"] = struct.unpack('f', bytes(
+                data[self.__ANGLE_VELOCITY + 8:self.__ANGLE_VELOCITY + 12]))[0]
 
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []
