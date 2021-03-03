@@ -732,7 +732,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def startRecv(self):
         if not hasattr(self, "recv"):
-            self.recv = RecvData(enable_save=False)
+            self.recv = RecvData(enable_save=True)
             self.recvImu = RecvIMU(usesock=True, socketPort=5580, saveName='_cl', save=True, event=self.ztresave)
             self.recvZxzt = RecvIMU(usesock=True, socketPort=5581, saveName='_zx', save=True, event=self.zxresave)
             # self.recvImu = RecvIMU(save=False)

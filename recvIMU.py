@@ -24,7 +24,7 @@ class RecvIMU():
         # self.recvTh
         self.isRecv = True
         self.isSave = save
-        self.pause = True
+        self.pause = False
         self.saveName = saveName
         self.que = queue.Queue(maxsize=1024)
         self.cond = threading.Condition()
@@ -139,7 +139,7 @@ class RecvIMU():
                     if not self.pause:
                         self.recvData = dc
                     if self.cond.acquire():
-                        if (self.isRecv and self.isSave and not self.pause):
+                        if (self.isRecv and self.isSave and not self.pause):                        
                             self.que.put(dc)
                             self.cond.notify_all()
                         self.cond.release()

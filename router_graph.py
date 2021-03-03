@@ -289,7 +289,7 @@ class GraphicView(QGraphicsView):
 
     def get_router_rules(self):
         self.gr_scene.remove_all_edge()
-        self.send_sock.sendto(b"GET", ("192.168.50.245", 5501))
+        self.send_sock.sendto(b"GET", ("192.168.50.61", 5501))
         try:
             recv_data = self.recv_sock.recv(1024)
         except socket.timeout:
