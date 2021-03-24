@@ -87,12 +87,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl(command='cd /home/kylin/zntk/zntk_core/build/',
+        self.ssh = sshCtl(command='cd /home/kylin/zntk/bin/',
                           host='192.168.50.61',
                           username='kylin',
                           password='123123',
                           port=22)
-        self.ssh_trans = sshCtl(command='cd /home/kylin/zntk/zntk_core/build/',
+        self.ssh_trans = sshCtl(command='cd /home/kylin/zntk/bin/',
                           host='192.168.50.61',
                           username='kylin',
                           password='123123',
