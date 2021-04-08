@@ -250,9 +250,9 @@ class GraphicScene(QGraphicsScene):
 
 class GraphicView(QGraphicsView):
 
-    def __init__(self, graphic_scene, parent=None):
+    def __init__(self, graphic_scene, parent=None, router_ip="192.168.50.61"):
         super().__init__(parent)
-
+        self.router_ip = router_ip
         self.gr_scene = graphic_scene
         self.parent = parent
 
@@ -289,7 +289,7 @@ class GraphicView(QGraphicsView):
 
     def get_router_rules(self):
         self.gr_scene.remove_all_edge()
-        self.send_sock.sendto(b"GET", ("192.168.50.61", 5501))
+        self.send_sock.sendto(b"GET", (self.router_ip, 5501))
         try:
             recv_data = self.recv_sock.recv(1024)
         except socket.timeout:
@@ -349,7 +349,7 @@ class GraphicView(QGraphicsView):
                 self.edge_drag_start(item, delete=True)
             # if isinstance(item, GraphicEdge) and self.edge_enable:
             #     com = b"SET:r:" + bytes(str(item.edge_wrap.start_item.index), encoding='ascii') + b':' + bytes(str(item.edge_wrap.end_item.index), encoding='ascii')
-            #     self.send_sock.sendto(com, ("192.168.50.61", 5501))
+            #     self.send_sock.sendto(com, (self.router_ip, 5501))
             #     print(com)
             #     self.gr_scene.remove_edge(item)
         elif self.edge_enable and event.button() == Qt.LeftButton:
@@ -408,10 +408,10 @@ class GraphicView(QGraphicsView):
                 new_edge.store()
                 if not manual:
                     com = b"SET:a:" + bytes(str(self.drag_start_item.index), encoding='ascii') + b':' + bytes(str(item.index), encoding='ascii')
-                    self.send_sock.sendto(com, ("192.168.50.61", 5501))
+                    self.send_sock.sendto(com, (self.router_ip, 5501))
             else:
                 com = b"SET:r:" + bytes(str(self.drag_start_item.index), encoding='ascii') + b':' + bytes(str(item.index), encoding='ascii')
-                self.send_sock.sendto(com, ("192.168.50.61", 5501))
+                self.send_sock.sendto(com, (self.router_ip, 5501))
         self.drag_edge.remove()
         self.drag_edge = None
 

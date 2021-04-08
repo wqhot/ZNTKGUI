@@ -7,6 +7,7 @@ from ui.Ui_bagset import Ui_Dialog
 from ui.Ui_setting import Ui_Dialog as Ui_Dialog_set
 from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
 from ztUsage import ztUsage
+import yaml
 # from zt902e1 import ztScheduler, ztTask
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem, QAction, QDialog
@@ -19,7 +20,7 @@ from recvData import RecvData
 from sshCtl import sshCtl
 from plotCamera import PlotCamera
 from config import TIME_LENGTH
-from analysis import analysisDialog
+# from analysis import analysisDialog
 from recvIMU import RecvIMU
 import threading
 import time
@@ -87,16 +88,30 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl(command='cd /home/kylin/zntk/bin/',
-                          host='192.168.50.61',
-                          username='kylin',
-                          password='123123',
-                          port=22)
-        self.ssh_trans = sshCtl(command='cd /home/kylin/zntk/bin/',
-                          host='192.168.50.61',
-                          username='kylin',
-                          password='123123',
-                          port=22)
+        self.vins_ip = "192.168.0.41"
+        self.vins_ssh_port = 22
+        self.vins_user_name = "kylin"
+        self.vins_user_key = "123123"
+        self.vins_bin_path = "/home/kylin/zntk/bin/"
+        self.save_enable = False
+        with open("./config/zntkgui.yml",  encoding='utf-8') as f:
+            yaml_cfg = yaml.load(f, Loader=yaml.FullLoader)
+            self.vins_ip = yaml_cfg.get("vins_ip", self.vins_ip)
+            self.vins_ssh_port = yaml_cfg.get("vins_ssh_port", self.vins_ssh_port)
+            self.vins_user_name = yaml_cfg.get("vins_user_name", self.vins_user_name)
+            self.vins_user_key = yaml_cfg.get("vins_user_key", self.vins_user_key)
+            self.vins_bin_path = yaml_cfg.get("vins_bin_path", self.vins_bin_path)
+            self.save_enable = yaml_cfg.get("save_enable", self.save_enable)
+        self.ssh = sshCtl(command='cd ' + self.vins_bin_path,
+                          host=self.vins_ip,
+                          username=self.vins_user_name,
+                          password=self.vins_user_key,
+                          port=self.vins_ssh_port)
+        self.ssh_trans = sshCtl(command='cd ' + self.vins_bin_path,
+                          host=self.vins_ip,
+                          username=self.vins_user_name,
+                          password=self.vins_user_key,
+                          port=self.vins_ssh_port)
         self.last_dct = {}
         self.zero_lsts = {}
         for key in DICT_NAME_LIST:
@@ -323,6 +338,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnSetting.triggered.connect(self.settingSSH)
         self.toolBtnSetting.setEnabled(True)
 
+        self.redON = False
+        self.greenON = False
+        self.blueON = True
+        self.imuON = False
+        self.intON = False
+        self.stableON = False
+        self.anglevON = False
+        self.clZTON =False
+        self.zxZTON =False
+
         self.toolBtnViewRed = QAction(QIcon('./res/过滤红.png'), '视觉', self)
         self.toolBtnViewRed.triggered.connect(self.toggleRed)
         self.toolBtnViewRed.setEnabled(True)
@@ -375,15 +400,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnAnalysisDialog.triggered.connect(self.analysis)
         self.toolBtnAnalysisDialog.setEnabled(True)
 
-        self.redON = True
-        self.greenON = True
-        self.blueON = True
-        self.imuON = True
-        self.intON = True
-        self.stableON = True
-        self.anglevON = True
-        self.clZTON =True
-        self.zxZTON =True
+        
 
         self.toolBar.addAction(self.toolBtnStart)
         self.toolBar.addAction(self.toolBtnConnect)
@@ -440,7 +457,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # self.tabWidget.addTab(EmbTerminal(), "EmbTerminal")
 
         self.router_sence = GraphicScene(self.graphicsView)
-        self.router_view = GraphicView(self.router_sence, self.graphicsView)
+        self.router_view = GraphicView(self.router_sence, self.graphicsView, self.vins_ip)
         
     def alignOnce(self):
         for key in DICT_NAME_LIST:
@@ -585,25 +602,28 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewZXZT.setIcon(QIcon('./res/过滤关.png'))
 
     def analysis(self):
-        dialog = analysisDialog()
-        dialog.show()
+        # dialog = analysisDialog()
+        # dialog.show()
+        pass
         # if dialog.exec():
         #     return
 
     def settingZT(self):
-        dialog = ztUsage()
-        if dialog.exec():
-            pass
+        # dialog = ztUsage()
+        # if dialog.exec():
+        #     pass
+        pass
        
 
     def settingSSH(self):
+        host = self.vins_ip
+        port = self.vins_ssh_port
+        username = self.vins_user_name
+        password = self.vins_user_key
+        return
         dialog = QDialog()
         setDialog = Ui_Dialog_set()
         setDialog.setupUi(dialog)
-        host = '10.42.0.1'
-        port = 2222
-        username = 'shipei'
-        password = 'shipei'
         if dialog.exec():
             host = setDialog.lineEdit.text()
             port = int(setDialog.spinBox.value())
@@ -753,7 +773,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def startRecv(self):
         if not hasattr(self, "recv"):
-            self.recv = RecvData(enable_save=True)
+            self.recv = RecvData(enable_save=self.save_enable)
             self.recvImu = RecvIMU(usesock=True, socketPort=5580, saveName='_cl', save=True, event=self.ztresave)
             self.recvZxzt = RecvIMU(usesock=True, socketPort=5581, saveName='_zx', save=True, event=self.zxresave)
             # self.recvImu = RecvIMU(save=False)
