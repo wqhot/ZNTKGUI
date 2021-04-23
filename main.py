@@ -7,6 +7,7 @@ from ui.Ui_bagset import Ui_Dialog
 from ui.Ui_setting import Ui_Dialog as Ui_Dialog_set
 from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
 from ztUsage import ztUsage
+import yaml
 # from zt902e1 import ztScheduler, ztTask
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QTabWidget, QMainWindow, QMessageBox, QTableWidgetItem, QAction, QDialog
@@ -19,7 +20,7 @@ from recvData import RecvData
 from sshCtl import sshCtl
 from plotCamera import PlotCamera
 from config import TIME_LENGTH
-from analysis import analysisDialog
+# from analysis import analysisDialog
 from recvIMU import RecvIMU
 import threading
 import time
@@ -28,6 +29,9 @@ import os
 import pyqtgraph.opengl as gl
 import cv2
 import queue
+from router_graph import GraphicScene
+from router_graph import GraphicView
+
 
 # __POSE_BY_CAM = 4
 # __ANGLE_BY_CAM = 16
@@ -49,17 +53,23 @@ TK_DICT_TYPE_LIST = [0.0, 0]
 DICT_NAME_LIST = ["POSE_BY_CAM",  "ANGLE_BY_CAM", "DT_BY_CAM",
                   "POSE_BY_UPDATE", "ANGLE_BY_UPDATE", "DT_BY_UPDATE",
                   "POSE_BY_PRE", "ANGLE_BY_PRE", "DT_BY_PRE",
-                  "DT_OF_FRAME", "THRESOLD", "COST_OF_IMG", "COST_OF_PRE",
-                  "ANGLE_BY_IMU",
+                  "DT_OF_FRAME", "THRESOLD", "COST_OF_IMG", "COST_OF_PRE", "COST_OF_UPDT",
+                  "ANGLE_BY_IMU", "ANGLE_BY_INTEGRAL",
                   "EUL_BY_IMU_X", "EUL_BY_IMU_Y", "EUL_BY_IMU_Z",
                   "EUL_BY_CAM_X", "EUL_BY_UPDATE_X", "EUL_BY_PRE_X",
                   "EUL_BY_CAM_Y", "EUL_BY_UPDATE_Y", "EUL_BY_PRE_Y",
-                  "EUL_BY_CAM_Z", "EUL_BY_UPDATE_Z", "EUL_BY_PRE_Z"]
+                  "EUL_BY_CAM_Z", "EUL_BY_UPDATE_Z", "EUL_BY_PRE_Z",
+                  "EUL_BY_INTEGRAL_X", "EUL_BY_INTEGRAL_Y", "EUL_BY_INTEGRAL_Z",
+                  "EUL_BY_STABLE_X", "EUL_BY_STABLE_Y", "EUL_BY_STABLE_Z",
+                  "ANGLE_VELOCITY_X", "ANGLE_VELOCITY_Y", "ANGLE_VELOCITY_Z"]
 DICT_TYPE_LIST = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
                   [0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], 0.0,
-                  0.0, 0.0, 0, 0.0,
-                  [0.0, 0.0, 0.0, 0.0],
+                  0.0, 0.0, 0, 0.0, 0.0,
+                  [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0],
+                  0.0, 0, 0.0,
+                  0.0, 0, 0.0,
+                  0.0, 0, 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0,
                   0.0, 0, 0.0,
@@ -78,11 +88,30 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.ssh = sshCtl(command='cd /home/shipei/zntk/zntk_core/build/',
-                          host='10.42.0.109',
-                          username='shipei',
-                          password='shipei',
-                          port=2222)
+        self.vins_ip = "192.168.0.41"
+        self.vins_ssh_port = 22
+        self.vins_user_name = "kylin"
+        self.vins_user_key = "123123"
+        self.vins_bin_path = "/home/kylin/zntk/bin/"
+        self.save_enable = False
+        with open("./config/zntkgui.yml",  encoding='utf-8') as f:
+            yaml_cfg = yaml.load(f, Loader=yaml.FullLoader)
+            self.vins_ip = yaml_cfg.get("vins_ip", self.vins_ip)
+            self.vins_ssh_port = yaml_cfg.get("vins_ssh_port", self.vins_ssh_port)
+            self.vins_user_name = yaml_cfg.get("vins_user_name", self.vins_user_name)
+            self.vins_user_key = yaml_cfg.get("vins_user_key", self.vins_user_key)
+            self.vins_bin_path = yaml_cfg.get("vins_bin_path", self.vins_bin_path)
+            self.save_enable = yaml_cfg.get("save_enable", self.save_enable)
+        self.ssh = sshCtl(command='cd ' + self.vins_bin_path,
+                          host=self.vins_ip,
+                          username=self.vins_user_name,
+                          password=self.vins_user_key,
+                          port=self.vins_ssh_port)
+        self.ssh_trans = sshCtl(command='cd ' + self.vins_bin_path,
+                          host=self.vins_ip,
+                          username=self.vins_user_name,
+                          password=self.vins_user_key,
+                          port=self.vins_ssh_port)
         self.last_dct = {}
         self.zero_lsts = {}
         for key in DICT_NAME_LIST:
@@ -197,6 +226,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p5_x.setPen((128, 128, 128))
         self.p6_x = self.pw_x.plot(_callSync='off')
         self.p6_x.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
+        self.p7_x = self.pw_x.plot(_callSync='off')
+        self.p7_x.setPen((212, 35, 122))
+        self.p8_x = self.pw_x.plot(_callSync='off')
+        self.p8_x.setPen((19, 34, 122))
+        self.p_angle_velocity_x = self.pw_x.plot(_callSync='off')
+        self.p_angle_velocity_x.setPen((19, 34, 122), style=QtCore.Qt.DashLine)
 
         self.p1_y = self.pw_y.plot(_callSync='off')
         self.p1_y.setPen((255, 0, 0))
@@ -210,6 +245,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p5_y.setPen((128, 128, 128))
         self.p6_y = self.pw_y.plot(_callSync='off')
         self.p6_y.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
+        self.p7_y = self.pw_y.plot(_callSync='off')
+        self.p7_y.setPen((212, 35, 122))
+        self.p8_y = self.pw_y.plot(_callSync='off')
+        self.p8_y.setPen((19, 34, 122))
+        self.p_angle_velocity_y = self.pw_y.plot(_callSync='off')
+        self.p_angle_velocity_y.setPen((19, 34, 122), style=QtCore.Qt.DashLine)
 
         self.p1_z = self.pw_z.plot(_callSync='off')
         self.p1_z.setPen((255, 0, 0))
@@ -219,10 +260,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_z.setPen((255, 255, 255))
         self.p4_z = self.pw_z.plot(_callSync='off')
         self.p4_z.setPen((0, 0, 255))
-        self.p5_z = pg.PlotDataItem()
+        self.p5_z = self.pw_z.plot(_callSync='off')
         self.p5_z.setPen((128, 128, 128))
         self.p6_z = self.pw_z.plot(_callSync='off')
-        self.p6_z.setPen((255, 255, 0))
+        self.p6_z.setPen(color=(255, 255, 0), style=QtCore.Qt.DashLine)
+        self.p7_z = self.pw_z.plot(_callSync='off')
+        self.p7_z.setPen((212, 35, 122))
+        self.p8_z = self.pw_z.plot(_callSync='off')
+        self.p8_z.setPen((19, 34, 122))
+        self.p_angle_velocity_z = self.pw_z.plot(_callSync='off')
+        self.p_angle_velocity_z.setPen((19, 34, 122), style=QtCore.Qt.DashLine)
 
         # proxy_1 = pg.SignalProxy(self.v_1.scene().sigMouseMoved,
         #                        rateLimit=60, slot=self.mouseMoved)
@@ -247,6 +294,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnConnect.triggered.connect(self.connect)
         self.toolBtnConnect.setEnabled(False)
         self.toolBtnConnect.setShortcut('Ctrl+N')
+
+        self.toolBtnTrans = QAction(QIcon('./res/透传.png'), '转台透传', self)
+        self.toolBtnTrans.triggered.connect(self.connectTrans)
+        self.toolBtnTrans.setEnabled(False)
 
         self.toolBtnNormal = QAction(QIcon('./res/加速.png'), '正常运行', self)
         self.toolBtnNormal.triggered.connect(self.normalRun)
@@ -287,6 +338,16 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnSetting.triggered.connect(self.settingSSH)
         self.toolBtnSetting.setEnabled(True)
 
+        self.redON = False
+        self.greenON = False
+        self.blueON = True
+        self.imuON = False
+        self.intON = False
+        self.stableON = False
+        self.anglevON = False
+        self.clZTON =False
+        self.zxZTON =False
+
         self.toolBtnViewRed = QAction(QIcon('./res/过滤红.png'), '视觉', self)
         self.toolBtnViewRed.triggered.connect(self.toggleRed)
         self.toolBtnViewRed.setEnabled(True)
@@ -302,6 +363,18 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnViewIMU = QAction(QIcon('./res/过滤蓝.png'), '纯IMU', self)
         self.toolBtnViewIMU.triggered.connect(self.toggleIMU)
         self.toolBtnViewIMU.setEnabled(True)
+
+        self.toolBtnViewINT = QAction(QIcon('./res/过滤粉.png'), '差分积分', self)
+        self.toolBtnViewINT.triggered.connect(self.toggleINT)
+        self.toolBtnViewINT.setEnabled(True)
+
+        self.toolBtnViewSTABLE = QAction(QIcon('./res/过滤-深蓝.png'), '自稳输出', self)
+        self.toolBtnViewSTABLE.triggered.connect(self.toggleSTABLE)
+        self.toolBtnViewSTABLE.setEnabled(True)
+
+        self.toolBtnViewANGLEV = QAction(QIcon('./res/过滤-深蓝.png'), '自稳输出', self)
+        self.toolBtnViewANGLEV.triggered.connect(self.toggleANGLEV)
+        self.toolBtnViewANGLEV.setEnabled(True)
 
         self.toolBtnViewCLZT = QAction(QIcon('./res/过滤灰.png'), '测量转台', self)
         self.toolBtnViewCLZT.triggered.connect(self.toggleCLZT)
@@ -327,15 +400,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnAnalysisDialog.triggered.connect(self.analysis)
         self.toolBtnAnalysisDialog.setEnabled(True)
 
-        self.redON = True
-        self.greenON = True
-        self.blueON = True
-        self.imuON = True
-        self.clZTON =True
-        self.zxZTON =True
+        
 
         self.toolBar.addAction(self.toolBtnStart)
         self.toolBar.addAction(self.toolBtnConnect)
+        self.toolBar.addAction(self.toolBtnTrans)
         self.toolbar_2 = self.addToolBar('模式')
         self.toolbar_2.addAction(self.toolBtnNormal)
         self.toolbar_2.addAction(self.toolBtnRecord)
@@ -356,6 +425,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_5.addAction(self.toolBtnViewGreen)
         self.toolbar_5.addAction(self.toolBtnViewBlue)
         self.toolbar_5.addAction(self.toolBtnViewIMU)
+        self.toolbar_5.addAction(self.toolBtnViewINT)
+        self.toolbar_5.addAction(self.toolBtnViewSTABLE)
         self.toolbar_5.addAction(self.toolBtnViewCLZT)
         self.toolbar_5.addAction(self.toolBtnViewZXZT)
         self.toolbar_5.addAction(self.toolBtnClearChart)
@@ -385,6 +456,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         # self.verticalLayout_3.addWidget(EmbTerminal_2())
         # self.tabWidget.addTab(EmbTerminal(), "EmbTerminal")
 
+        self.router_sence = GraphicScene(self.graphicsView)
+        self.router_view = GraphicView(self.router_sence, self.graphicsView, self.vins_ip)
+        
     def alignOnce(self):
         for key in DICT_NAME_LIST:
             self.zero_lsts[key] = self.lsts[key][-1]
@@ -422,6 +496,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p5_x.setData(x=x, y=y5)
         y6 = self.zx_lsts["x_ang"]
         self.p6_x.setData(x=x, y=y6)
+        y7 = self.lsts["EUL_BY_INTEGRAL_X"]
+        self.p7_x.setData(x=x, y=y7)
+
         y1 = self.lsts["EUL_BY_CAM_Y"]
         self.p1_y.setData(x=x, y=y1)
         y2 = self.lsts["EUL_BY_UPDATE_Y"]
@@ -430,10 +507,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_y.setData(x=x, y=y3)
         y4 = self.lsts["EUL_BY_IMU_Y"]            
         self.p4_y.setData(x=x, y=y4)
-        y5 = self.tk_lsts["z_ang"]
-        self.p5_y.setData(x=x, y=y5)
-        y6 = self.zx_lsts["z_ang"]
-        self.p6_y.setData(x=x, y=y6)
+        # y5 = self.tk_lsts["z_ang"]
+        # self.p5_y.setData(x=x, y=y5)
+        # y6 = self.zx_lsts["z_ang"]
+        # self.p6_y.setData(x=x, y=y6)
+        y7 = self.lsts["EUL_BY_INTEGRAL_Y"]
+        self.p7_y.setData(x=x, y=y7)
 
         y1 = self.lsts["EUL_BY_CAM_Z"]
         self.p1_z.setData(x=x, y=y1)
@@ -443,6 +522,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.p3_z.setData(x=x, y=y3)
         y4 = self.lsts["EUL_BY_IMU_Z"]            
         self.p4_z.setData(x=x, y=y4)
+        y5 = self.tk_lsts["z_ang"]
+        self.p5_z.setData(x=x, y=y5)
+        y6 = self.zx_lsts["z_ang"]
+        self.p6_z.setData(x=x, y=y6)
+        y7 = self.lsts["EUL_BY_INTEGRAL_Z"]
+        self.p7_z.setData(x=x, y=y7)
 
     def toggleRed(self):
         self.redON = not(self.redON)
@@ -467,6 +552,30 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewBlue.setIcon(QIcon('./res/过滤白.png'))
         else:
             self.toolBtnViewBlue.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleANGLEV(self):
+        self.anglevON = not(self.anglevON)
+        self.reflash()
+        if self.anglevON:
+            self.toolBtnViewANGLEV.setIcon(QIcon('./res/过滤-深蓝.png'))
+        else:
+            self.toolBtnViewANGLEV.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleSTABLE(self):
+        self.stableON = not(self.stableON)
+        self.reflash()
+        if self.stableON:
+            self.toolBtnViewSTABLE.setIcon(QIcon('./res/过滤-深蓝.png'))
+        else:
+            self.toolBtnViewSTABLE.setIcon(QIcon('./res/过滤关.png'))
+
+    def toggleINT(self):
+        self.intON = not(self.intON)
+        self.reflash()
+        if self.intON:
+            self.toolBtnViewINT.setIcon(QIcon('./res/过滤粉.png'))
+        else:
+            self.toolBtnViewINT.setIcon(QIcon('./res/过滤关.png'))
 
     def toggleIMU(self):
         self.imuON = not(self.imuON)
@@ -493,24 +602,28 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewZXZT.setIcon(QIcon('./res/过滤关.png'))
 
     def analysis(self):
-        dialog = analysisDialog()
-        dialog.show()
+        # dialog = analysisDialog()
+        # dialog.show()
+        pass
         # if dialog.exec():
         #     return
 
     def settingZT(self):
-        dialog = ztUsage()
-        dialog.show()
+        # dialog = ztUsage()
+        # if dialog.exec():
+        #     pass
+        pass
        
 
     def settingSSH(self):
+        host = self.vins_ip
+        port = self.vins_ssh_port
+        username = self.vins_user_name
+        password = self.vins_user_key
+        return
         dialog = QDialog()
         setDialog = Ui_Dialog_set()
         setDialog.setupUi(dialog)
-        host = '10.42.0.1'
-        port = 2222
-        username = 'shipei'
-        password = 'shipei'
         if dialog.exec():
             host = setDialog.lineEdit.text()
             port = int(setDialog.spinBox.value())
@@ -525,6 +638,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def closeRemote(self):
         self.ssh.sendCommand('x')
+        time.sleep(0.1)
+        cvstrs = self.ssh.cbstrs
+        
         self.recv.close_start()
         self.recvImu.pause = True
         self.recvZxzt.pause = True
@@ -537,6 +653,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnNormal.setEnabled(True)
         self.toolBtnInit.setEnabled(True)
         self.toolBtnIMUInit.setEnabled(True)
+        if len(cvstrs) > 0:
+            s = "".join(cvstrs)
+            s = s[s.find('--') : s.rfind('--')]
+            msgBox = QMessageBox.information(self, "执行结束", s)
+        self.ssh.startpushflag = False
+        self.ssh.cbstrs.clear()
 
     def resetRemote(self):
         self.ssh.sendCommand('r')
@@ -556,7 +678,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.recvImu.pause = False
         self.recvZxzt.pause = False
         self.ssh.sendCommand(
-            './zntk_core')
+            './zntk_core -b')
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -577,7 +699,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         else:
             return
         self.ssh.sendCommand(
-            './zntk_core -p ' + bagname + ' -rate ' + str(rate))
+            './zntk_core -b -p ' + bagname + ' -rate ' + str(rate))
         self.toolBtnReset.setEnabled(True)
         self.toolBtnClose.setEnabled(True)
         self.toolBtnPlay.setEnabled(False)
@@ -627,6 +749,13 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnSetting.setEnabled(False)
         self.ssh.start()
 
+    def connectTrans(self):
+        self.toolBtnTrans.setEnabled(False)
+        self.ssh_trans.start()
+        time.sleep(1.0)
+        self.ssh_trans.sendCommand('./zxzt_trans&')
+        self.ssh_trans.sendCommand('./zt_trans&')
+
     def updateViews(self):
         self.v_2.setGeometry(self.v_1.sceneBoundingRect())
         self.v_3.setGeometry(self.v_2.sceneBoundingRect())
@@ -644,7 +773,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
     def startRecv(self):
         if not hasattr(self, "recv"):
-            self.recv = RecvData()
+            self.recv = RecvData(enable_save=self.save_enable)
             self.recvImu = RecvIMU(usesock=True, socketPort=5580, saveName='_cl', save=True, event=self.ztresave)
             self.recvZxzt = RecvIMU(usesock=True, socketPort=5581, saveName='_zx', save=True, event=self.zxresave)
             # self.recvImu = RecvIMU(save=False)
@@ -655,6 +784,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnStart.setIcon(QIcon('./res/暂停.png'))
             self.toolBtnStart.setText('暂停')
             self.toolBtnConnect.setEnabled(True)
+            self.toolBtnTrans.setEnabled(True)
         elif self.recv.issend:
             self.recv.pause()
             self.recvImu.pause=True
@@ -704,6 +834,15 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.zxZTON:
             y6 = self.zx_lsts["x_ang"]
             self.p6_x.setData(x=x, y=y6)
+        if self.intON:
+            y7 = self.lsts["EUL_BY_INTEGRAL_X"]
+            self.p7_x.setData(x=x, y=y7)
+        if self.stableON:
+            y8 = self.lsts["EUL_BY_STABLE_X"]
+            self.p8_x.setData(x=x, y=y8)
+        if self.anglevON:
+            y9 = self.lsts["ANGLE_VELOCITY_X"]
+            self.p_angle_velocity_x.setData(x=x, y=y9)
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Y"]
@@ -717,12 +856,22 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.imuON:
             y4 = self.lsts["EUL_BY_IMU_Y"]            
             self.p4_y.setData(x=x, y=y4)
-        if self.clZTON:
-            y5 = self.tk_lsts["z_ang"]
-            self.p5_y.setData(x=x, y=y5)
-        if self.zxZTON:
-            y6 = self.zx_lsts["z_ang"]
-            self.p6_y.setData(x=x, y=y6)
+        # if self.clZTON:
+        #     y5 = self.tk_lsts["z_ang"]
+        #     self.p5_y.setData(x=x, y=y5)
+        # if self.zxZTON:
+        #     y6 = self.zx_lsts["z_ang"]
+        #     self.p6_y.setData(x=x, y=y6)
+        if self.intON:
+            y7 = self.lsts["EUL_BY_INTEGRAL_Y"]
+            self.p7_y.setData(x=x, y=y7)
+        if self.stableON:
+            y8 = self.lsts["EUL_BY_STABLE_Y"]
+            self.p8_y.setData(x=x, y=y8)
+        if self.anglevON:
+            y9 = self.lsts["ANGLE_VELOCITY_Y"]
+            self.p_angle_velocity_y.setData(x=x, y=y9)
+
 
         if self.redON:
             y1 = self.lsts["EUL_BY_CAM_Z"]
@@ -736,6 +885,21 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.imuON:
             y4 = self.lsts["EUL_BY_IMU_Z"]            
             self.p4_z.setData(x=x, y=y4)
+        if self.clZTON:
+            y5 = self.tk_lsts["z_ang"]
+            self.p5_z.setData(x=x, y=y5)
+        if self.zxZTON:
+            y6 = self.zx_lsts["z_ang"]
+            self.p6_z.setData(x=x, y=y6)
+        if self.intON:
+            y7 = self.lsts["EUL_BY_INTEGRAL_Z"]
+            self.p7_z.setData(x=x, y=y7)
+        if self.stableON:
+            y8 = self.lsts["EUL_BY_STABLE_Z"]
+            self.p8_x.setData(x=x, y=y8)
+        if self.anglevON:
+            y9 = self.lsts["ANGLE_VELOCITY_Z"]
+            self.p_angle_velocity_z.setData(x=x, y=y9)
         
 
         
@@ -801,11 +965,11 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
             if data is not None:
                 # 绘图类
-                image = np.zeros((480, 640, 3), np.uint8)
+                image = np.zeros((400, 640, 3), np.uint8)
                 for i in range(len(data["IMAGE_FEATURE_POINT_X"])):
                     cv2.circle(image,
                             (int(data["IMAGE_FEATURE_POINT_X"][i] * 640 / 2 + 320),
-                                int(data["IMAGE_FEATURE_POINT_Y"][i] * 480 / 2 + 240)),
+                                int(data["IMAGE_FEATURE_POINT_Y"][i] * 400 / 2 + 200)),
                             10, (255, 255, 255), 3)
                 convertToQtFormat = QtGui.QImage(
                     image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
@@ -865,6 +1029,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         if self.timer.isActive():
             self.timer.stop()
         self.ssh.isRun = False
+        self.ssh_trans.isRun = False
         self.stop = True       
         event.accept()
 
