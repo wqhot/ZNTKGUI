@@ -1,6 +1,6 @@
-vins_ip: "192.168.0.41"
+vins_ip: "192.168.50.69"
 vins_ssh_port: 22
 vins_user_name: "kylin"
 vins_user_key: "123123"
 vins_bin_path: "/home/kylin/zntk/bin/"
-save_enable: False
+save_enable: True

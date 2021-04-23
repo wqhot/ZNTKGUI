@@ -32,10 +32,14 @@ class RecvData():
     __ANGLE_BY_INTEGRAL = 172
     __ANGLE_BY_STABLE = 188
     __ANGLE_VELOCITY = 200
-    __LENGTH = 225
-    __OLDLENGTH = 217
-    __IMAGE_FEATURE_POINT_X = 216
-    __IMAGE_FEATURE_POINT_Y = 220
+    __OMEGA_WITH_CAM = 216
+    __OMEGA_NO_CAM = 228
+    __ACC_WITH_CAM = 240
+    __ACC_NO_CAM = 252
+    __LENGTH = 273
+    __OLDLENGTH = 265
+    __IMAGE_FEATURE_POINT_X = 264
+    __IMAGE_FEATURE_POINT_Y = 268
 
     def __init__(self, enable_save=True):
         self.mutex = threading.Lock()
@@ -161,7 +165,10 @@ class RecvData():
     def save(self):
         headers = ['stamp', 'eul_x', 'eul_y', 'eul_z', 't_x', 't_y', 't_z',
                    'cam_x', 'cam_y', 'cam_z', 'updt_x', 'updt_y', 'updt_z',
-                   'imu_x', 'imu_y', 'imu_z', 'cost_of_eul', 'cost_of_cam', 'cost_of_update']
+                   'imu_x', 'imu_y', 'imu_z', 'omega_with_cam_x', 'omega_with_cam_y', 'omega_with_cam_z',
+                   'omega_no_cam_x', 'omega_no_cam_y', 'omega_no_cam_z',
+                   'omega_rel_x', 'omega_rel_y', 'omega_rel_z',
+                   'cost_of_eul', 'cost_of_cam', 'cost_of_update']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
@@ -193,6 +200,15 @@ class RecvData():
                             r["EUL_BY_IMU_X"],
                             r["EUL_BY_IMU_Y"],
                             r["EUL_BY_IMU_Z"],
+                            r["OMEGA_WITH_CAM_X"],
+                            r["OMEGA_WITH_CAM_Y"],
+                            r["OMEGA_WITH_CAM_Z"],
+                            r["OMEGA_NO_CAM_X"],
+                            r["OMEGA_NO_CAM_Y"],
+                            r["OMEGA_NO_CAM_Z"],
+                            r["ANGLE_VELOCITY_X"],
+                            r["ANGLE_VELOCITY_Y"],
+                            r["ANGLE_VELOCITY_Z"],
                             r["COST_OF_PRE"],
                             r["COST_OF_IMG"],
                             r["COST_OF_UPDT"]]
@@ -372,6 +388,34 @@ class RecvData():
             dc["ANGLE_VELOCITY_Z"] = struct.unpack('f', bytes(
                 data[self.__ANGLE_VELOCITY + 8:self.__ANGLE_VELOCITY + 12]))[0]
 
+            dc["OMEGA_WITH_CAM_X"] = struct.unpack('f', bytes(
+                data[self.__OMEGA_WITH_CAM + 0:self.__OMEGA_WITH_CAM + 4]))[0]
+            dc["OMEGA_WITH_CAM_Y"] = struct.unpack('f', bytes(
+                data[self.__OMEGA_WITH_CAM + 4:self.__OMEGA_WITH_CAM + 8]))[0]
+            dc["OMEGA_WITH_CAM_Z"] = struct.unpack('f', bytes(
+                data[self.__OMEGA_WITH_CAM + 8:self.__OMEGA_WITH_CAM + 12]))[0]
+
+            dc["OMEGA_NO_CAM_X"] = struct.unpack('f', bytes(
+                data[self.__OMEGA_NO_CAM + 0:self.__OMEGA_NO_CAM + 4]))[0]
+            dc["OMEGA_NO_CAM_Y"] = struct.unpack('f', bytes(
+                data[self.__OMEGA_NO_CAM + 4:self.__OMEGA_NO_CAM + 8]))[0]
+            dc["OMEGA_NO_CAM_Z"] = struct.unpack('f', bytes(
+                data[self.__OMEGA_NO_CAM + 8:self.__OMEGA_NO_CAM + 12]))[0]
+
+            dc["ACC_WITH_CAM_X"] = struct.unpack('f', bytes(
+                data[self.__ACC_WITH_CAM + 0:self.__ACC_WITH_CAM + 4]))[0]
+            dc["ACC_WITH_CAM_Y"] = struct.unpack('f', bytes(
+                data[self.__ACC_WITH_CAM + 4:self.__ACC_WITH_CAM + 8]))[0]
+            dc["ACC_WITH_CAM_Z"] = struct.unpack('f', bytes(
+                data[self.__ACC_WITH_CAM + 8:self.__ACC_WITH_CAM + 12]))[0]
+
+            dc["ACC_NO_CAM_X"] = struct.unpack('f', bytes(
+                data[self.__ACC_NO_CAM + 0:self.__ACC_NO_CAM + 4]))[0]
+            dc["ACC_NO_CAM_Y"] = struct.unpack('f', bytes(
+                data[self.__ACC_NO_CAM + 4:self.__ACC_NO_CAM + 8]))[0]
+            dc["ACC_NO_CAM_Z"] = struct.unpack('f', bytes(
+                data[self.__ACC_NO_CAM + 8:self.__ACC_NO_CAM + 12]))[0]
+
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []
             pty = []
@@ -406,6 +450,26 @@ class RecvData():
             save_dc["COST_OF_IMG"] = dc["COST_OF_IMG"]
             save_dc["COST_OF_PRE"] = dc["COST_OF_PRE"]
             save_dc["COST_OF_UPDT"] = dc["COST_OF_UPDT"]
+
+            save_dc["ANGLE_VELOCITY_X"] = dc["ANGLE_VELOCITY_X"]
+            save_dc["ANGLE_VELOCITY_Y"] = dc["ANGLE_VELOCITY_Y"]
+            save_dc["ANGLE_VELOCITY_Z"] = dc["ANGLE_VELOCITY_Z"]
+
+            save_dc["OMEGA_WITH_CAM_X"] = dc["OMEGA_WITH_CAM_X"]
+            save_dc["OMEGA_WITH_CAM_Y"] = dc["OMEGA_WITH_CAM_Y"]
+            save_dc["OMEGA_WITH_CAM_Z"] = dc["OMEGA_WITH_CAM_Z"]
+
+            save_dc["OMEGA_NO_CAM_X"] = dc["OMEGA_NO_CAM_X"]
+            save_dc["OMEGA_NO_CAM_Y"] = dc["OMEGA_NO_CAM_Y"]
+            save_dc["OMEGA_NO_CAM_Z"] = dc["OMEGA_NO_CAM_Z"]
+
+            save_dc["ACC_WITH_CAM_X"] = dc["ACC_WITH_CAM_X"]
+            save_dc["ACC_WITH_CAM_Y"] = dc["ACC_WITH_CAM_Y"]
+            save_dc["ACC_WITH_CAM_Z"] = dc["ACC_WITH_CAM_Z"]
+
+            save_dc["ACC_NO_CAM_X"] = dc["ACC_NO_CAM_X"]
+            save_dc["ACC_NO_CAM_Y"] = dc["ACC_NO_CAM_Y"]
+            save_dc["ACC_NO_CAM_Z"] = dc["ACC_NO_CAM_Z"]
 
             self.contsum = self.contsum + 1
             if (self.issend):
