@@ -13,33 +13,33 @@ import numpy as np
 # import cv2
 
 class RecvData():
-    __POSE_BY_CAM = 4
-    __ANGLE_BY_CAM = 16
-    __DT_BY_CAM = 32
-    __POSE_BY_UPDATE = 40
-    __ANGLE_BY_UPDATE = 52
-    __DT_BY_UPDATE = 68
-    __POSE_BY_PRE = 76
-    __ANGLE_BY_PRE = 88
-    __DT_BY_PRE = 104
-    __DT_OF_FRAME = 112
-    __THRESOLD = 120
-    __COST_OF_IMG = 124
-    __COST_OF_PRE = 132
-    __COST_OF_UPDT = 140
-    __STAMP = 148
-    __ANGLE_BY_IMU = 156
-    __ANGLE_BY_INTEGRAL = 172
-    __ANGLE_BY_STABLE = 188
-    __ANGLE_VELOCITY = 200
-    __OMEGA_WITH_CAM = 216
-    __OMEGA_NO_CAM = 228
-    __ACC_WITH_CAM = 240
-    __ACC_NO_CAM = 252
-    __LENGTH = 273
-    __OLDLENGTH = 265
-    __IMAGE_FEATURE_POINT_X = 264
-    __IMAGE_FEATURE_POINT_Y = 268
+    __POSE_BY_CAM = 5
+    __ANGLE_BY_CAM = 17
+    __DT_BY_CAM = 33
+    __POSE_BY_UPDATE = 41
+    __ANGLE_BY_UPDATE = 53
+    __DT_BY_UPDATE = 69
+    __POSE_BY_PRE = 77
+    __ANGLE_BY_PRE = 89
+    __DT_BY_PRE = 105
+    __DT_OF_FRAME = 113
+    __THRESOLD = 121
+    __COST_OF_IMG = 125
+    __COST_OF_PRE = 133
+    __COST_OF_UPDT = 141
+    __STAMP = 149
+    __ANGLE_BY_IMU = 157
+    __ANGLE_BY_INTEGRAL = 173
+    __ANGLE_BY_STABLE = 189
+    __ANGLE_VELOCITY = 201
+    __OMEGA_WITH_CAM = 217
+    __OMEGA_NO_CAM = 229
+    __ACC_WITH_CAM = 241
+    __ACC_NO_CAM = 253
+    __LENGTH = 274
+    __OLDLENGTH = 266
+    __IMAGE_FEATURE_POINT_X = 265
+    __IMAGE_FEATURE_POINT_Y = 269
 
     def __init__(self, enable_save=True):
         self.mutex = threading.Lock()
@@ -228,7 +228,7 @@ class RecvData():
                     data = []
                     buffList = buffList[index:]
                     # print(time.time())
-                    self.__LENGTH = buffList[index + 3]
+                    self.__LENGTH = buffList[index + 3] + buffList[index + 4] * 256
                     # print(self.__LENGTH)
                 data.extend(buffList)
             # 收齐一帧
