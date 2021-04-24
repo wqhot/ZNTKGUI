@@ -968,8 +968,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
                 image = np.zeros((400, 640, 3), np.uint8)
                 for i in range(len(data["IMAGE_FEATURE_POINT_X"])):
                     cv2.circle(image,
-                            (int(data["IMAGE_FEATURE_POINT_X"][i] * 640 / 2 + 320),
-                                int(data["IMAGE_FEATURE_POINT_Y"][i] * 400 / 2 + 200)),
+                            (int(data["IMAGE_FEATURE_POINT_X"][i]),
+                                int(data["IMAGE_FEATURE_POINT_Y"][i])),
                             10, (255, 255, 255), 3)
                 convertToQtFormat = QtGui.QImage(
                     image.data, image.shape[1], image.shape[0], QImage.Format_RGB888)
