@@ -9,6 +9,7 @@ import base64
 import csv
 import copy
 import time
+from scipy.spatial.transform import Rotation
 import numpy as np
 # import cv2
 
@@ -128,7 +129,58 @@ class RecvData():
         self.displayDict = None
         return r
 
+    def transpose_qua(self, qua):
+        R = Rotation.from_quat(qua).as_matrix()
+        R = R.transpose()
+        rot = Rotation.from_matrix(R)
+        qua = rot.as_quat()
+
+    def qua2mat(self, qua):
+        R = Rotation.from_quat(qua)
+        # w = float(qua[3])
+        # x = float(qua[0])
+        # y = float(qua[1])
+        # z = float(qua[2])
+        # R = np.zeros(shape=(3,3))
+        # R[0,0] = 1 - 2 * y * y -2 * z * z
+        # R[0,1] = 2 * x * y + 2 * w * z
+        # R[0,2] = 2 * x * z - 2 * w * y
+
+        # R[1,0] = 2 * x * y - 2 * w * z
+        # R[1,1] = 1 - 2 * x * x -2 * z * z
+        # R[1,2] = 2 * y * z + 2 * w * x
+
+        # R[2,0] = 2 * x * z + 2 * w * y
+        # R[2,1] = 2 * y * z - 2 * w * x
+        # R[2,2] = 1 - 2 * x * x -2 * y * y
+        #R = R.transpose()
+        return R
+
+    def mat2qua(self, R):
+        qua = [0, 0, 0, 0]
+        w = float(qua[3])
+        x = float(qua[0])
+        y = float(qua[1])
+        z = float(qua[2])
+        R = np.zeros(shape=(3,3))
+        R[0,0] = 1 - 2 * y * y -2 * z * z
+        R[0,1] = 2 * x * y + 2 * w * z
+        R[0,2] = 2 * x * z - 2 * w * y
+
+        R[1,0] = 2 * x * y - 2 * w * z
+        R[1,1] = 1 - 2 * x * x -2 * z * z
+        R[1,2] = 2 * y * z + 2 * w * x
+
+        R[2,0] = 2 * x * z + 2 * w * y
+        R[2,1] = 2 * y * z - 2 * w * x
+        R[2,2] = 1 - 2 * x * x -2 * y * y
+
+        #R = R.transpose()
+        return R
+
+
     def qua2eul(self, qua):
+        qua = self.transpose_qua(qua)
         w = float(qua[3])
         x = float(qua[0])
         y = float(qua[1])
@@ -168,7 +220,8 @@ class RecvData():
                    'imu_x', 'imu_y', 'imu_z', 'omega_with_cam_x', 'omega_with_cam_y', 'omega_with_cam_z',
                    'omega_no_cam_x', 'omega_no_cam_y', 'omega_no_cam_z',
                    'omega_rel_x', 'omega_rel_y', 'omega_rel_z',
-                   'cost_of_eul', 'cost_of_cam', 'cost_of_update']
+                   'cost_of_eul', 'cost_of_cam', 'cost_of_update',
+                   'quat_pre_w', 'quat_pre_x', 'quat_pre_y', 'quat_pre_z']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
@@ -211,7 +264,11 @@ class RecvData():
                             r["ANGLE_VELOCITY_Z"],
                             r["COST_OF_PRE"],
                             r["COST_OF_IMG"],
-                            r["COST_OF_UPDT"]]
+                            r["COST_OF_UPDT"],
+                            r["ANGLE_BY_PRE"][3],
+                            r["ANGLE_BY_PRE"][0],
+                            r["ANGLE_BY_PRE"][1],
+                            r["ANGLE_BY_PRE"][2]]
                     f_csv.writerow(line)
 
     def run(self):
@@ -470,6 +527,8 @@ class RecvData():
             save_dc["ACC_NO_CAM_X"] = dc["ACC_NO_CAM_X"]
             save_dc["ACC_NO_CAM_Y"] = dc["ACC_NO_CAM_Y"]
             save_dc["ACC_NO_CAM_Z"] = dc["ACC_NO_CAM_Z"]
+
+            save_dc["ANGLE_BY_PRE"] = dc["ANGLE_BY_PRE"]
 
             self.contsum = self.contsum + 1
             if (self.issend):

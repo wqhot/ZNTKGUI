@@ -20,7 +20,7 @@ from recvData import RecvData
 from sshCtl import sshCtl
 from plotCamera import PlotCamera
 from config import TIME_LENGTH
-# from analysis import analysisDialog
+from analysis import analysisDialog
 from recvIMU import RecvIMU
 import threading
 import time
@@ -602,9 +602,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewZXZT.setIcon(QIcon('./res/过滤关.png'))
 
     def analysis(self):
-        # dialog = analysisDialog()
-        # dialog.show()
-        pass
+        dialog = analysisDialog()
+        dialog.show()
+        # pass
         # if dialog.exec():
         #     return
 
