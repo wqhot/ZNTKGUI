@@ -12,6 +12,7 @@ class sshCtl(threading.Thread):
         self.isRun = True
         self.ssh = None
         self.shell = None
+        self.cbstrs = []
         super(sshCtl, self).__init__(daemon=True)
 
     def setCommand(self, command):
@@ -37,6 +38,8 @@ class sshCtl(threading.Thread):
         self.ssh = paramiko.SSHClient()
         know_host = paramiko.AutoAddPolicy()
         self.ssh.set_missing_host_key_policy(know_host)
+        self.startpushflag = False
+        self.cbstrs.clear()
 
         self.ssh.connect(
             hostname=self.host,
@@ -53,6 +56,10 @@ class sshCtl(threading.Thread):
                 recv = self.shell.recv(512).decode()
                 if recv:
                     print(recv, end="")
+                    if "-----" in recv:
+                        self.startpushflag = True
+                    if self.startpushflag:
+                        self.cbstrs.append(recv)
                     # pass
                 else:
                     continue

@@ -13,35 +13,28 @@ import numpy as np
 # import cv2
 
 class RecvData():
-    __POSE_BY_CAM = 5
-    __ANGLE_BY_CAM = 17
-    __DT_BY_CAM = 33
-    __POSE_BY_UPDATE = 41
-    __ANGLE_BY_UPDATE = 53
-    __DT_BY_UPDATE = 69
-    __POSE_BY_PRE = 77
-    __ANGLE_BY_PRE = 89
-    __DT_BY_PRE = 105
-    __DT_OF_FRAME = 113
-    __THRESOLD = 121
-    __COST_OF_IMG = 125
-    __COST_OF_PRE = 133
-    __COST_OF_UPDT = 141
-    __STAMP = 149
-    __ANGLE_BY_IMU = 157
-    __ANGLE_BY_INTEGRAL = 173
-    __ANGLE_BY_STABLE = 189
-    __ANGLE_VELOCITY = 201
-    __OMEGA_WITH_CAM = 217
-    __OMEGA_NO_CAM = 229
-    __ACC_WITH_CAM = 241
-    __ACC_NO_CAM = 253
-    __LENGTH = 274
-    __OLDLENGTH = 266
-    __IMAGE_FEATURE_POINT_X = 265
-    __IMAGE_FEATURE_POINT_Y = 269
+    __POSE_BY_CAM = 4
+    __ANGLE_BY_CAM = 16
+    __DT_BY_CAM = 32
+    __POSE_BY_UPDATE = 40
+    __ANGLE_BY_UPDATE = 52
+    __DT_BY_UPDATE = 68
+    __POSE_BY_PRE = 76
+    __ANGLE_BY_PRE = 88
+    __DT_BY_PRE = 104
+    __DT_OF_FRAME = 112
+    __THRESOLD = 120
+    __COST_OF_IMG = 124
+    __COST_OF_PRE = 132
+    __COST_OF_UPDT = 140
+    __STAMP = 148
+    __ANGLE_BY_IMU = 156
+    __LENGTH = 197
+    __OLDLENGTH = 173
+    __IMAGE_FEATURE_POINT_X = 172
+    __IMAGE_FEATURE_POINT_Y = 176
 
-    def __init__(self, enable_save=True):
+    def __init__(self):
         self.mutex = threading.Lock()
         # self.img_mutex = threading.Lock()
         self.que = queue.Queue(1024)
@@ -54,7 +47,7 @@ class RecvData():
         # self.sock_2.bind(("0.0.0.0", 5578))
         # self.sock_2.listen()
         self.isrun = True
-        self.issave = enable_save
+        self.issave = True
         self.issend = True
         self.displayDict = None
         self.contsum = 0
@@ -143,13 +136,13 @@ class RecvData():
         eul = [0.0, 0.0, 0.0]
         if r21 < -threshold or r21 > threshold:
             sign = 1 if r21 > 0 else -1
-            eul[0] = 0
-            eul[1] = sign * math.pi / 2.0 * 180.0 / math.pi
-            eul[2] = -2 * sign * math.atan2(x, z) * 180.0 / math.pi
+            eul[2] = 0
+            eul[0] = sign * math.pi / 2.0 * 180.0 / math.pi
+            eul[1] = -2 * sign * math.atan2(x, z) * 180.0 / math.pi
         else:
-            eul[0] = math.atan2(r31, r32) * 180.0 / math.pi
-            eul[1] = math.asin(r21) * 180.0 / math.pi
-            eul[2] = math.atan2(r11, r12) * 180.0 / math.pi
+            eul[2] = math.atan2(r31, r32) * 180.0 / math.pi
+            eul[0] = math.asin(r21) * 180.0 / math.pi
+            eul[1] = math.atan2(r11, r12) * 180.0 / math.pi
         return eul
 
     def close_start(self):
@@ -165,10 +158,7 @@ class RecvData():
     def save(self):
         headers = ['stamp', 'eul_x', 'eul_y', 'eul_z', 't_x', 't_y', 't_z',
                    'cam_x', 'cam_y', 'cam_z', 'updt_x', 'updt_y', 'updt_z',
-                   'imu_x', 'imu_y', 'imu_z', 'omega_with_cam_x', 'omega_with_cam_y', 'omega_with_cam_z',
-                   'omega_no_cam_x', 'omega_no_cam_y', 'omega_no_cam_z',
-                   'omega_rel_x', 'omega_rel_y', 'omega_rel_z',
-                   'cost_of_eul', 'cost_of_cam', 'cost_of_update']
+                   'imu_x', 'imu_y', 'imu_z', 'cost_of_eul', 'cost_of_cam', 'cost_of_update']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
@@ -200,15 +190,6 @@ class RecvData():
                             r["EUL_BY_IMU_X"],
                             r["EUL_BY_IMU_Y"],
                             r["EUL_BY_IMU_Z"],
-                            r["OMEGA_WITH_CAM_X"],
-                            r["OMEGA_WITH_CAM_Y"],
-                            r["OMEGA_WITH_CAM_Z"],
-                            r["OMEGA_NO_CAM_X"],
-                            r["OMEGA_NO_CAM_Y"],
-                            r["OMEGA_NO_CAM_Z"],
-                            r["ANGLE_VELOCITY_X"],
-                            r["ANGLE_VELOCITY_Y"],
-                            r["ANGLE_VELOCITY_Z"],
                             r["COST_OF_PRE"],
                             r["COST_OF_IMG"],
                             r["COST_OF_UPDT"]]
@@ -228,7 +209,7 @@ class RecvData():
                     data = []
                     buffList = buffList[index:]
                     # print(time.time())
-                    self.__LENGTH = buffList[index + 3] + buffList[index + 4] * 256
+                    self.__LENGTH = buffList[index + 3]
                     # print(self.__LENGTH)
                 data.extend(buffList)
             # 收齐一帧
@@ -351,71 +332,6 @@ class RecvData():
             dc["EUL_BY_IMU_Y"] = eul[1]
             dc["EUL_BY_IMU_Z"] = eul[2]
 
-            dc["ANGLE_BY_INTEGRAL"] = [0.0, 0.0, 0.0, 0.0]
-            dc["ANGLE_BY_INTEGRAL"][0] = struct.unpack('f', bytes(
-                data[self.__ANGLE_BY_INTEGRAL + 0:self.__ANGLE_BY_INTEGRAL + 4]))[0]
-            dc["ANGLE_BY_INTEGRAL"][1] = struct.unpack('f', bytes(
-                data[self.__ANGLE_BY_INTEGRAL + 4:self.__ANGLE_BY_INTEGRAL + 8]))[0]
-            dc["ANGLE_BY_INTEGRAL"][2] = struct.unpack('f', bytes(
-                data[self.__ANGLE_BY_INTEGRAL + 8:self.__ANGLE_BY_INTEGRAL + 12]))[0]
-            dc["ANGLE_BY_INTEGRAL"][3] = struct.unpack('f', bytes(
-                data[self.__ANGLE_BY_INTEGRAL + 12:self.__ANGLE_BY_INTEGRAL + 16]))[0]
-
-            eul = self.qua2eul(dc["ANGLE_BY_INTEGRAL"])
-            dc["EUL_BY_INTEGRAL_X"] = eul[0]
-            dc["EUL_BY_INTEGRAL_Y"] = eul[1]
-            dc["EUL_BY_INTEGRAL_Z"] = eul[2]
-
-            dc["ANGLE_BY_STABLE"] = [0.0, 0.0, 0.0, 0.0]
-            dc["ANGLE_BY_STABLE"][0] = struct.unpack('f', bytes(
-                data[self.__ANGLE_BY_STABLE + 0:self.__ANGLE_BY_STABLE + 4]))[0]
-            dc["ANGLE_BY_STABLE"][1] = struct.unpack('f', bytes(
-                data[self.__ANGLE_BY_STABLE + 4:self.__ANGLE_BY_STABLE + 8]))[0]
-            dc["ANGLE_BY_STABLE"][2] = struct.unpack('f', bytes(
-                data[self.__ANGLE_BY_STABLE + 8:self.__ANGLE_BY_STABLE + 12]))[0]
-            dc["ANGLE_BY_STABLE"][3] = struct.unpack('f', bytes(
-                data[self.__ANGLE_BY_STABLE + 12:self.__ANGLE_BY_STABLE + 16]))[0]
-
-            eul = self.qua2eul(dc["ANGLE_BY_STABLE"])
-            dc["EUL_BY_STABLE_X"] = eul[0]
-            dc["EUL_BY_STABLE_Y"] = eul[1]
-            dc["EUL_BY_STABLE_Z"] = eul[2]
-
-            dc["ANGLE_VELOCITY_X"] = struct.unpack('f', bytes(
-                data[self.__ANGLE_VELOCITY + 0:self.__ANGLE_VELOCITY + 4]))[0]
-            dc["ANGLE_VELOCITY_Y"] = struct.unpack('f', bytes(
-                data[self.__ANGLE_VELOCITY + 4:self.__ANGLE_VELOCITY + 8]))[0]
-            dc["ANGLE_VELOCITY_Z"] = struct.unpack('f', bytes(
-                data[self.__ANGLE_VELOCITY + 8:self.__ANGLE_VELOCITY + 12]))[0]
-
-            dc["OMEGA_WITH_CAM_X"] = struct.unpack('f', bytes(
-                data[self.__OMEGA_WITH_CAM + 0:self.__OMEGA_WITH_CAM + 4]))[0]
-            dc["OMEGA_WITH_CAM_Y"] = struct.unpack('f', bytes(
-                data[self.__OMEGA_WITH_CAM + 4:self.__OMEGA_WITH_CAM + 8]))[0]
-            dc["OMEGA_WITH_CAM_Z"] = struct.unpack('f', bytes(
-                data[self.__OMEGA_WITH_CAM + 8:self.__OMEGA_WITH_CAM + 12]))[0]
-
-            dc["OMEGA_NO_CAM_X"] = struct.unpack('f', bytes(
-                data[self.__OMEGA_NO_CAM + 0:self.__OMEGA_NO_CAM + 4]))[0]
-            dc["OMEGA_NO_CAM_Y"] = struct.unpack('f', bytes(
-                data[self.__OMEGA_NO_CAM + 4:self.__OMEGA_NO_CAM + 8]))[0]
-            dc["OMEGA_NO_CAM_Z"] = struct.unpack('f', bytes(
-                data[self.__OMEGA_NO_CAM + 8:self.__OMEGA_NO_CAM + 12]))[0]
-
-            dc["ACC_WITH_CAM_X"] = struct.unpack('f', bytes(
-                data[self.__ACC_WITH_CAM + 0:self.__ACC_WITH_CAM + 4]))[0]
-            dc["ACC_WITH_CAM_Y"] = struct.unpack('f', bytes(
-                data[self.__ACC_WITH_CAM + 4:self.__ACC_WITH_CAM + 8]))[0]
-            dc["ACC_WITH_CAM_Z"] = struct.unpack('f', bytes(
-                data[self.__ACC_WITH_CAM + 8:self.__ACC_WITH_CAM + 12]))[0]
-
-            dc["ACC_NO_CAM_X"] = struct.unpack('f', bytes(
-                data[self.__ACC_NO_CAM + 0:self.__ACC_NO_CAM + 4]))[0]
-            dc["ACC_NO_CAM_Y"] = struct.unpack('f', bytes(
-                data[self.__ACC_NO_CAM + 4:self.__ACC_NO_CAM + 8]))[0]
-            dc["ACC_NO_CAM_Z"] = struct.unpack('f', bytes(
-                data[self.__ACC_NO_CAM + 8:self.__ACC_NO_CAM + 12]))[0]
-
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []
             pty = []
@@ -451,31 +367,11 @@ class RecvData():
             save_dc["COST_OF_PRE"] = dc["COST_OF_PRE"]
             save_dc["COST_OF_UPDT"] = dc["COST_OF_UPDT"]
 
-            save_dc["ANGLE_VELOCITY_X"] = dc["ANGLE_VELOCITY_X"]
-            save_dc["ANGLE_VELOCITY_Y"] = dc["ANGLE_VELOCITY_Y"]
-            save_dc["ANGLE_VELOCITY_Z"] = dc["ANGLE_VELOCITY_Z"]
-
-            save_dc["OMEGA_WITH_CAM_X"] = dc["OMEGA_WITH_CAM_X"]
-            save_dc["OMEGA_WITH_CAM_Y"] = dc["OMEGA_WITH_CAM_Y"]
-            save_dc["OMEGA_WITH_CAM_Z"] = dc["OMEGA_WITH_CAM_Z"]
-
-            save_dc["OMEGA_NO_CAM_X"] = dc["OMEGA_NO_CAM_X"]
-            save_dc["OMEGA_NO_CAM_Y"] = dc["OMEGA_NO_CAM_Y"]
-            save_dc["OMEGA_NO_CAM_Z"] = dc["OMEGA_NO_CAM_Z"]
-
-            save_dc["ACC_WITH_CAM_X"] = dc["ACC_WITH_CAM_X"]
-            save_dc["ACC_WITH_CAM_Y"] = dc["ACC_WITH_CAM_Y"]
-            save_dc["ACC_WITH_CAM_Z"] = dc["ACC_WITH_CAM_Z"]
-
-            save_dc["ACC_NO_CAM_X"] = dc["ACC_NO_CAM_X"]
-            save_dc["ACC_NO_CAM_Y"] = dc["ACC_NO_CAM_Y"]
-            save_dc["ACC_NO_CAM_Z"] = dc["ACC_NO_CAM_Z"]
-
             self.contsum = self.contsum + 1
             if (self.issend):
                 self.displayDict = dc
             if self.cond.acquire():
-                if (self.issave):
+                if (self.issend):
                     self.que.put(save_dc)
                 self.cond.notify_all()
                 self.cond.release()
