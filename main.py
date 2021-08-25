@@ -88,7 +88,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.que = queue.Queue(1024)
         self.cond = threading.Condition()
         self.camera = PlotCamera(self.verticalLayout_camera)
-        self.vins_ip = "192.168.0.41"
+        self.vins_ip = "192.168.50.69"
         self.vins_ssh_port = 22
         self.vins_user_name = "kylin"
         self.vins_user_key = "123123"

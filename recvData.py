@@ -130,10 +130,14 @@ class RecvData():
         return r
 
     def transpose_qua(self, qua):
+        qua = np.array(qua)
+        if np.linalg.norm(qua) == 0:
+            return qua
         R = Rotation.from_quat(qua).as_matrix()
         R = R.transpose()
         rot = Rotation.from_matrix(R)
         qua = rot.as_quat()
+        return qua
 
     def qua2mat(self, qua):
         R = Rotation.from_quat(qua)
@@ -265,6 +269,7 @@ class RecvData():
                             r["COST_OF_PRE"],
                             r["COST_OF_IMG"],
                             r["COST_OF_UPDT"],
+                            # 0,0,0,0]
                             r["ANGLE_BY_PRE"][3],
                             r["ANGLE_BY_PRE"][0],
                             r["ANGLE_BY_PRE"][1],
