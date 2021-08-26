@@ -11,6 +11,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import numpy as np
+from scipy.spatial.transform import Rotation
 import matplotlib
 import math
 from scipy.optimize import minimize
@@ -185,25 +186,28 @@ class analysisData():
             col = col + 1
         return title
 
-    def selectDataCols(self, cols):
+    def selectDataCols(self, cols, all_cols):
         self.analysisData = {}
         self.analysisDataZeros = {}
         for col in cols:
             self.analysisData[col] = self.data[col]
+        for col in all_cols:
             self.analysisDataZeros[col] = 0
 
-    def selectZtDataCols(self, cols):
+    def selectZtDataCols(self, cols, all_cols):
         self.analysisZtData = {}
         self.analysisZtDataZeros = {}
         for col in cols:
             self.analysisZtData[col] = self.ztData[col]
+        for col in all_cols:
             self.analysisZtDataZeros[col] = 0
     
-    def selectZxDataCols(self, cols):
+    def selectZxDataCols(self, cols, all_cols):
         self.analysisZxData = {}
         self.analysisZxDataZeros = {}
         for col in cols:
             self.analysisZxData[col] = self.zxData[col]
+        for col in all_cols:
             self.analysisZxDataZeros[col] = 0
 
     def setFuData(self, labels):
@@ -216,7 +220,19 @@ class analysisData():
         analysisdata2 = []
         analysisdatazero1 = []
         analysisdatazero2 = []
-        if len(self.analysisData.keys()) == 0 and len(self.analysisZtData.keys()) == len(self.analysisZxData.keys()):
+        analysis_quat_meas = []
+        analysis_quat_zt = []
+        analysis_quat_bt = []
+        cal_imu_zt_R = False
+        cal_estimate = True
+        if len(self.analysisData.keys()) == 0 and len(self.analysisZtData.keys()) == 0 and len(self.analysisZxData.keys()) == 0:
+            data1 = self.data
+            data2 = self.ztData
+            analysisdatazero1 = self.analysisDataZeros
+            analysisdatazero2 = self.analysisZtDataZeros
+            cal_imu_zt_R = True
+            cal_estimate = False
+        elif len(self.analysisData.keys()) == 0 and len(self.analysisZtData.keys()) == len(self.analysisZxData.keys()):
             data1 = self.zxData
             data2 = self.ztData
             analysisdata1 = self.analysisZxData
@@ -237,6 +253,7 @@ class analysisData():
             analysisdata2 = self.analysisZtData
             analysisdatazero1 = self.analysisDataZeros
             analysisdatazero2 = self.analysisZtDataZeros
+            cal_imu_zt_R = True
         else:
             return None
         indexStart_data = np.where(data1['stamp'] >= self.startX + self.startStamp)[0]
@@ -255,30 +272,68 @@ class analysisData():
             np.tile(self.startStamp, data_stamp.shape)
         ztData_stamp = ztData_stamp - \
             np.tile(self.startStamp, ztData_stamp.shape)
-        for key in analysisdata1.keys():
-            analysisData[key] = analysisdata1[key][index_data] - \
-                np.tile(analysisdatazero1[key], analysisdata1[key][index_data].shape)
-            if key in self.fuData:
-                analysisData[key] = -analysisData[key]
-        # 对于zt数据需要插值
-        for key in analysisdata2.keys():
-            temp = analysisdata2[key][index_ztData] - \
-                np.tile(analysisdatazero2[key], analysisdata2[key][index_ztData].shape)
-            analysisZtData[key] = np.interp(data_stamp,
-                                                 ztData_stamp,
-                                                 temp)
-            if key in self.fuData:
-                analysisZtData[key] = -analysisZtData[key]
-        estimate = Estimate(analysisData, analysisZtData, data_stamp)
-        res = estimate.res
+        if cal_estimate:
+            for key in analysisdata1.keys():
+                analysisData[key] = analysisdata1[key][index_data] - \
+                    np.tile(analysisdatazero1[key], analysisdata1[key][index_data].shape)
+                if key in self.fuData:
+                    analysisData[key] = -analysisData[key]
+            # 对于zt数据需要插值
+            for key in analysisdata2.keys():
+                temp = analysisdata2[key][index_ztData] - \
+                    np.tile(analysisdatazero2[key], analysisdata2[key][index_ztData].shape)
+                analysisZtData[key] = np.interp(data_stamp,
+                                                    ztData_stamp,
+                                                    temp)
+                if key in self.fuData:
+                    analysisZtData[key] = -analysisZtData[key]
+        if cal_imu_zt_R:
+            temp_x = data2['x_ang_cl'][index_ztData] - \
+                np.tile(analysisdatazero2['x_ang_cl'], data2['x_ang_cl'][index_ztData].shape)
+            temp_y = np.zeros(shape=data2['x_ang_cl'][index_ztData].shape)
+            temp_z = data2['z_ang_cl'][index_ztData] - \
+                np.tile(analysisdatazero2['z_ang_cl'], data2['z_ang_cl'][index_ztData].shape)
+            temp_x_interp = np.interp(data_stamp,
+                                            ztData_stamp,
+                                            temp_x)
+            temp_y_interp = np.interp(data_stamp,
+                                            ztData_stamp,
+                                            temp_y)
+            temp_z_interp = -np.interp(data_stamp,
+                                            ztData_stamp,
+                                            temp_z)
+            temp_interp = np.vstack((temp_x_interp, temp_y_interp, temp_z_interp)).T
+            R_zt = Rotation.from_euler('zyx', temp_interp, degrees=True)
+            temp_data = np.vstack((
+                data1['quat_pre_x'][index_data], 
+                data1['quat_pre_y'][index_data], 
+                data1['quat_pre_z'][index_data],
+                data1['quat_pre_w'][index_data])).T
+            R_m = Rotation.from_quat(temp_data)
+            a = np.matrix(R_m.as_quat().T)
+            u = np.matrix(R_zt.as_quat().T)
+            RQ = u * a.T * (a * a.T).I
+            # R_bt = R_m.inv() * R_zt 
+
+            # np.matrix(R_m[0].as_matrix()).I * np.matrix(R_zt[0].as_matrix())
+            pass
+            
+        res = None
+        if cal_estimate:
+            estimate = Estimate(analysisData, analysisZtData, data_stamp)
+            res = estimate.res
         print(data_stamp[0])
         return res
         
 
     def analysis(self):
         # 对齐时间戳，取交集
-        startStamp_data = self.data['stamp'][0]
-        startStamp_ztData = self.ztData['stamp'][0]
+        startStamp_data = 0
+        startStamp_ztData = 0
+        if 'stamp' in self.data.keys():
+            startStamp_data = self.data['stamp'][0]
+        if 'stamp' in self.ztData.keys():
+            startStamp_ztData = self.ztData['stamp'][0]
         useZx = False
         if 'stamp' in self.zxData.keys():
             useZx = True
@@ -287,21 +342,32 @@ class analysisData():
             startStamp_zxData = self.zxData['stamp'][0]
             self.startStamp = self.startStamp if self.startStamp > startStamp_zxData else startStamp_zxData
         
-        indexStart_data = np.where(self.data['stamp'] >= self.startStamp)[0]
-        indexStart_ztData = np.where(self.ztData['stamp'] >= self.startStamp)[0]
+        indexStart_data = []
+        indexStart_ztData = []
+        if 'stamp' in self.data.keys():
+            indexStart_data = np.where(self.data['stamp'] >= self.startStamp)[0]
+        if 'stamp' in self.ztData.keys():
+            indexStart_ztData = np.where(self.ztData['stamp'] >= self.startStamp)[0]
         indexStart_zxData = []
         if useZx:
             indexStart_zxData = np.where(self.zxData['stamp'] >= self.startStamp)[0]
-
-        endStamp_data = self.data['stamp'][-1]
-        endStamp_ztData = self.ztData['stamp'][-1]
+        endStamp_data = math.inf
+        endStamp_ztData = math.inf
+        if 'stamp' in self.data.keys():
+            endStamp_data = self.data['stamp'][-1]
+        if 'stamp' in self.ztData.keys():
+            endStamp_ztData = self.ztData['stamp'][-1]
         endStamp = endStamp_data if endStamp_data < endStamp_ztData else endStamp_ztData
         endStamp_zxData = []
         if useZx:
             endStamp_zxData = self.zxData['stamp'][-1]
             endStamp = endStamp if endStamp < endStamp_zxData else endStamp_zxData
-        indexEnd_data = np.where(self.data['stamp'] <= endStamp)[0]
-        indexEnd_ztData = np.where(self.ztData['stamp'] <= endStamp)[0]
+        indexEnd_data = []
+        indexEnd_ztData = []
+        if 'stamp' in self.data.keys():
+            indexEnd_data = np.where(self.data['stamp'] <= endStamp)[0]
+        if 'stamp' in self.ztData.keys():
+            indexEnd_ztData = np.where(self.ztData['stamp'] <= endStamp)[0]
         indexEnd_zxData = []
         if useZx:
             indexEnd_zxData = np.where(self.zxData['stamp'] <= endStamp)[0]
@@ -313,8 +379,12 @@ class analysisData():
         if useZx:
             index_zxData = np.intersect1d(indexStart_zxData, indexEnd_zxData)
             zxData_stamp = self.zxData['stamp'][index_zxData]
-        data_stamp = self.data['stamp'][index_data]
-        ztData_stamp = self.ztData['stamp'][index_ztData]
+        data_stamp = 0
+        ztData_stamp = 0
+        if 'stamp' in self.data.keys():
+            data_stamp = self.data['stamp'][index_data]
+        if 'stamp' in self.ztData.keys():
+            ztData_stamp = self.ztData['stamp'][index_ztData]
         analysisData = {}
         analysisZtData = {}
         analysisZxData = {}
@@ -518,9 +588,9 @@ class analysisDialog(QDialog, Ui_Dialog):
         self.F.drawHist(emin = emin, emax = emax, cmin = cmin, cmax = cmax)
 
     def refresh(self):
-        self.F.selectDataCols(self.selectDatalabels)
-        self.F.selectZtDataCols(self.selectZtDatalabels)
-        self.F.selectZxDataCols(self.selectZxDatalabels)
+        self.F.selectDataCols(self.selectDatalabels, self.datalabels)
+        self.F.selectZtDataCols(self.selectZtDatalabels, self.ztdatalabels)
+        self.F.selectZxDataCols(self.selectZxDatalabels, self.zxdatalabels)
         self.F.setFuData(self.fuDatalabels)
         self.F.analysis()
         # self.figureLayout.removeWidget(self.toolbar)
@@ -633,6 +703,7 @@ class analysisDialog(QDialog, Ui_Dialog):
         self.horizontalSlider_2.setMaximum(math.ceil(cmax))
         self.horizontalSlider_2.setValue(math.ceil(cmax))
         self.lineEdit_4.setText(str(math.ceil(cmax)))
+        self.refresh()
 
     def openZtData(self):
         directory = QFileDialog.getOpenFileName(self,
@@ -653,6 +724,7 @@ class analysisDialog(QDialog, Ui_Dialog):
             if item not in ['cost_of_eul', 'cost_of_cam', 'cost_of_update']:
                 self.listWidget_1.addItem(item)
         self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+        self.refresh()
 
     def openZxData(self):
         directory = QFileDialog.getOpenFileName(self,
@@ -673,6 +745,7 @@ class analysisDialog(QDialog, Ui_Dialog):
             if item not in ['cost_of_eul', 'cost_of_cam', 'cost_of_update']:
                 self.listWidget_1.addItem(item)
         self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+        self.refresh()
 
 # test
 if __name__ == "__main__":
