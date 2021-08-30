@@ -27,7 +27,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>../res/数据.png</normaloff>../res/数据.png</iconset>
+    <normaloff>res/数据.png</normaloff>res/数据.png</iconset>
   </property>
   <property name="modal">
    <bool>false</bool>
@@ -302,6 +302,25 @@
           </widget>
          </item>
         </layout>
+        <item>
+        <widget class="QPushButton" name="pushButton_5">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>2</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>转台标定</string>
+         </property>
+        </widget>
+       </item>
        </item>
       </layout>
      </item>
