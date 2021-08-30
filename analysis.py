@@ -303,7 +303,7 @@ class analysisData():
                                             ztData_stamp,
                                             temp_z)
             temp_interp = np.vstack((temp_x_interp, temp_y_interp, temp_z_interp)).T
-            R_zt = Rotation.from_euler('zyx', temp_interp, degrees=True)
+            R_zt = Rotation.from_euler('ZYX', temp_interp, degrees=True)
             temp_data = np.vstack((
                 data1['quat_pre_x'][index_data], 
                 data1['quat_pre_y'][index_data], 
@@ -313,10 +313,15 @@ class analysisData():
             a = np.matrix(R_m.as_quat().T)
             u = np.matrix(R_zt.as_quat().T)
             RQ = u * a.T * (a * a.T).I
-            # R_bt = R_m.inv() * R_zt 
+            print("======RQ======")
+            print(RQ)
+            print("======RQ======")
+            for r_m in R_m:
+                q_m = r_m.as_quat()
+                r_m = Rotation.from_quat(RQ * np.matrix(q_m).T)
+            
+            print("a")
 
-            # np.matrix(R_m[0].as_matrix()).I * np.matrix(R_zt[0].as_matrix())
-            pass
             
         res = None
         if cal_estimate:

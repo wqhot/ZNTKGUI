@@ -184,28 +184,30 @@ class RecvData():
 
 
     def qua2eul(self, qua):
-        qua = self.transpose_qua(qua)
-        w = float(qua[3])
-        x = float(qua[0])
-        y = float(qua[1])
-        z = float(qua[2])
-        epsilon = 0.001953125
-        threshold = 1.0 - epsilon
-        r11 = 2.0 * (x * y + z * w)
-        r12 = w * w + x * x - y * y - z * z
-        r21 = -2.0 * (x * z - y * w)
-        r31 = 2.0 * (y * z + x * w)
-        r32 = w * w - x * x - y * y + z * z
-        eul = [0.0, 0.0, 0.0]
-        if r21 < -threshold or r21 > threshold:
-            sign = 1 if r21 > 0 else -1
-            eul[0] = 0
-            eul[1] = sign * math.pi / 2.0 * 180.0 / math.pi
-            eul[2] = -2 * sign * math.atan2(x, z) * 180.0 / math.pi
-        else:
-            eul[0] = math.atan2(r31, r32) * 180.0 / math.pi
-            eul[1] = math.asin(r21) * 180.0 / math.pi
-            eul[2] = math.atan2(r11, r12) * 180.0 / math.pi
+        r = Rotation.from_quat(qua)
+        return r.as_euler('XYZ', degrees=True)
+        # qua = self.transpose_qua(qua)
+        # w = float(qua[3])
+        # x = float(qua[0])
+        # y = float(qua[1])
+        # z = float(qua[2])
+        # epsilon = 0.001953125
+        # threshold = 1.0 - epsilon
+        # r11 = 2.0 * (x * y + z * w)
+        # r12 = w * w + x * x - y * y - z * z
+        # r21 = -2.0 * (x * z - y * w)
+        # r31 = 2.0 * (y * z + x * w)
+        # r32 = w * w - x * x - y * y + z * z
+        # eul = [0.0, 0.0, 0.0]
+        # if r21 < -threshold or r21 > threshold:
+        #     sign = 1 if r21 > 0 else -1
+        #     eul[0] = 0
+        #     eul[1] = sign * math.pi / 2.0 * 180.0 / math.pi
+        #     eul[2] = -2 * sign * math.atan2(x, z) * 180.0 / math.pi
+        # else:
+        #     eul[0] = math.atan2(r31, r32) * 180.0 / math.pi
+        #     eul[1] = math.asin(r21) * 180.0 / math.pi
+        #     eul[2] = math.atan2(r11, r12) * 180.0 / math.pi
         return eul
 
     def close_start(self):
