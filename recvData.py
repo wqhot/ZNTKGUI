@@ -184,8 +184,10 @@ class RecvData():
 
 
     def qua2eul(self, qua):
+        if np.linalg.norm(qua) == 0:
+            return [0,0,0]
         r = Rotation.from_quat(qua)
-        return r.as_euler('XYZ', degrees=True)
+        return list(r.as_euler('XYZ', degrees=True))
         # qua = self.transpose_qua(qua)
         # w = float(qua[3])
         # x = float(qua[0])
@@ -208,7 +210,7 @@ class RecvData():
         #     eul[0] = math.atan2(r31, r32) * 180.0 / math.pi
         #     eul[1] = math.asin(r21) * 180.0 / math.pi
         #     eul[2] = math.atan2(r11, r12) * 180.0 / math.pi
-        return eul
+        # return eul
 
     def close_start(self):
         self.issave = False
@@ -227,7 +229,9 @@ class RecvData():
                    'omega_no_cam_x', 'omega_no_cam_y', 'omega_no_cam_z',
                    'omega_rel_x', 'omega_rel_y', 'omega_rel_z',
                    'cost_of_eul', 'cost_of_cam', 'cost_of_update',
-                   'quat_pre_w', 'quat_pre_x', 'quat_pre_y', 'quat_pre_z']
+                   'quat_pre_w', 'quat_pre_x', 'quat_pre_y', 'quat_pre_z',
+                   'acc_with_cam_x', 'acc_with_cam_y', 'acc_with_cam_z',
+                   'acc_no_cam_x', 'acc_no_cam_y', 'acc_no_cam_z']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
@@ -275,7 +279,13 @@ class RecvData():
                             r["ANGLE_BY_PRE"][3],
                             r["ANGLE_BY_PRE"][0],
                             r["ANGLE_BY_PRE"][1],
-                            r["ANGLE_BY_PRE"][2]]
+                            r["ANGLE_BY_PRE"][2],
+                            r["ACC_WITH_CAM_X"],
+                            r["ACC_WITH_CAM_Y"],
+                            r["ACC_WITH_CAM_Z"],
+                            r["ACC_NO_CAM_X"],
+                            r["ACC_NO_CAM_Y"],
+                            r["ACC_NO_CAM_Z"],]
                     f_csv.writerow(line)
 
     def run(self):

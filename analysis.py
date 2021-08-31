@@ -11,6 +11,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import numpy as np
+import pandas as pd
 from scipy.spatial.transform import Rotation
 import matplotlib
 import math
@@ -85,6 +86,7 @@ class analysisData():
         self.line2 = None
         self.rq_points = []
         self.rq_lines = []
+        self.fill_bars = []
         self.drawLine()
         self.canvas.mpl_connect('button_press_event', self.onclick)
         self.canvasHist.mpl_connect('button_press_event', self.drawTest)
@@ -226,6 +228,89 @@ class analysisData():
     def setFuData(self, labels):
         self.fuData = labels
 
+    def use_RQ(self):
+        directory = QFileDialog.getOpenFileName(self.wnd,
+                                                "保存的位置", "../rg.txt",
+                                                "Text Files (*.txt)")
+        if len(directory[0]) == 0:
+            return None
+        Rg = np.loadtxt(directory[0])
+        data1 = self.data
+        data2 = self.ztData
+        analysisdata1 = self.analysisData
+        analysisdata2 = self.analysisZtData
+        analysisdatazero1 = self.analysisDataZeros
+        analysisdatazero2 = self.analysisZtDataZeros
+        indexStart_data = np.where(
+            data1['stamp'] >= self.startX + self.startStamp)[0]
+        indexStart_ztData = np.where(
+            data2['stamp'] >= self.startX + self.startStamp)[0]
+
+        indexEnd_data = np.where(
+            data1['stamp'] <= self.endX + self.startStamp)[0]
+        indexEnd_ztData = np.where(
+            data2['stamp'] <= self.endX + self.startStamp)[0]
+        index_data = np.intersect1d(indexStart_data, indexEnd_data)
+        index_ztData = np.intersect1d(indexStart_ztData, indexEnd_ztData)
+        data_stamp = data1['stamp'][index_data]
+        ztData_stamp = data2['stamp'][index_ztData]
+        analysisData = {}
+        analysisZtData = {}
+        # 时间戳减去初始值
+        data_stamp = data_stamp - \
+            np.tile(self.startStamp, data_stamp.shape)
+        ztData_stamp = ztData_stamp - \
+            np.tile(self.startStamp, ztData_stamp.shape)
+
+        temp_x = data2['x_ang_cl'][index_ztData] - \
+            np.tile(analysisdatazero2['x_ang_cl'],
+                    data2['x_ang_cl'][index_ztData].shape)
+        temp_y = np.zeros(shape=data2['x_ang_cl'][index_ztData].shape)
+        temp_z = data2['z_ang_cl'][index_ztData] - \
+            np.tile(analysisdatazero2['z_ang_cl'],
+                    data2['z_ang_cl'][index_ztData].shape)
+        temp_x_interp = np.interp(data_stamp,
+                                  ztData_stamp,
+                                  temp_x)
+        temp_y_interp = np.interp(data_stamp,
+                                  ztData_stamp,
+                                  temp_y)
+        temp_z_interp = -np.interp(data_stamp,
+                                   ztData_stamp,
+                                   temp_z)
+        temp_interp = np.vstack(
+            (temp_x_interp, temp_y_interp, temp_z_interp)).T
+        R_zt = Rotation.from_euler('ZYX', temp_interp, degrees=True)
+        temp_data = np.vstack((
+            data1['quat_pre_x'],
+            data1['quat_pre_y'],
+            data1['quat_pre_z'],
+            data1['quat_pre_w'])).T
+        R_m = Rotation.from_quat(temp_data)
+
+        if Rg.shape == (3, 4):
+            r_m_new = np.zeros(R_m.as_matrix().shape)
+            for i in range(len(R_m)):
+                r_m = R_m[i].as_matrix()
+                r_m_new[i, :, :] = Rg[:,:3] * r_m
+            R_m_new = Rotation.from_matrix(r_m_new)
+            R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
+        elif Rg.shape == (4, 4):
+            q_m_new = np.zeros(temp_data.shape)
+            for i in range(len(R_m)):
+                q_m = R_m[i].as_quat()
+                q_m_new[i, :] = np.array((Rg * np.matrix(q_m).T).T[0])
+            R_m_new = Rotation.from_quat(q_m_new)
+            R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
+            
+        self.data['eul_x_R'] = R_m_euler_[:, 0]
+        self.data['eul_y_R'] = R_m_euler_[:, 1]
+        self.data['eul_z_R'] = R_m_euler_[:, 2]
+        
+        self.wnd.updateData(list(self.data.keys()))
+        return None
+        
+
     def cal_RQ(self):
         data1 = self.data
         data2 = self.ztData
@@ -279,41 +364,105 @@ class analysisData():
             data1['quat_pre_z'][index_data],
             data1['quat_pre_w'][index_data])).T
         R_m = Rotation.from_quat(temp_data)
+        for bar in self.fill_bars:
+            bar.remove()
+        self.fill_bars = []
         if len(self.rq_points) > 4:
             # 选取范围内数据
-            a = np.matrix(np.zeros((4, len(self.rq_points))))
-            u = np.matrix(np.zeros((4, len(self.rq_points))))
+            a = np.matrix(np.zeros((4, len(self.rq_points)))) # 测量值
+            u = np.matrix(np.zeros((4, len(self.rq_points)))) # 转台值
+            ga = np.matrix(np.zeros((4, len(self.rq_points)))) # 测量值
+            gu = np.matrix(np.zeros((3, len(self.rq_points)))) # 转台值
             for i, p in enumerate(self.rq_points):
                 stamp_index = np.argmin(np.abs(data_stamp - p))
-                a[:, i] = np.matrix(R_m[stamp_index].as_quat()).T
-                u[:, i] = np.matrix(R_zt[stamp_index].as_quat()).T
+                stamp_index_start = stamp_index
+                stamp_index_end = stamp_index
+                # 向左寻找
+                while stamp_index_start > 0 and \
+                      abs(temp_interp[stamp_index][0] - temp_interp[stamp_index_start][0]) <= 0.05 and \
+                      abs(temp_interp[stamp_index][1] - temp_interp[stamp_index_start][1]) <= 0.05 and \
+                      abs(temp_interp[stamp_index][2] - temp_interp[stamp_index_start][2]) <= 0.05:
+
+                    stamp_index_start = stamp_index_start - 1
+                # 向右寻找
+                while stamp_index_end < len(data_stamp) and \
+                      abs(temp_interp[stamp_index][0] - temp_interp[stamp_index_end][0]) <= 0.05 and \
+                      abs(temp_interp[stamp_index][1] - temp_interp[stamp_index_end][1]) <= 0.05 and \
+                      abs(temp_interp[stamp_index][2] - temp_interp[stamp_index_end][2]) <= 0.05:
+
+                    stamp_index_end = stamp_index_end + 1
+                y1 = len(data_stamp[stamp_index_start:stamp_index_end+1])*[self.endY]
+                y0 = len(data_stamp[stamp_index_start:stamp_index_end+1])*[self.startY]
+                x = data_stamp[stamp_index_start:stamp_index_end+1]
+                bar = self.axes.fill_between(x, y1, y0, facecolor='gray')
+                self.fill_bars.append(bar)
+                if 'acc_with_cam_x' in data1.keys() and \
+                   'acc_with_cam_y' in data1.keys() and \
+                   'acc_with_cam_z' in data1.keys():
+                        R_zt_mean = R_zt[stamp_index_start:stamp_index_end+1].mean()
+                        g_zt0 = np.matrix([[0],[0],[-9.8015]])
+                        g_zt = R_zt_mean.as_matrix() * g_zt0
+                        g_m_x = np.average(data1['acc_with_cam_x'][stamp_index_start:stamp_index_end+1])
+                        g_m_y = np.average(data1['acc_with_cam_y'][stamp_index_start:stamp_index_end+1])
+                        g_m_z = np.average(data1['acc_with_cam_z'][stamp_index_start:stamp_index_end+1])
+                        g_m = np.matrix([g_m_x, g_m_y, g_m_z, 1.0])
+                        ga[:, i] = g_m.T
+                        gu[:, i] = g_zt
+                a[:, i] = np.matrix(R_m[stamp_index_start:stamp_index_end+1].mean().as_quat()).T
+                u[:, i] = np.matrix(R_zt[stamp_index_start:stamp_index_end+1].mean().as_quat()).T
+            self.canvas.draw()
+            self.canvas.flush_events()
         else:
             a = np.matrix(R_m.as_quat().T)
             u = np.matrix(R_zt.as_quat().T)
         RQ = u * a.T * (a * a.T).I
-        print("======RQ======")
-        print(RQ)
-        print("======RQ======")
-        directory = QFileDialog.getSaveFileName(self.wnd,
-                                                "保存的位置", "../rq.txt",
-                                                "Text Files (*.txt)")
-        if len(directory[0]) != 0:
-            np.savetxt(directory[0], RQ)
-        q_m_new = np.zeros(temp_data.shape)
-        for i in range(len(R_m)):
-            q_m = R_m[i].as_quat()
-            q_m_new[i, :] = np.array((RQ * np.matrix(q_m).T).T[0])
-        R_m_new = Rotation.from_quat(q_m_new)
-        R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
+        if np.linalg.norm(np.linalg.norm(ga)) != 0 and np.linalg.norm(np.linalg.norm(gu)) != 0:
+            Rg = gu * ga.T * (ga * ga.T).I
+            print("======Rg======")
+            print(Rg)
+            print("======Rg======")
+            directory = QFileDialog.getSaveFileName(self.wnd,
+                                                    "保存的位置", "../rg.txt",
+                                                    "Text Files (*.txt)")
+            if len(directory[0]) != 0:
+                np.savetxt(directory[0], Rg)
+            r_m_new = np.zeros(R_m.as_matrix().shape)
+            for i in range(len(R_m)):
+                r_m = R_m[i].as_matrix()
+                r_m_new[i, :, :] = Rg[:,:3] * r_m
+            R_m_new = Rotation.from_matrix(r_m_new)
+            R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
+        else:
+            print("======RQ======")
+            print(RQ)
+            print("======RQ======")
+            directory = QFileDialog.getSaveFileName(self.wnd,
+                                                    "保存的位置", "../rq.txt",
+                                                    "Text Files (*.txt)")
+            if len(directory[0]) != 0:
+                np.savetxt(directory[0], RQ)
+            q_m_new = np.zeros(temp_data.shape)
+            for i in range(len(R_m)):
+                q_m = R_m[i].as_quat()
+                q_m_new[i, :] = np.array((RQ * np.matrix(q_m).T).T[0])
+            R_m_new = Rotation.from_quat(q_m_new)
+            R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
         analysisData['ex'] = R_m_euler_[:, 0]
         analysisData['ey'] = R_m_euler_[:, 1]
         analysisData['ez'] = R_m_euler_[:, 2]
         analysisZtData['ex'] = temp_interp[:, 0]
         analysisZtData['ey'] = temp_interp[:, 1]
         analysisZtData['ez'] = temp_interp[:, 2]
-
         estimate = Estimate(analysisData, analysisZtData, data_stamp)
         res = estimate.res
+        directory = QFileDialog.getSaveFileName(self.wnd,
+                                                "保存的位置", "./history/rq.csv",
+                                                "CSV Files (*.csv)")
+        if len(directory[0]) != 0:
+            analysisData['stamp'] = data_stamp + self.startStamp
+            df = pd.DataFrame.from_dict(analysisData)
+            df.to_csv(directory[0], index=False)
+        
         return res
 
     def estimateDelay(self):
@@ -715,6 +864,7 @@ class analysisDialog(QDialog, Ui_Dialog):
         self.pushButton_3.clicked.connect(self.addFuData)
         self.pushButton_4.clicked.connect(self.estimateDelay)
         self.pushButton_5.clicked.connect(self.cal_RQ)
+        self.pushButton_6.clicked.connect(self.use_RQ)
         self.horizontalSlider.valueChanged.connect(self.eulBaundaryChange)
         self.horizontalSlider_2.valueChanged.connect(self.camBaundaryChange)
         # 补充：另创建一个实例绘图并显示
@@ -744,6 +894,16 @@ class analysisDialog(QDialog, Ui_Dialog):
         # self.figureLayout.removeWidget(self.F.canvas)
         # self.figureLayout.addWidget(self.toolbar)
         # self.figureLayout.addWidget(self.F.canvas)
+
+    def use_RQ(self):
+        res = self.F.use_RQ()
+        if res is None:
+            return
+        print(res)
+        std = res.fun
+        delay = res.x[0]
+        self.doubleSpinBox_2.setValue(std)
+        self.doubleSpinBox.setValue(delay)
 
     def cal_RQ(self):
         res = self.F.cal_RQ()
@@ -830,6 +990,29 @@ class analysisDialog(QDialog, Ui_Dialog):
         for item in labels:
             self.listWidget_2.addItem(item)
         self.listWidget_1.addItem(label)
+        self.refresh()
+
+    def updateData(self, title):
+        self.datalabels = title
+        self.datalabels.remove('stamp')
+        labels = []
+        labels.extend(self.datalabels)
+        labels.extend(self.ztdatalabels)
+        labels.extend(self.zxdatalabels)
+        self.listWidget_1.clear()
+        for item in labels:
+            if item not in ['cost_of_eul', 'cost_of_cam', 'cost_of_update']:
+                self.listWidget_1.addItem(item)
+        self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+        [emin, emax, cmin, cmax] = self.F.getBoundary()
+        self.horizontalSlider.setMinimum(math.floor(emin))
+        self.horizontalSlider.setMaximum(math.ceil(emax))
+        self.horizontalSlider.setValue(math.ceil(emax))
+        self.lineEdit_3.setText(str(math.ceil(emax)))
+        self.horizontalSlider_2.setMinimum(math.floor(cmin))
+        self.horizontalSlider_2.setMaximum(math.ceil(cmax))
+        self.horizontalSlider_2.setValue(math.ceil(cmax))
+        self.lineEdit_4.setText(str(math.ceil(cmax)))
         self.refresh()
 
     def openData(self):
