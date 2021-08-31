@@ -302,7 +302,7 @@ class analysisData():
                 q_m_new[i, :] = np.array((Rg * np.matrix(q_m).T).T[0])
             R_m_new = Rotation.from_quat(q_m_new)
             R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
-            
+
         self.data['eul_x_R'] = R_m_euler_[:, 0]
         self.data['eul_y_R'] = R_m_euler_[:, 1]
         self.data['eul_z_R'] = R_m_euler_[:, 2]
@@ -341,11 +341,11 @@ class analysisData():
 
         temp_x = data2['x_ang_cl'][index_ztData] - \
             np.tile(analysisdatazero2['x_ang_cl'],
-                    data2['x_ang_cl'][index_ztData].shape)
+                    data2['x_ang_cl'][index_ztData].shape) - 59.0303
         temp_y = np.zeros(shape=data2['x_ang_cl'][index_ztData].shape)
         temp_z = data2['z_ang_cl'][index_ztData] - \
             np.tile(analysisdatazero2['z_ang_cl'],
-                    data2['z_ang_cl'][index_ztData].shape)
+                    data2['z_ang_cl'][index_ztData].shape) + 33.0194
         temp_x_interp = np.interp(data_stamp,
                                   ztData_stamp,
                                   temp_x)
@@ -367,7 +367,7 @@ class analysisData():
         for bar in self.fill_bars:
             bar.remove()
         self.fill_bars = []
-        if len(self.rq_points) > 4:
+        if len(self.rq_points) > 3:
             # 选取范围内数据
             a = np.matrix(np.zeros((4, len(self.rq_points)))) # 测量值
             u = np.matrix(np.zeros((4, len(self.rq_points)))) # 转台值
@@ -396,17 +396,18 @@ class analysisData():
                 x = data_stamp[stamp_index_start:stamp_index_end+1]
                 bar = self.axes.fill_between(x, y1, y0, facecolor='gray')
                 self.fill_bars.append(bar)
-                if 'acc_with_cam_x' in data1.keys() and \
-                   'acc_with_cam_y' in data1.keys() and \
-                   'acc_with_cam_z' in data1.keys():
+                if 'acc_rel_x' in data1.keys() and \
+                   'acc_rel_y' in data1.keys() and \
+                   'acc_rel_z' in data1.keys():
                         R_zt_mean = R_zt[stamp_index_start:stamp_index_end+1].mean()
-                        g_zt0 = np.matrix([[0],[0],[-9.8015]])
+                        g_zt0 = np.matrix([[0],[0],[9.8015]])
                         g_zt = R_zt_mean.as_matrix() * g_zt0
-                        g_m_x = np.average(data1['acc_with_cam_x'][stamp_index_start:stamp_index_end+1])
-                        g_m_y = np.average(data1['acc_with_cam_y'][stamp_index_start:stamp_index_end+1])
-                        g_m_z = np.average(data1['acc_with_cam_z'][stamp_index_start:stamp_index_end+1])
-                        g_m = np.matrix([g_m_x, g_m_y, g_m_z, 1.0])
-                        ga[:, i] = g_m.T
+                        R_m_mean = R_m[stamp_index_start:stamp_index_end+1].mean()
+                        g_m_x = np.average(data1['acc_rel_x'][stamp_index_start:stamp_index_end+1])
+                        g_m_y = np.average(data1['acc_rel_y'][stamp_index_start:stamp_index_end+1])
+                        g_m_z = np.average(data1['acc_rel_z'][stamp_index_start:stamp_index_end+1])
+                        g_m = np.matrix([g_m_x, g_m_y, g_m_z, 1.0]).T
+                        ga[:, i] = g_m
                         gu[:, i] = g_zt
                 a[:, i] = np.matrix(R_m[stamp_index_start:stamp_index_end+1].mean().as_quat()).T
                 u[:, i] = np.matrix(R_zt[stamp_index_start:stamp_index_end+1].mean().as_quat()).T
@@ -426,13 +427,13 @@ class analysisData():
                                                     "Text Files (*.txt)")
             if len(directory[0]) != 0:
                 np.savetxt(directory[0], Rg)
-            r_m_new = np.zeros(R_m.as_matrix().shape)
-            for i in range(len(R_m)):
-                r_m = R_m[i].as_matrix()
-                r_m_new[i, :, :] = Rg[:,:3] * r_m
-            R_m_new = Rotation.from_matrix(r_m_new)
-            R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
-        else:
+            # r_m_new = np.zeros(R_m.as_matrix().shape)
+            # for i in range(len(R_m)):
+            #     r_m = R_m[i].as_matrix()
+            #     r_m_new[i, :, :] = Rg[:,:3] * r_m
+            # R_m_new = Rotation.from_matrix(r_m_new)
+            # R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
+        if True:
             print("======RQ======")
             print(RQ)
             print("======RQ======")
@@ -441,29 +442,29 @@ class analysisData():
                                                     "Text Files (*.txt)")
             if len(directory[0]) != 0:
                 np.savetxt(directory[0], RQ)
-            q_m_new = np.zeros(temp_data.shape)
-            for i in range(len(R_m)):
-                q_m = R_m[i].as_quat()
-                q_m_new[i, :] = np.array((RQ * np.matrix(q_m).T).T[0])
-            R_m_new = Rotation.from_quat(q_m_new)
-            R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
-        analysisData['ex'] = R_m_euler_[:, 0]
-        analysisData['ey'] = R_m_euler_[:, 1]
-        analysisData['ez'] = R_m_euler_[:, 2]
-        analysisZtData['ex'] = temp_interp[:, 0]
-        analysisZtData['ey'] = temp_interp[:, 1]
-        analysisZtData['ez'] = temp_interp[:, 2]
-        estimate = Estimate(analysisData, analysisZtData, data_stamp)
-        res = estimate.res
-        directory = QFileDialog.getSaveFileName(self.wnd,
-                                                "保存的位置", "./history/rq.csv",
-                                                "CSV Files (*.csv)")
-        if len(directory[0]) != 0:
-            analysisData['stamp'] = data_stamp + self.startStamp
-            df = pd.DataFrame.from_dict(analysisData)
-            df.to_csv(directory[0], index=False)
+            # q_m_new = np.zeros(temp_data.shape)
+            # for i in range(len(R_m)):
+            #     q_m = R_m[i].as_quat()
+            #     q_m_new[i, :] = np.array((RQ * np.matrix(q_m).T).T[0])
+            # R_m_new = Rotation.from_quat(q_m_new)
+            # R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
+        # analysisData['ex'] = R_m_euler_[:, 0]
+        # analysisData['ey'] = R_m_euler_[:, 1]
+        # analysisData['ez'] = R_m_euler_[:, 2]
+        # analysisZtData['ex'] = temp_interp[:, 0]
+        # analysisZtData['ey'] = temp_interp[:, 1]
+        # analysisZtData['ez'] = temp_interp[:, 2]
+        # estimate = Estimate(analysisData, analysisZtData, data_stamp)
+        # res = estimate.res
+        # directory = QFileDialog.getSaveFileName(self.wnd,
+        #                                         "保存的位置", "./history/rq.csv",
+        #                                         "CSV Files (*.csv)")
+        # if len(directory[0]) != 0:
+        #     analysisData['stamp'] = data_stamp + self.startStamp
+        #     df = pd.DataFrame.from_dict(analysisData)
+        #     df.to_csv(directory[0], index=False)
         
-        return res
+        return None
 
     def estimateDelay(self):
         data1 = []
@@ -545,6 +546,17 @@ class analysisData():
                                                 temp)
                 if key in self.fuData:
                     analysisZtData[key] = -analysisZtData[key]
+            # 消除2pi的整数倍
+            for key1, key2 in zip(analysisdata1.keys(), analysisdata2.keys()):
+                for i in range(len(analysisData[key1])):
+                    pis = [0, -360, 360]
+                    minidx = np.argmin([
+                        abs(analysisData[key1][i] - (analysisZtData[key2][i] - pis[0])),
+                        abs(analysisData[key1][i] - (analysisZtData[key2][i] - pis[1])),
+                        abs(analysisData[key1][i] - (analysisZtData[key2][i] + pis[2])),
+                    ])
+                    analysisZtData[key2][i] = analysisZtData[key2][i] - pis[minidx]
+
         # if cal_imu_zt_R:
         #     temp_x = data2['x_ang_cl'][index_ztData] - \
         #         np.tile(analysisdatazero2['x_ang_cl'],

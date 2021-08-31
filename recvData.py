@@ -37,10 +37,11 @@ class RecvData():
     __OMEGA_NO_CAM = 229
     __ACC_WITH_CAM = 241
     __ACC_NO_CAM = 253
-    __LENGTH = 274
-    __OLDLENGTH = 266
-    __IMAGE_FEATURE_POINT_X = 265
-    __IMAGE_FEATURE_POINT_Y = 269
+    __ACC_REL = 265
+    __LENGTH = 286
+    __OLDLENGTH = 278
+    __IMAGE_FEATURE_POINT_X = 277
+    __IMAGE_FEATURE_POINT_Y = 281
 
     def __init__(self, enable_save=True):
         self.mutex = threading.Lock()
@@ -231,7 +232,8 @@ class RecvData():
                    'cost_of_eul', 'cost_of_cam', 'cost_of_update',
                    'quat_pre_w', 'quat_pre_x', 'quat_pre_y', 'quat_pre_z',
                    'acc_with_cam_x', 'acc_with_cam_y', 'acc_with_cam_z',
-                   'acc_no_cam_x', 'acc_no_cam_y', 'acc_no_cam_z']
+                   'acc_no_cam_x', 'acc_no_cam_y', 'acc_no_cam_z',
+                   'acc_rel_x', 'acc_rel_y', 'acc_rel_z']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w') as f:
@@ -285,7 +287,10 @@ class RecvData():
                             r["ACC_WITH_CAM_Z"],
                             r["ACC_NO_CAM_X"],
                             r["ACC_NO_CAM_Y"],
-                            r["ACC_NO_CAM_Z"],]
+                            r["ACC_NO_CAM_Z"],
+                            r["ACC_REL_CAM_X"],
+                            r["ACC_REL_CAM_Y"],
+                            r["ACC_REL_CAM_Z"]]
                     f_csv.writerow(line)
 
     def run(self):
@@ -490,6 +495,13 @@ class RecvData():
             dc["ACC_NO_CAM_Z"] = struct.unpack('f', bytes(
                 data[self.__ACC_NO_CAM + 8:self.__ACC_NO_CAM + 12]))[0]
 
+            dc["ACC_REL_CAM_X"] = struct.unpack('f', bytes(
+                data[self.__ACC_REL + 0:self.__ACC_REL + 4]))[0]
+            dc["ACC_REL_CAM_Y"] = struct.unpack('f', bytes(
+                data[self.__ACC_REL + 4:self.__ACC_REL + 8]))[0]
+            dc["ACC_REL_CAM_Z"] = struct.unpack('f', bytes(
+                data[self.__ACC_REL + 8:self.__ACC_REL + 12]))[0]
+
             pts = int((self.__LENGTH - self.__OLDLENGTH) / 8)
             ptx = []
             pty = []
@@ -544,6 +556,10 @@ class RecvData():
             save_dc["ACC_NO_CAM_X"] = dc["ACC_NO_CAM_X"]
             save_dc["ACC_NO_CAM_Y"] = dc["ACC_NO_CAM_Y"]
             save_dc["ACC_NO_CAM_Z"] = dc["ACC_NO_CAM_Z"]
+
+            save_dc["ACC_REL_CAM_X"] = dc["ACC_REL_CAM_X"]
+            save_dc["ACC_REL_CAM_Y"] = dc["ACC_REL_CAM_Y"]
+            save_dc["ACC_REL_CAM_Z"] = dc["ACC_REL_CAM_Z"]
 
             save_dc["ANGLE_BY_PRE"] = dc["ANGLE_BY_PRE"]
 
