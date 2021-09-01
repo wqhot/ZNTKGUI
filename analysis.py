@@ -87,6 +87,8 @@ class analysisData():
         self.rq_points = []
         self.rq_lines = []
         self.fill_bars = []
+        self.rq_stamp_index_start = []
+        self.rq_stamp_index_end = []
         self.drawLine()
         self.canvas.mpl_connect('button_press_event', self.onclick)
         self.canvasHist.mpl_connect('button_press_event', self.drawTest)
@@ -280,7 +282,7 @@ class analysisData():
                                    temp_z)
         temp_interp = np.vstack(
             (temp_x_interp, temp_y_interp, temp_z_interp)).T
-        R_zt = Rotation.from_euler('ZYX', temp_interp, degrees=True)
+        R_zt = Rotation.from_euler('XYZ', temp_interp, degrees=True)
         temp_data = np.vstack((
             data1['quat_pre_x'],
             data1['quat_pre_y'],
@@ -288,18 +290,18 @@ class analysisData():
             data1['quat_pre_w'])).T
         R_m = Rotation.from_quat(temp_data)
 
-        if Rg.shape == (3, 4):
+        if Rg.shape == (3, 4) or Rg.shape == (3, 3):
             r_m_new = np.zeros(R_m.as_matrix().shape)
             for i in range(len(R_m)):
                 r_m = R_m[i].as_matrix()
-                r_m_new[i, :, :] = Rg[:,:3] * r_m
+                r_m_new[i, :, :] = np.dot(Rg[:,:3], r_m)
             R_m_new = Rotation.from_matrix(r_m_new)
             R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
         elif Rg.shape == (4, 4):
             q_m_new = np.zeros(temp_data.shape)
             for i in range(len(R_m)):
                 q_m = R_m[i].as_quat()
-                q_m_new[i, :] = np.array((Rg * np.matrix(q_m).T).T[0])
+                q_m_new[i, :] = np.array((np.dot(Rg, np.matrix(q_m).T)).T[0])
             R_m_new = Rotation.from_quat(q_m_new)
             R_m_euler_ = R_m_new.as_euler('ZYX', degrees=True)
 
@@ -309,6 +311,40 @@ class analysisData():
         
         self.wnd.updateData(list(self.data.keys()))
         return None
+
+    def rotateAlign(self, u1, u2):
+        # https://gist.github.com/kevinmoran/b45980723e53edeb8a5a43c49f134724
+        print("u1 = {}\n u2 = {}".format(u1, u2))
+        u1 = np.array(u1 / np.linalg.norm(u1))[0]
+        u2 = np.array(u2 / np.linalg.norm(u2))[0]
+        axis = np.cross(u1, u2)
+        axis = axis / np.linalg.norm(axis)
+        dotProduct = np.dot(u1, u2)
+        if dotProduct > 1.0:
+            dotProduct = 1.0
+        elif dotProduct < -1.0:
+            dotProduct = -1.0
+        
+        angleRadians = math.acos(dotProduct)
+        print("angle = {}".format(angleRadians))
+        sinA = math.sin(angleRadians)
+        cosA = math.cos(angleRadians)
+        invCosA = 1.0 - cosA
+
+        result = np.matrix([
+            [(axis[0] * axis[0] * invCosA) + cosA,
+            (axis[1] * axis[0] * invCosA) - (sinA * axis[2]),
+            (axis[2] * axis[0] * invCosA) + (sinA * axis[1])],
+            [(axis[0] * axis[1] * invCosA) + (sinA * axis[2]),
+            (axis[1] * axis[1] * invCosA) + cosA,
+            (axis[2] * axis[1] * invCosA) - (sinA * axis[0])],
+            [(axis[0] * axis[2] * invCosA) - (sinA * axis[1]),
+            (axis[1] * axis[2] * invCosA) + (sinA * axis[0]),
+            (axis[2] * axis[2] * invCosA) + cosA]
+        ]
+        )
+        # result = Eigen::Quaterniond(result).normalized().toRotationMatrix();
+        return result
         
 
     def cal_RQ(self):
@@ -346,18 +382,20 @@ class analysisData():
         temp_z = data2['z_ang_cl'][index_ztData] - \
             np.tile(analysisdatazero2['z_ang_cl'],
                     data2['z_ang_cl'][index_ztData].shape) + 33.0194
-        temp_x_interp = np.interp(data_stamp,
+        temp_x_interp = -np.interp(data_stamp,
                                   ztData_stamp,
                                   temp_x)
         temp_y_interp = np.interp(data_stamp,
                                   ztData_stamp,
                                   temp_y)
-        temp_z_interp = -np.interp(data_stamp,
+        temp_z_interp = np.interp(data_stamp,
                                    ztData_stamp,
                                    temp_z)
+        # temp_interp = np.vstack(
+        #     (temp_x_interp, temp_y_interp, temp_z_interp)).T
         temp_interp = np.vstack(
-            (temp_x_interp, temp_y_interp, temp_z_interp)).T
-        R_zt = Rotation.from_euler('ZYX', temp_interp, degrees=True)
+            (temp_z_interp, temp_x_interp)).T
+        R_zt = Rotation.from_euler('ZX', temp_interp, degrees=True)
         temp_data = np.vstack((
             data1['quat_pre_x'][index_data],
             data1['quat_pre_y'][index_data],
@@ -373,6 +411,7 @@ class analysisData():
             u = np.matrix(np.zeros((4, len(self.rq_points)))) # 转台值
             ga = np.matrix(np.zeros((4, len(self.rq_points)))) # 测量值
             gu = np.matrix(np.zeros((3, len(self.rq_points)))) # 转台值
+            gg = np.zeros(shape=(len(self.rq_points), 3, 3))
             for i, p in enumerate(self.rq_points):
                 stamp_index = np.argmin(np.abs(data_stamp - p))
                 stamp_index_start = stamp_index
@@ -380,15 +419,13 @@ class analysisData():
                 # 向左寻找
                 while stamp_index_start > 0 and \
                       abs(temp_interp[stamp_index][0] - temp_interp[stamp_index_start][0]) <= 0.05 and \
-                      abs(temp_interp[stamp_index][1] - temp_interp[stamp_index_start][1]) <= 0.05 and \
-                      abs(temp_interp[stamp_index][2] - temp_interp[stamp_index_start][2]) <= 0.05:
+                      abs(temp_interp[stamp_index][1] - temp_interp[stamp_index_start][1]) <= 0.05:
 
                     stamp_index_start = stamp_index_start - 1
                 # 向右寻找
                 while stamp_index_end < len(data_stamp) and \
                       abs(temp_interp[stamp_index][0] - temp_interp[stamp_index_end][0]) <= 0.05 and \
-                      abs(temp_interp[stamp_index][1] - temp_interp[stamp_index_end][1]) <= 0.05 and \
-                      abs(temp_interp[stamp_index][2] - temp_interp[stamp_index_end][2]) <= 0.05:
+                      abs(temp_interp[stamp_index][1] - temp_interp[stamp_index_end][1]) <= 0.05:
 
                     stamp_index_end = stamp_index_end + 1
                 y1 = len(data_stamp[stamp_index_start:stamp_index_end+1])*[self.endY]
@@ -407,6 +444,7 @@ class analysisData():
                         g_m_y = np.average(data1['acc_rel_y'][stamp_index_start:stamp_index_end+1])
                         g_m_z = np.average(data1['acc_rel_z'][stamp_index_start:stamp_index_end+1])
                         g_m = np.matrix([g_m_x, g_m_y, g_m_z, 1.0]).T
+                        gg[i, :, :] = self.rotateAlign(g_m[:3].T, g_zt.T)
                         ga[:, i] = g_m
                         gu[:, i] = g_zt
                 a[:, i] = np.matrix(R_m[stamp_index_start:stamp_index_end+1].mean().as_quat()).T
@@ -417,6 +455,17 @@ class analysisData():
             a = np.matrix(R_m.as_quat().T)
             u = np.matrix(R_zt.as_quat().T)
         RQ = u * a.T * (a * a.T).I
+        if np.linalg.norm(np.linalg.norm(gg)) != 0:
+            eul_gg = Rotation.from_matrix(gg).mean().as_euler('XYZ', degrees=True)
+            r_gg = Rotation.from_euler('XY', eul_gg[:2], degrees=True)
+            print("======gg======")
+            print(r_gg.as_matrix())
+            print("======gg======")
+            directory = QFileDialog.getSaveFileName(self.wnd,
+                                                    "保存的位置", "../gg.txt",
+                                                    "Text Files (*.txt)")
+            if len(directory[0]) != 0:
+                np.savetxt(directory[0], r_gg.as_matrix())
         if np.linalg.norm(np.linalg.norm(ga)) != 0 and np.linalg.norm(np.linalg.norm(gu)) != 0:
             Rg = gu * ga.T * (ga * ga.T).I
             print("======Rg======")
@@ -834,6 +883,7 @@ class analysisData():
         self.line1.remove()
         self.line2.remove()
         self.drawLine()
+        self.drawRQ_Line()
         self.canvas.draw()
         self.canvas.flush_events()
 
@@ -1007,11 +1057,15 @@ class analysisDialog(QDialog, Ui_Dialog):
     def updateData(self, title):
         self.datalabels = title
         self.datalabels.remove('stamp')
+        self.selectDatalabels = []
+        self.selectZtDatalabels = []
+        self.selectZxDatalabels = []
         labels = []
         labels.extend(self.datalabels)
         labels.extend(self.ztdatalabels)
         labels.extend(self.zxdatalabels)
         self.listWidget_1.clear()
+        self.listWidget_2.clear()
         for item in labels:
             if item not in ['cost_of_eul', 'cost_of_cam', 'cost_of_update']:
                 self.listWidget_1.addItem(item)

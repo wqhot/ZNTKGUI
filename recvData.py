@@ -236,7 +236,7 @@ class RecvData():
                    'acc_rel_x', 'acc_rel_y', 'acc_rel_z']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
-        with open(csv_name, 'w') as f:
+        with open(csv_name, 'w', newline='') as f:
             f_csv = csv.writer(f)
             f_csv.writerow(headers)
             while self.issave:
