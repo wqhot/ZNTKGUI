@@ -289,8 +289,8 @@ class analysisData():
                                    ztData_stamp,
                                    temp_z)
         temp_interp = np.vstack(
-            (temp_x_interp, temp_y_interp, temp_z_interp)).T
-        R_zt = Rotation.from_euler('XYZ', temp_interp, degrees=True)
+            (temp_z_interp, temp_x_interp)).T
+        R_zt = Rotation.from_euler('ZX', temp_interp, degrees=True)
         temp_data = np.vstack((
             data1['quat_pre_x'],
             data1['quat_pre_y'],
@@ -383,13 +383,9 @@ class analysisData():
         ztData_stamp = ztData_stamp - \
             np.tile(self.startStamp, ztData_stamp.shape)
 
-        temp_x = data2['x_ang_cl'][index_ztData] - \
-            np.tile(analysisdatazero2['x_ang_cl'],
-                    data2['x_ang_cl'][index_ztData].shape) - self.x_bias
+        temp_x = data2['x_ang_cl'][index_ztData] - self.x_bias
         temp_y = np.zeros(shape=data2['x_ang_cl'][index_ztData].shape)
-        temp_z = data2['z_ang_cl'][index_ztData] - \
-            np.tile(analysisdatazero2['z_ang_cl'],
-                    data2['z_ang_cl'][index_ztData].shape) - self.x_bias
+        temp_z = data2['z_ang_cl'][index_ztData] - self.z_bias
         sign_x = 1
         if 'x_ang_cl' in self.fuData:
             sign_x = -1
