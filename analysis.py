@@ -244,7 +244,7 @@ class analysisData():
                                                 "Text Files (*.txt)")
         if len(directory[0]) == 0:
             return None
-        Rg = np.loadtxt(directory[0])
+        Rg = np.loadtxt(directory[0], delimiter=",")
         data1 = self.data
         data2 = self.ztData
         analysisdata1 = self.analysisData
@@ -479,7 +479,7 @@ class analysisData():
                                                     "保存的位置", "../gg.txt",
                                                     "Text Files (*.txt)")
             if len(directory[0]) != 0:
-                np.savetxt(directory[0], r_gg.as_matrix())
+                np.savetxt(directory[0], r_gg.as_matrix(), delimiter=",")
         if np.linalg.norm(np.linalg.norm(ga)) != 0 and np.linalg.norm(np.linalg.norm(gu)) != 0:
             Rg = gu * ga.T * (ga * ga.T).I
             print("======Rg======")
@@ -489,7 +489,7 @@ class analysisData():
                                                     "保存的位置", "../rg.txt",
                                                     "Text Files (*.txt)")
             if len(directory[0]) != 0:
-                np.savetxt(directory[0], Rg)
+                np.savetxt(directory[0], Rg, delimiter=",")
             # r_m_new = np.zeros(R_m.as_matrix().shape)
             # for i in range(len(R_m)):
             #     r_m = R_m[i].as_matrix()
@@ -504,7 +504,7 @@ class analysisData():
                                                     "保存的位置", "../rq.txt",
                                                     "Text Files (*.txt)")
             if len(directory[0]) != 0:
-                np.savetxt(directory[0], RQ)
+                np.savetxt(directory[0], RQ, delimiter=",")
             # q_m_new = np.zeros(temp_data.shape)
             # for i in range(len(R_m)):
             #     q_m = R_m[i].as_quat()
