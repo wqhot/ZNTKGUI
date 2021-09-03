@@ -188,7 +188,7 @@ class RecvData():
         if np.linalg.norm(qua) == 0:
             return [0,0,0]
         r = Rotation.from_quat(qua)
-        return list(r.as_euler('XYZ', degrees=True))
+        return list(r.as_euler('ZYX', degrees=True))[::-1]
         # qua = self.transpose_qua(qua)
         # w = float(qua[3])
         # x = float(qua[0])

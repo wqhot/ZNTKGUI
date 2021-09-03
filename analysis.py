@@ -89,6 +89,9 @@ class analysisData():
         self.fill_bars = []
         self.rq_stamp_index_start = []
         self.rq_stamp_index_end = []
+        ztbias = np.loadtxt('./config/ztbias.txt')
+        self.x_bias = ztbias[0]
+        self.z_bias = ztbias[1]
         self.drawLine()
         self.canvas.mpl_connect('button_press_event', self.onclick)
         self.canvasHist.mpl_connect('button_press_event', self.drawTest)
@@ -217,7 +220,12 @@ class analysisData():
         for col in cols:
             self.analysisZtData[col] = self.ztData[col]
         for col in all_cols:
-            self.analysisZtDataZeros[col] = 0
+            if 'z_ang_cl' == col:
+                self.analysisZtDataZeros[col] = self.z_bias
+            elif 'x_ang_cl' == col:
+                self.analysisZtDataZeros[col] = self.x_bias
+            else:
+                self.analysisZtDataZeros[col] = 0
 
     def selectZxDataCols(self, cols, all_cols):
         self.analysisZxData = {}
@@ -377,18 +385,24 @@ class analysisData():
 
         temp_x = data2['x_ang_cl'][index_ztData] - \
             np.tile(analysisdatazero2['x_ang_cl'],
-                    data2['x_ang_cl'][index_ztData].shape) - 59.0303
+                    data2['x_ang_cl'][index_ztData].shape) - self.x_bias
         temp_y = np.zeros(shape=data2['x_ang_cl'][index_ztData].shape)
         temp_z = data2['z_ang_cl'][index_ztData] - \
             np.tile(analysisdatazero2['z_ang_cl'],
-                    data2['z_ang_cl'][index_ztData].shape) + 33.0194
-        temp_x_interp = -np.interp(data_stamp,
+                    data2['z_ang_cl'][index_ztData].shape) - self.x_bias
+        sign_x = 1
+        if 'x_ang_cl' in self.fuData:
+            sign_x = -1
+        temp_x_interp = sign_x * np.interp(data_stamp,
                                   ztData_stamp,
                                   temp_x)
         temp_y_interp = np.interp(data_stamp,
                                   ztData_stamp,
                                   temp_y)
-        temp_z_interp = np.interp(data_stamp,
+        sign_z = 1
+        if 'z_ang_cl' in self.fuData:
+            sign_z = -1
+        temp_z_interp = sign_z * np.interp(data_stamp,
                                    ztData_stamp,
                                    temp_z)
         # temp_interp = np.vstack(
@@ -405,13 +419,13 @@ class analysisData():
         for bar in self.fill_bars:
             bar.remove()
         self.fill_bars = []
+        ga = np.matrix(np.zeros((4, len(self.rq_points)))) # 测量值
+        gu = np.matrix(np.zeros((3, len(self.rq_points)))) # 转台值
+        gg = np.zeros(shape=(len(self.rq_points), 3, 3))
         if len(self.rq_points) > 3:
             # 选取范围内数据
             a = np.matrix(np.zeros((4, len(self.rq_points)))) # 测量值
             u = np.matrix(np.zeros((4, len(self.rq_points)))) # 转台值
-            ga = np.matrix(np.zeros((4, len(self.rq_points)))) # 测量值
-            gu = np.matrix(np.zeros((3, len(self.rq_points)))) # 转台值
-            gg = np.zeros(shape=(len(self.rq_points), 3, 3))
             for i, p in enumerate(self.rq_points):
                 stamp_index = np.argmin(np.abs(data_stamp - p))
                 stamp_index_start = stamp_index
@@ -437,7 +451,7 @@ class analysisData():
                    'acc_rel_y' in data1.keys() and \
                    'acc_rel_z' in data1.keys():
                         R_zt_mean = R_zt[stamp_index_start:stamp_index_end+1].mean()
-                        g_zt0 = np.matrix([[0],[0],[9.8015]])
+                        g_zt0 = np.matrix([[0],[0],[-9.8015]])
                         g_zt = R_zt_mean.as_matrix() * g_zt0
                         R_m_mean = R_m[stamp_index_start:stamp_index_end+1].mean()
                         g_m_x = np.average(data1['acc_rel_x'][stamp_index_start:stamp_index_end+1])
@@ -840,6 +854,12 @@ class analysisData():
                 self.analysisDataZeros[key] = self.data[key][index1]
             for key in self.ztData.keys():
                 self.analysisZtDataZeros[key] = self.ztData[key][index2]
+                if key == 'z_ang_cl':
+                    self.z_bias = self.ztData[key][index2]
+                    self.wnd.update_bias()
+                elif key == 'x_ang_cl':
+                    self.x_bias = self.ztData[key][index2]
+                    self.wnd.update_bias()
             if 'stamp' in self.zxData.keys():
                 delta3 = np.abs(
                     self.zxData['stamp'] - np.tile(stamp, self.zxData['stamp'].shape))
@@ -929,9 +949,26 @@ class analysisDialog(QDialog, Ui_Dialog):
         self.pushButton_6.clicked.connect(self.use_RQ)
         self.horizontalSlider.valueChanged.connect(self.eulBaundaryChange)
         self.horizontalSlider_2.valueChanged.connect(self.camBaundaryChange)
+    
+        self.lineEdit_xbias.setText(str(self.F.x_bias))
+        self.lineEdit_zbias.setText(str(self.F.z_bias))
+        
+        self.lineEdit_xbias.textChanged.connect(self.on_update_bias)
+        self.lineEdit_zbias.textChanged.connect(self.on_update_bias)
         # 补充：另创建一个实例绘图并显示
         # self.plotother()
 
+    def on_update_bias(self, text=''):
+        xbias = float(self.lineEdit_xbias.text())
+        zbias = float(self.lineEdit_zbias.text())
+        self.F.x_bias = xbias
+        self.F.z_bias = zbias
+        self.refresh()
+
+    def update_bias(self):
+        self.lineEdit_xbias.setText(str(self.F.x_bias))
+        self.lineEdit_zbias.setText(str(self.F.z_bias))
+    
     def eulBaundaryChange(self):
         self.lineEdit_3.setText(str(self.horizontalSlider.value()))
         [emin, emax, cmin, cmax] = self.F.getBoundary()
