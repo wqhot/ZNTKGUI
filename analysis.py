@@ -44,7 +44,7 @@ class Estimate():
             delayAnalysisData = self.analysisData[key][index]
             delayAnalysisZtData = self.analysisZtData[ztKey][indexZt]
             error = delayAnalysisData - delayAnalysisZtData
-            e = np.std(error)
+            e = math.sqrt(error.dot(error) / len(delayAnalysisData))
             errors.append(e)
         err = sum(errors) / len(errors)
         print([delay, err, errors])
@@ -189,9 +189,16 @@ class analysisData():
             title = next(reader)
         arr = np.loadtxt(fileName, delimiter=",", skiprows=1)
         col = 0
+        del_points = []
+        for col in range(len(title)):
+            del_point = list(np.where(np.abs(arr[:, col][1:] - arr[:, col][:-1]) > 5)[0])
+            del_points.extend(del_point)
+        arr = np.delete(arr, del_points, axis=0)
+        col = 0
         for t in title:
             self.ztData[t] = arr[:, col]
             col = col + 1
+        
         return title
 
     def importZxData(self, fileName):
