@@ -16,7 +16,7 @@ import piexif
 import time
 
 camera_type_list = ['omni-radtan', 'pinhole-equi', 'pinhole-radtan']
-undistort_list = ['透视图', '圆柱图', '立体图', '世界地图']
+undistort_list = ['透视图', '圆柱图', '立体图', '世界地图', '原图', '仅透视图 ']
 
 class camCalibrateUtil(QThread):
     signal_image = pyqtSignal(object)
@@ -65,6 +65,8 @@ class camCalibrateUtil(QThread):
                 flags_omni_undistort = cv2.omnidir.RECTIFY_STEREOGRAPHIC
             elif self.undistort_type == 3:
                 flags_omni_undistort = cv2.omnidir.RECTIFY_LONGLATI
+            else:
+                flags_omni_undistort = cv2.omnidir.RECTIFY_PERSPECTIVE
             ret, frame = self.cap.read()
             if not ret:
                 break
@@ -151,9 +153,17 @@ class camCalibrateUtil(QThread):
                 except ...:
                     print('expert errors when undistort')
                     frame_undistort = frame
-                if self.camera_type == 'omni-radtan' and self.undistort_type > 0:
+                if self.undistort_type == 5:
+                    # 仅透视图
+                    frame = frame_undistort
+                elif self.undistort_type == 4:
+                    # 原图
+                    frame = frame
+                elif self.camera_type == 'omni-radtan' and self.undistort_type > 0:
+                    # omni-radtan 不叠加
                     frame = frame_undistort
                 else:
+                    # 其余皆叠加
                     frame = cv2.addWeighted(frame_undistort, 0.5, frame, 0.5, 0)
             self.signal_image.emit(frame)
 
