@@ -301,6 +301,7 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.pushButton_2.clicked.connect(self.save)
         self.comboBox.currentIndexChanged.connect(self.on_change_camera_type)
         self.comboBox_2.currentIndexChanged.connect(self.on_change_display_type)
+        self.pushButton_3.clicked.connect(self.on_push_shoot)
 
         self.reopen()
 
@@ -383,16 +384,20 @@ class camviewDialog(QDialog, Ui_Dialog):
             self.spinBox_cornery.setValue(chessboard_corner_y)
             self.spinBox_size.setValue(chessboard_size)
 
+    def on_push_shoot(self):
+        self.cam.prepare_to_shoot = True
+
     def keyPressEvent(self, event):
-        # print(str(event.key()))
-        if (event.key() == Qt.Key_S):
-            self.cam.prepare_to_shoot = True
-        elif (event.key() == Qt.Key_Escape):
+        if (event.key() == Qt.Key_Escape):
             self.cam.stop()
+            self.cam.quit()
+            self.cam.waite()
         return super().keyPressEvent(event)
 
     def closeEvent(self, event):
         self.cam.stop()
+        self.cam.quit()
+        self.cam.wait()
 
     def change_pos(self, pos):
         self.camerapos.add_pose(pos['t'], pos['q'])

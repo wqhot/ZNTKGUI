@@ -12,6 +12,9 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
         Dialog.resize(1252, 751)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("res/棋盘.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        Dialog.setWindowIcon(icon)
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(Dialog)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
@@ -137,6 +140,9 @@ class Ui_Dialog(object):
         self.verticalLayout_3.addWidget(self.frame_2)
         self.horizontalLayout.addWidget(self.frame)
         self.verticalLayout_2.addLayout(self.horizontalLayout)
+        self.pushButton_3 = QtWidgets.QPushButton(Dialog)
+        self.pushButton_3.setObjectName("pushButton_3")
+        self.verticalLayout_2.addWidget(self.pushButton_3)
 
         self.retranslateUi(Dialog)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
@@ -156,4 +162,6 @@ class Ui_Dialog(object):
         self.pushButton.setText(_translate("Dialog", "刷新"))
         self.pushButton_2.setText(_translate("Dialog", "保存结果"))
         self.label.setText(_translate("Dialog", "图像"))
+        self.pushButton_3.setText(_translate("Dialog", "拍照(Ctrl+S)"))
+        self.pushButton_3.setShortcut(_translate("Dialog", "Ctrl+S"))
 

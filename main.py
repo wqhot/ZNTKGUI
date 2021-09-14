@@ -21,6 +21,7 @@ from sshCtl import sshCtl
 from plotCamera import PlotCamera
 from config import TIME_LENGTH
 from analysis import analysisDialog
+from camera_calibrate import camviewDialog
 from recvIMU import RecvIMU
 import threading
 import time
@@ -81,6 +82,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def __init__(self):
         super(mywindow, self).__init__()
         self.setupUi(self)
+        self.showMaximized()
         self.lsts = {}
         self.tk_lsts = {}
         self.zx_lsts = {}
@@ -400,6 +402,10 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnAnalysisDialog.triggered.connect(self.analysis)
         self.toolBtnAnalysisDialog.setEnabled(True)
 
+        self.toolBtnCameraCalibrateDialog = QAction(QIcon('./res/棋盘.png'), '本机相机标定', self)
+        self.toolBtnCameraCalibrateDialog.triggered.connect(self.camearCalibrate)
+        self.toolBtnCameraCalibrateDialog.setEnabled(True)
+
         
 
         self.toolBar.addAction(self.toolBtnStart)
@@ -434,6 +440,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolbar_6 = self.addToolBar('转台')
         self.toolbar_6.addAction(self.toolBtnZTDialog)
         self.toolbar_6.addAction(self.toolBtnAnalysisDialog)
+        self.toolbar_6.addAction(self.toolBtnCameraCalibrateDialog)
 
 
         self.toolBar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
@@ -600,6 +607,12 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
             self.toolBtnViewZXZT.setIcon(QIcon('./res/过滤灰.png'))
         else:
             self.toolBtnViewZXZT.setIcon(QIcon('./res/过滤关.png'))
+
+    def camearCalibrate(self):
+        dialog = camviewDialog()
+        # dialog.show()
+        if dialog.exec():
+            pass
 
     def analysis(self):
         dialog = analysisDialog()
