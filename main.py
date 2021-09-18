@@ -82,7 +82,6 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
     def __init__(self):
         super(mywindow, self).__init__()
         self.setupUi(self)
-        self.showMaximized()
         self.lsts = {}
         self.tk_lsts = {}
         self.zx_lsts = {}
@@ -465,6 +464,8 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
 
         self.router_sence = GraphicScene(self.graphicsView)
         self.router_view = GraphicView(self.router_sence, self.graphicsView, self.vins_ip)
+
+        self.showMaximized()
         
     def alignOnce(self):
         for key in DICT_NAME_LIST:

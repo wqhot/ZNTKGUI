@@ -233,7 +233,8 @@ class RecvData():
                    'quat_pre_w', 'quat_pre_x', 'quat_pre_y', 'quat_pre_z',
                    'acc_with_cam_x', 'acc_with_cam_y', 'acc_with_cam_z',
                    'acc_no_cam_x', 'acc_no_cam_y', 'acc_no_cam_z',
-                   'acc_rel_x', 'acc_rel_y', 'acc_rel_z']
+                   'acc_rel_x', 'acc_rel_y', 'acc_rel_z',
+                   'eul_int_x', 'eul_int_y', 'eul_int_z']
         csv_name = './history/' + \
             str(time.strftime("%Y%m%d%H%M%S", time.localtime())) + '.csv'
         with open(csv_name, 'w', newline='') as f:
@@ -290,7 +291,10 @@ class RecvData():
                             r["ACC_NO_CAM_Z"],
                             r["ACC_REL_CAM_X"],
                             r["ACC_REL_CAM_Y"],
-                            r["ACC_REL_CAM_Z"]]
+                            r["ACC_REL_CAM_Z"],
+                            r["EUL_BY_INTEGRAL_X"],
+                            r["EUL_BY_INTEGRAL_Y"],
+                            r["EUL_BY_INTEGRAL_Z"]]
                     f_csv.writerow(line)
 
     def run(self):
@@ -560,6 +564,10 @@ class RecvData():
             save_dc["ACC_REL_CAM_X"] = dc["ACC_REL_CAM_X"]
             save_dc["ACC_REL_CAM_Y"] = dc["ACC_REL_CAM_Y"]
             save_dc["ACC_REL_CAM_Z"] = dc["ACC_REL_CAM_Z"]
+
+            save_dc["EUL_BY_INTEGRAL_X"] = dc["EUL_BY_INTEGRAL_X"]
+            save_dc["EUL_BY_INTEGRAL_Y"] = dc["EUL_BY_INTEGRAL_Y"]
+            save_dc["EUL_BY_INTEGRAL_Z"] = dc["EUL_BY_INTEGRAL_Z"]
 
             save_dc["ANGLE_BY_PRE"] = dc["ANGLE_BY_PRE"]
 
