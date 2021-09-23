@@ -299,10 +299,10 @@ class analysisData():
             (temp_z_interp, temp_x_interp)).T
         R_zt = Rotation.from_euler('ZX', temp_interp, degrees=True)
         temp_data = np.vstack((
-            data1['quat_pre_x'],
-            data1['quat_pre_y'],
-            data1['quat_pre_z'],
-            data1['quat_pre_w'])).T
+            data1['quat_rel_x'],
+            data1['quat_rel_y'],
+            data1['quat_rel_z'],
+            data1['quat_rel_w'])).T
         R_m = Rotation.from_quat(temp_data)
 
         if Rg.shape == (3, 4) or Rg.shape == (3, 3):
@@ -414,10 +414,10 @@ class analysisData():
             (temp_z_interp, temp_x_interp)).T
         R_zt = Rotation.from_euler('ZX', temp_interp, degrees=True)
         temp_data = np.vstack((
-            data1['quat_pre_x'][index_data],
-            data1['quat_pre_y'][index_data],
-            data1['quat_pre_z'][index_data],
-            data1['quat_pre_w'][index_data])).T
+            data1['quat_rel_x'][index_data],
+            data1['quat_rel_y'][index_data],
+            data1['quat_rel_z'][index_data],
+            data1['quat_rel_w'][index_data])).T
         R_m = Rotation.from_quat(temp_data)
         for bar in self.fill_bars:
             bar.remove()

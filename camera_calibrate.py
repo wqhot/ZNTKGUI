@@ -9,7 +9,7 @@ import yaml
 from PyQt5 import QtGui
 from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QIcon, QImage
-from PyQt5.QtWidgets import QListWidget, QWidget, QApplication, QListView, QHBoxLayout, QListWidgetItem, QDialog, QFileDialog
+from PyQt5.QtWidgets import QComboBox, QDoubleSpinBox, QListWidget, QDoubleSpinBox, QSpinBox, QWidget, QLabel, QApplication, QListView, QHBoxLayout, QVBoxLayout, QListWidgetItem, QDialog, QFileDialog, QTableWidget, QTableWidgetItem
 from ui.Ui_camera import Ui_Dialog
 from plotCamera import PlotCamera
 import piexif
@@ -22,16 +22,21 @@ class camCalibrateUtil(QThread):
     signal_image = pyqtSignal(object)
     signal_file = pyqtSignal(str)
     signal_pos = pyqtSignal(dict)
+    signal_para = pyqtSignal(dict)
     def __init__(self, cap, checkboard_size, corner_num_x, corner_num_y):
         super(camCalibrateUtil, self).__init__()
         self.objpoints = []
         self.imgpoints = []
+        self.real_r = []
+        self.real_t = []
         self.cap = cap
         self.checkboard_size = checkboard_size
         self.corner_num_x = corner_num_x
         self.corner_num_y = corner_num_y
         self.prepare_to_shoot = False
         self.show_ori = False
+        self.cal_online = True
+        self.img_shape = (0, 0)
 
         self.camera_type = 'omni-radtan'
         self.undistort_type = 0
@@ -42,6 +47,76 @@ class camCalibrateUtil(QThread):
 
     def stop(self):
         self.cap.release()
+
+    def cal_once(self):
+        flags_omni = cv2.omnidir.CALIB_USE_GUESS
+        if len(self.imgpoints) > 0:
+            RR = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
+            TT = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
+            self.real_r = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
+            self.real_t = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
+            if self.camera_type == 'omni-radtan':
+                # omni-radtan相机标定
+                rms, self.K, self.xi, self.D, RR, TT, idx = cv2.omnidir.calibrate(
+                    self.objpoints, 
+                    self.imgpoints,
+                    self.img_shape[:2][::-1],
+                    K=None, xi=None, D=None, flags=flags_omni,
+                    criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 200, 0.0001)
+                )
+            elif self.camera_type == 'pinhole-equi':
+                # 鱼眼相机标定
+                rms, self.K, self.D, _, _ = cv2.fisheye.calibrate(
+                    self.objpoints, 
+                    self.imgpoints,
+                    self.img_shape[:2][::-1],
+                    K=None, D=None, rvecs=RR, tvecs=TT#, flags_fisheye, ctiteria
+                )
+                P = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(K, D, gray.shape[:2][::-1], None)
+            elif self.camera_type == 'pinhole-radtan':
+                # 针孔相机标定
+                rms, self.K, self.D, _, _ = cv2.calibrateCamera(
+                    self.objpoints, 
+                    self.imgpoints,
+                    self.img_shape[:2][::-1],
+                    cameraMatrix=None, distCoeffs=None, rvecs=RR, tvecs=TT
+                )
+            sig_d = {"K":self.K, "D":self.D, "xi":self.xi}
+            self.signal_para.emit(sig_d)
+    
+    def project(self, rot, trans):
+        rvecs = rot.as_rotvec()
+        tvecs = trans
+        mean_error = 0
+        for row, objpoint in enumerate(self.objpoints):
+            if self.camera_type == 'omni-radtan':
+                # omni-radtan相机反投影
+                img_points, _ = cv2.omnidir.projectPoints(
+                    objpoint, 
+                    rvecs[row, :],
+                    tvecs[row, :],
+                    K=self.K, xi=self.xi[0][0], D=self.D
+                )
+            elif self.camera_type == 'pinhole-equi':
+                # 鱼眼相机反投影
+                img_points, _ = cv2.fisheye.projectPoints(
+                    objpoint, 
+                    rvecs[row, :],
+                    tvecs[row, :],
+                    K=self.K, D=self.D
+                )
+            elif self.camera_type == 'pinhole-radtan':
+                # 针孔相机反投影
+                img_points, _ = cv2.projectPoints(
+                    objpoint, 
+                    rvecs[row, :],
+                    tvecs[row, :],
+                    K=self.K, D=self.D
+                )
+            err = cv2.norm(self.imgpoints[row], img_points, cv2.NORM_L2) / len(img_points)
+            mean_error = mean_error + err
+        mean_error = mean_error / len(self.objpoints)
+        return mean_error
 
     def run(self):
         # 精准化角点迭代终止条件
@@ -76,6 +151,7 @@ class camCalibrateUtil(QThread):
                 gray = frame
             frame_down = np.copy(gray)
             gray = cv2.equalizeHist(gray)
+            self.img_shape = gray.shape
             # 寻找棋盘格点
             ok, corners = cv2.findChessboardCorners(gray, (self.corner_num_x, self.corner_num_y), flags=flags)
             if ok:
@@ -96,7 +172,9 @@ class camCalibrateUtil(QThread):
                     tmp_imgpoints = copy.copy(self.imgpoints)
                     tmp_objpoints.append(obj_p)
                     tmp_imgpoints.append(corners)
-                if len(self.imgpoints) > 0:                  
+                if len(self.imgpoints) > 10:
+                    self.cal_online = False
+                if len(tmp_objpoints) > 0 and len(tmp_imgpoints) > 0 and self.cal_online:
                     # 
                     RR = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
                     TT = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
@@ -131,6 +209,8 @@ class camCalibrateUtil(QThread):
                         self.D = np.copy(D)
                         self.xi = np.copy(xi)
                         self.prepare_to_shoot = False
+                        sig_d = {"K":self.K, "D":self.D, "xi":self.xi}
+                        self.signal_para.emit(sig_d)
                     # print(self.K)
                     # print(self.D)
                     r = list(Rotation.from_rotvec(RR[-1].reshape((3,))).as_quat())
@@ -140,6 +220,8 @@ class camCalibrateUtil(QThread):
                         't': t
                     }
                     self.signal_pos.emit(pos)
+                elif self.prepare_to_shoot:
+                    self.prepare_to_shoot = False
             else:
                 cv2.putText(gray, "FAIL TO FIND CORNERS", (int(0), int(frame_down.shape[0] / 2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255))
             if not np.linalg.norm(self.K) == 0:
@@ -257,23 +339,92 @@ class camCalibrateUtil(QThread):
                 cv2.imwrite('./history/{}.jpg'.format(count), frame)
                 count = count + 1
 
+class PosItemWidget(QWidget):
+    def __init__(self, size=QSize(200, 200), parent=None):
+        super(PosItemWidget, self).__init__(parent)
+        self.resize(size)
+        self.setupUi()
+    
+    def setupUi(self):
+        self.combox = QComboBox()
+        self.combox.addItems(['欧拉角', '四元数'])
+        self.labelx = QLabel("x: r[deg], t[mm]")
+        self.labely = QLabel("y: r[deg], t[mm]")
+        self.labelz = QLabel("z: r[deg], t[mm]")
+        self.labelw = QLabel("w: r[deg], t[mm]")
+        self.spinbox_x = QDoubleSpinBox()
+        self.spinbox_y = QDoubleSpinBox()
+        self.spinbox_z = QDoubleSpinBox()
+        self.spinbox_w = QDoubleSpinBox()
+
+        self.spinbox_tx = QDoubleSpinBox()
+        self.spinbox_ty = QDoubleSpinBox()
+        self.spinbox_tz = QDoubleSpinBox()
+        self.spinbox_x.setMinimum(-180)
+        self.spinbox_y.setMinimum(-180)
+        self.spinbox_z.setMinimum(-180)
+        self.spinbox_w.setMinimum(-180)
+        self.spinbox_tx.setMinimum(-10000)
+        self.spinbox_ty.setMinimum(-10000)
+        self.spinbox_tz.setMinimum(-10000)
+        self.spinbox_x.setMaximum(180)
+        self.spinbox_y.setMaximum(180)
+        self.spinbox_z.setMaximum(180)
+        self.spinbox_w.setMaximum(180)
+        self.spinbox_tx.setMaximum(10000)
+        self.spinbox_ty.setMaximum(10000)
+        self.spinbox_tz.setMaximum(10000)
+        hlayout1 = QHBoxLayout()
+        hlayout1.addWidget(self.labelx)
+        hlayout1.addWidget(self.spinbox_x)
+        hlayout1.addWidget(self.spinbox_tx)
+        hlayout2 = QHBoxLayout()
+        hlayout2.addWidget(self.labely)
+        hlayout2.addWidget(self.spinbox_y)
+        hlayout2.addWidget(self.spinbox_ty)
+        hlayout3 = QHBoxLayout()
+        hlayout3.addWidget(self.labelz)
+        hlayout3.addWidget(self.spinbox_z)
+        hlayout3.addWidget(self.spinbox_tz)
+        hlayout4 = QHBoxLayout()
+        hlayout4.addWidget(self.labelw)
+        hlayout4.addWidget(self.spinbox_w)
+        vlayout = QVBoxLayout()
+        vlayout.addWidget(self.combox)
+        vlayout.addLayout(hlayout1)
+        vlayout.addLayout(hlayout2)
+        vlayout.addLayout(hlayout3)
+        vlayout.addLayout(hlayout4)
+        self.setLayout(vlayout)
+
+
 class ImageListWidget(QWidget):
     def __init__(self, parent=None):
         super(ImageListWidget, self).__init__(parent)
         self.resize(110, 768)
         self.setupUi()
+        self.row_last = 0
     
     def setupUi(self):
-        self.iconlist = QListWidget()
-        self.iconlist.setViewMode(QListView.IconMode)
-        self.iconlist.setSpacing(10)
-        self.iconlist.setIconSize(QSize(200, 200))
-        self.iconlist.setMovement(False)
-        self.iconlist.setResizeMode(QListView.Adjust)
+        self.icontable = QTableWidget()
+        self.icontable.setColumnCount(2)
+        self.icontable.setColumnWidth(0, 200)
+        self.icontable.setColumnWidth(1, 300)
+        self.icontable.horizontalHeader().setVisible(False)
         hlayout = QHBoxLayout()
-        hlayout.addWidget(self.iconlist)
+        hlayout.addWidget(self.icontable)
 
         self.setLayout(hlayout)
+
+    def clear(self):
+        self.icontable.clear()
+
+    def get_item(self):
+        combox = QComboBox()
+        combox.addItems(['欧拉角', '四元数'])
+        # hlayout = QHBoxLayout()
+        # hlayout.addWidget(combox)
+        return combox
 
     def addItem(self, file_name):
         exif = piexif.load(file_name)
@@ -286,9 +437,50 @@ class ImageListWidget(QWidget):
             pix = QPixmap()
             pix.load(file_name)
 
-        item = QListWidgetItem(QIcon(pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)), os.path.split(file_name)[-1])
-        self.iconlist.addItem(item)
-        self.iconlist.scrollToBottom()
+        pix_scaled = pix.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        label = QLabel("")
+        label.setPixmap(pix_scaled)
+        self.icontable.insertRow(self.row_last)
+        self.icontable.setCellWidget(self.row_last, 0, label)
+        # self.icontable.setItem(self.row_last, 1, QTableWidgetItem("123"))
+        pos = PosItemWidget(QSize(300, pix_scaled.size().height()))
+        self.icontable.setCellWidget(self.row_last, 1, pos)
+        self.icontable.setRowHeight(self.row_last, pix_scaled.size().height())
+        self.row_last = self.row_last + 1
+        self.icontable.scrollToBottom()
+    
+    def get_pos(self):
+        quats = np.zeros((self.icontable.rowCount(), 4))
+        trans = np.zeros((self.icontable.rowCount(), 3))
+        for row in range(self.icontable.rowCount()):
+            trans[row, :] = np.array([
+                self.icontable.cellWidget(row, 1).spinbox_tx.value(),
+                self.icontable.cellWidget(row, 1).spinbox_ty.value(),
+                self.icontable.cellWidget(row, 1).spinbox_tz.value()
+            ])
+            if self.icontable.cellWidget(row, 1).combox.currentText() == '欧拉角':
+                x = self.icontable.cellWidget(row, 1).spinbox_x.value()
+                y = self.icontable.cellWidget(row, 1).spinbox_y.value()
+                z = self.icontable.cellWidget(row, 1).spinbox_z.value()
+                rot_temp = Rotation.from_euler('ZYX', np.array([z, y, x]), degrees=True)
+                quats[row, :] = rot_temp.as_quat()
+            elif self.icontable.cellWidget(row, 1).combox.currentText() == '四元数':
+                x = self.icontable.cellWidget(row, 1).spinbox_x.value()
+                y = self.icontable.cellWidget(row, 1).spinbox_y.value()
+                z = self.icontable.cellWidget(row, 1).spinbox_z.value()
+                w = self.icontable.cellWidget(row, 1).spinbox_w.value()
+                q = np.array([x, y, z, w])
+                if np.linalg.norm(q) == 0:
+                    w = 1
+                    q = np.array([0, 0, 0, 1])
+                self.icontable.cellWidget(row, 1).spinbox_x.setValue(x / np.linalg.norm(q))
+                self.icontable.cellWidget(row, 1).spinbox_y.setValue(y / np.linalg.norm(q))
+                self.icontable.cellWidget(row, 1).spinbox_z.setValue(z / np.linalg.norm(q))
+                self.icontable.cellWidget(row, 1).spinbox_w.setValue(w / np.linalg.norm(q))
+                rot_temp = Rotation.from_quat(np.array([x, y, z, w]))
+                quats[row, :] = rot_temp.as_quat()
+        rot = Rotation.from_quat(quats)
+        return rot, trans
 
 class camviewDialog(QDialog, Ui_Dialog):
     def __init__(self):
@@ -312,8 +504,15 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.comboBox.currentIndexChanged.connect(self.on_change_camera_type)
         self.comboBox_2.currentIndexChanged.connect(self.on_change_display_type)
         self.pushButton_3.clicked.connect(self.on_push_shoot)
+        self.pushButton_calonce.clicked.connect(self.on_click_cal_once)
+        self.pushButton_project.clicked.connect(self.on_project)
 
         self.reopen()
+
+    def on_project(self):
+        rot, trans = self.iconlist.get_pos()
+        err = self.cam.project(rot, trans)
+        self.doubleSpinBox_err.setValue(err)
 
     def save(self):
         directory = QFileDialog.getSaveFileName(self, "结果保存", "../cam.txt", "文本文件 (*.txt)")
@@ -350,7 +549,7 @@ class camviewDialog(QDialog, Ui_Dialog):
             self.cam.wait()
             self.cam = None
         
-        self.iconlist.iconlist.clear()
+        self.iconlist.clear()
         
         camera_type = self.comboBox.currentText()
         camera_expose = self.horizontalSlider.value()
@@ -366,8 +565,25 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.cam.signal_file.connect(self.add_image)
         self.cam.signal_image.connect(self.show_image)
         self.cam.signal_pos.connect(self.change_pos)
+        self.cam.signal_para.connect(self.refresh_para)
 
         self.cam.start()
+
+    def refresh_para(self, sig_d):
+        self.doubleSpinBox_kfx.setValue(sig_d["K"][0, 0])
+        self.doubleSpinBox_kfy.setValue(sig_d["K"][1, 1])
+        self.doubleSpinBox_kcx.setValue(sig_d["K"][0, 2])
+        self.doubleSpinBox_kcy.setValue(sig_d["K"][1, 2])
+
+        self.doubleSpinBox_dk1.setValue(sig_d["D"][0][0])
+        self.doubleSpinBox_dk2.setValue(sig_d["D"][0][1])
+        self.doubleSpinBox_dp1.setValue(sig_d["D"][0][2])
+        self.doubleSpinBox_dp2.setValue(sig_d["D"][0][3])
+
+        self.doubleSpinBox_xi.setValue(sig_d["D"][0][3])
+    
+    def on_click_cal_once(self):
+        self.cam.cal_once()
 
     def on_change_display_type(self):
         display_type = self.comboBox_2.currentIndex()

@@ -231,6 +231,7 @@ class RecvData():
                    'omega_rel_x', 'omega_rel_y', 'omega_rel_z',
                    'cost_of_eul', 'cost_of_cam', 'cost_of_update',
                    'quat_pre_w', 'quat_pre_x', 'quat_pre_y', 'quat_pre_z',
+                   'quat_rel_w', 'quat_rel_x', 'quat_rel_y', 'quat_rel_z',
                    'acc_with_cam_x', 'acc_with_cam_y', 'acc_with_cam_z',
                    'acc_no_cam_x', 'acc_no_cam_y', 'acc_no_cam_z',
                    'acc_rel_x', 'acc_rel_y', 'acc_rel_z',
@@ -283,6 +284,10 @@ class RecvData():
                             r["ANGLE_BY_PRE"][0],
                             r["ANGLE_BY_PRE"][1],
                             r["ANGLE_BY_PRE"][2],
+                            r["ANGLE_BY_INTEGRAL"][3],
+                            r["ANGLE_BY_INTEGRAL"][0],
+                            r["ANGLE_BY_INTEGRAL"][1],
+                            r["ANGLE_BY_INTEGRAL"][2],
                             r["ACC_WITH_CAM_X"],
                             r["ACC_WITH_CAM_Y"],
                             r["ACC_WITH_CAM_Z"],
@@ -568,6 +573,8 @@ class RecvData():
             save_dc["EUL_BY_INTEGRAL_X"] = dc["EUL_BY_INTEGRAL_X"]
             save_dc["EUL_BY_INTEGRAL_Y"] = dc["EUL_BY_INTEGRAL_Y"]
             save_dc["EUL_BY_INTEGRAL_Z"] = dc["EUL_BY_INTEGRAL_Z"]
+
+            save_dc["ANGLE_BY_INTEGRAL"] = dc["ANGLE_BY_INTEGRAL"]
 
             save_dc["ANGLE_BY_PRE"] = dc["ANGLE_BY_PRE"]
 
