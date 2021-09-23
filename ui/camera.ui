@@ -148,18 +148,44 @@
          </layout>
         </item>
         <item>
-         <widget class="QLabel" name="label_7">
-          <property name="text">
-           <string>相机设备号</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QSpinBox" name="spinBox_cameraid">
-          <property name="maximum">
-           <number>9999</number>
-          </property>
-         </widget>
+         <layout class="QVBoxLayout" name="verticalLayout_9">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_14">
+            <item>
+             <widget class="QLabel" name="label_13">
+              <property name="text">
+               <string>mask类型</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_mask">
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_15">
+            <item>
+             <widget class="QLabel" name="label_7">
+              <property name="text">
+               <string>相机设备号</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox_cameraid">
+              <property name="maximum">
+               <number>9999</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>
@@ -394,7 +420,11 @@
                </widget>
               </item>
               <item>
-               <widget class="QDoubleSpinBox" name="doubleSpinBox_err"/>
+               <widget class="QDoubleSpinBox" name="doubleSpinBox_err">
+                <property name="maximum">
+                 <double>9999.989999999999782</double>
+                </property>
+               </widget>
               </item>
              </layout>
             </item>

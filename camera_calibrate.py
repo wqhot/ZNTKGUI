@@ -36,7 +36,10 @@ class camCalibrateUtil(QThread):
         self.prepare_to_shoot = False
         self.show_ori = False
         self.cal_online = True
-        self.img_shape = (0, 0)
+        self.img_shape = (int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
+        self.mask = None
+        # 0 无 1 短边 2 长边
+        self.mask_type = 0
 
         self.camera_type = 'omni-radtan'
         self.undistort_type = 0
@@ -44,6 +47,24 @@ class camCalibrateUtil(QThread):
         self.K = np.zeros((3, 3))
         self.xi = np.zeros((1, 1))
         self.D = np.zeros((4, 1))
+
+    def gen_mask(self):
+        if self.mask_type == 0:
+            self.mask = None
+            return
+        elif self.mask_type == 1:
+            l = min(self.img_shape) / 2
+        elif self.mask_type == 2:
+            l = max(self.img_shape) / 2
+        self.mask = np.zeros(shape=self.img_shape, dtype=np.uint8)
+        c = (self.img_shape[0] / 2, self.img_shape[1] / 2)
+        x_dist = np.matrix((np.arange(0, self.img_shape[1], 1, dtype=np.float64) - c[1]) ** 2)
+        x_dist = np.repeat(x_dist, self.img_shape[0], axis=0)
+        y_dist = np.matrix((np.arange(0, self.img_shape[0], 1, dtype=np.float64) - c[0]) ** 2).T
+        y_dist = np.repeat(y_dist, self.img_shape[1], axis=1)
+        dist = np.sqrt(x_dist + y_dist)
+        self.mask[dist < l] = 1
+
 
     def stop(self):
         self.cap.release()
@@ -72,7 +93,7 @@ class camCalibrateUtil(QThread):
                     self.img_shape[:2][::-1],
                     K=None, D=None, rvecs=RR, tvecs=TT#, flags_fisheye, ctiteria
                 )
-                P = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(K, D, gray.shape[:2][::-1], None)
+                P = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(self.K, self.D, self.img_shape[:2][::-1], None)
             elif self.camera_type == 'pinhole-radtan':
                 # 针孔相机标定
                 rms, self.K, self.D, _, _ = cv2.calibrateCamera(
@@ -113,7 +134,7 @@ class camCalibrateUtil(QThread):
                     tvecs[row, :],
                     K=self.K, D=self.D
                 )
-            err = cv2.norm(self.imgpoints[row], img_points, cv2.NORM_L2) / len(img_points)
+            err = cv2.norm(self.imgpoints[row].reshape(img_points.shape), img_points, cv2.NORM_L2) / len(img_points)
             mean_error = mean_error + err
         mean_error = mean_error / len(self.objpoints)
         return mean_error
@@ -145,6 +166,9 @@ class camCalibrateUtil(QThread):
             ret, frame = self.cap.read()
             if not ret:
                 break
+            if self.mask is not None:
+                temp = np.zeros(shape=frame.shape, dtype=frame.dtype)
+                frame = cv2.bitwise_and(frame, frame, mask=self.mask)
             if len(frame.shape) == 3:
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             else:
@@ -180,13 +204,16 @@ class camCalibrateUtil(QThread):
                     TT = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
                     if self.camera_type == 'omni-radtan':
                         # omni-radtan相机标定
-                        rms, K, xi, D, RR, TT, idx = cv2.omnidir.calibrate(
-                            tmp_objpoints, 
-                            tmp_imgpoints,
-                            gray.shape[:2][::-1],
-                            K=None, xi=None, D=None, flags=flags_omni,
-                            criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 200, 0.0001)
-                        )
+                        try:
+                            rms, K, xi, D, RR, TT, idx = cv2.omnidir.calibrate(
+                                tmp_objpoints, 
+                                tmp_imgpoints,
+                                gray.shape[:2][::-1],
+                                K=None, xi=None, D=None, flags=flags_omni,
+                                criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 200, 0.0001)
+                            )
+                        except Exception:
+                            pass
                     elif self.camera_type == 'pinhole-equi':
                         # 鱼眼相机标定
                         rms, K, D, _, _ = cv2.fisheye.calibrate(
@@ -491,6 +518,7 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.verticalLayout_imagelist.addWidget(self.iconlist)
         for camera_type in camera_type_list:
             self.comboBox.addItem(camera_type)
+        self.comboBox_mask.addItems(['无', '短边', '长边'])
         for undistort_type in undistort_list:
             self.comboBox_2.addItem(undistort_type)
         self.camerapos = PlotCamera(self.verticalLayout_camerapos)
@@ -561,6 +589,8 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.cap = cv2.VideoCapture(camera_id)
         self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
         self.cam = camCalibrateUtil(self.cap, chessboard_size, chessboard_corner_x, chessboard_corner_y)
+        self.cam.mask_type = self.comboBox_mask.currentIndex()
+        self.cam.gen_mask()
         self.cam.camera_type = camera_type
         self.cam.signal_file.connect(self.add_image)
         self.cam.signal_image.connect(self.show_image)
