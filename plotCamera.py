@@ -3,6 +3,7 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 import pyqtgraph as pg
 import numpy as np
+from scipy.spatial.transform import Rotation
 from config import TIME_LENGTH, SCALE
 
 
@@ -24,6 +25,9 @@ class PlotCamera():
         gz = gl.GLGridItem()
         gz.translate(0, 0, -10)
         self.w.addItem(gz)
+
+        self.pos_text = gl.GLTextItem(pos=(0,0,0), text=(0,0,0), font=QtGui.QFont('Helvetica', 7))
+        self.w.addItem(self.pos_text)
 
         self.imlt = [1.0, -1.0, -0.5]
         self.imrt = [ 1.0, 1.0, -0.5]
@@ -56,6 +60,11 @@ class PlotCamera():
         self.lines[index].setData(pos=pts) 
         # self.w.addItem(plt)
 
+    def quat_to_euler(self, quat):
+        q = np.array(quat)
+        R = Rotation.from_quat(q)
+        return R.as_euler('ZYX', degrees=True)[::-1]
+
     def quaternion_to_rotation_matrix(self, quat):
         temp = quat[0]
         quat[0] = quat[1]
@@ -83,6 +92,7 @@ class PlotCamera():
 
     def add_pose(self, p, q):
         rot_matrix = self.quaternion_to_rotation_matrix(q)
+        euler = self.quat_to_euler(q)
         scale = SCALE
         pt_lt = scale * (np.matmul(rot_matrix, self.imlt) + p)
         pt_lb = scale * (np.matmul(rot_matrix, self.imlb) + p)
@@ -97,3 +107,8 @@ class PlotCamera():
         self.drawLine(5, pt_oc, pt_lb)
         self.drawLine(6, pt_oc, pt_rb)
         self.drawLine(7, pt_oc, pt_rt)
+
+        self.pos_text.setData(
+            # pos = p,
+            text='({:.1f},{:.1f},{:.1f})'.format(euler[0], euler[1], euler[2])
+            )

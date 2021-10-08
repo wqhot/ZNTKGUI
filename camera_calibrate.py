@@ -14,9 +14,27 @@ from ui.Ui_camera import Ui_Dialog
 from plotCamera import PlotCamera
 import piexif
 import time
+import datetime
+import zipfile
 
 camera_type_list = ['omni-radtan', 'pinhole-equi', 'pinhole-radtan']
 undistort_list = ['透视图', '圆柱图', '立体图', '世界地图', '原图', '仅透视图 ']
+
+def zipDir(dirpath, outFullName):
+    """
+    压缩指定文件夹
+    :param dirpath: 目标文件夹路径
+    :param outFullName: 压缩文件保存路径+xxxx.zip
+    :return: 无
+    """
+    zip = zipfile.ZipFile(outFullName,"w",zipfile.ZIP_DEFLATED)
+    for path,dirnames,filenames in os.walk(dirpath):
+        # 去掉目标跟路径，只对目标文件夹下边的文件及文件夹进行压缩
+        fpath = path.replace(dirpath,'')
+
+        for filename in filenames:
+            zip.write(os.path.join(path,filename),os.path.join(fpath,filename))
+    zip.close()
 
 class camCalibrateUtil(QThread):
     signal_image = pyqtSignal(object)
@@ -36,6 +54,9 @@ class camCalibrateUtil(QThread):
         self.prepare_to_shoot = False
         self.show_ori = False
         self.cal_online = True
+        self.raw_dict = './images/' + datetime.datetime.strftime(datetime.datetime.now(), '%Y%m%d%H%M%S')
+        if not os.path.exists(self.raw_dict):
+            os.makedirs(self.raw_dict)
         self.img_shape = (int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
         self.mask = None
         # 0 无 1 短边 2 长边
@@ -47,6 +68,9 @@ class camCalibrateUtil(QThread):
         self.K = np.zeros((3, 3))
         self.xi = np.zeros((1, 1))
         self.D = np.zeros((4, 1))
+
+    def __del__(self):
+        zipDir(self.raw_dict, self.raw_dict + '.zip')
 
     def gen_mask(self):
         if self.mask_type == 0:
@@ -87,7 +111,7 @@ class camCalibrateUtil(QThread):
                 )
             elif self.camera_type == 'pinhole-equi':
                 # 鱼眼相机标定
-                rms, self.K, self.D, _, _ = cv2.fisheye.calibrate(
+                rms, self.K, self.D, RR, TT = cv2.fisheye.calibrate(
                     self.objpoints, 
                     self.imgpoints,
                     self.img_shape[:2][::-1],
@@ -96,7 +120,7 @@ class camCalibrateUtil(QThread):
                 P = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(self.K, self.D, self.img_shape[:2][::-1], None)
             elif self.camera_type == 'pinhole-radtan':
                 # 针孔相机标定
-                rms, self.K, self.D, _, _ = cv2.calibrateCamera(
+                rms, self.K, self.D, RR, TT = cv2.calibrateCamera(
                     self.objpoints, 
                     self.imgpoints,
                     self.img_shape[:2][::-1],
@@ -187,7 +211,9 @@ class camCalibrateUtil(QThread):
                     self.objpoints.append(obj_p)
                     self.imgpoints.append(corners)
                     file_name = './images/{}.jpg'.format(str(time.strftime("%Y%m%d%H%M%S", time.localtime())))
+                    file_name_raw = self.raw_dict + '/{}.jpg'.format(str(time.strftime("%Y%m%d%H%M%S", time.localtime())))
                     cv2.imwrite(file_name, frame)
+                    cv2.imwrite(file_name_raw, gray)
                     self.signal_file.emit(file_name)
                     tmp_objpoints = self.objpoints
                     tmp_imgpoints = self.imgpoints
@@ -200,8 +226,8 @@ class camCalibrateUtil(QThread):
                     self.cal_online = False
                 if len(tmp_objpoints) > 0 and len(tmp_imgpoints) > 0 and self.cal_online:
                     # 
-                    RR = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
-                    TT = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(self.objpoints))]
+                    RR = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(tmp_objpoints))]
+                    TT = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(len(tmp_objpoints))]
                     if self.camera_type == 'omni-radtan':
                         # omni-radtan相机标定
                         try:
@@ -216,18 +242,18 @@ class camCalibrateUtil(QThread):
                             pass
                     elif self.camera_type == 'pinhole-equi':
                         # 鱼眼相机标定
-                        rms, K, D, _, _ = cv2.fisheye.calibrate(
-                            self.objpoints, 
-                            self.imgpoints,
+                        rms, K, D, RR, TT = cv2.fisheye.calibrate(
+                            tmp_objpoints,
+                            tmp_imgpoints,
                             gray.shape[:2][::-1],
                             K=None, D=None, rvecs=RR, tvecs=TT#, flags_fisheye, ctiteria
                         )
                         P = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(K, D, gray.shape[:2][::-1], None)
                     elif self.camera_type == 'pinhole-radtan':
                         # 针孔相机标定
-                        rms, K, D, _, _ = cv2.calibrateCamera(
-                            self.objpoints,
-                            self.imgpoints,
+                        rms, K, D, RR, TT = cv2.calibrateCamera(
+                            tmp_objpoints,
+                            tmp_imgpoints,
                             gray.shape[:2][::-1],
                             cameraMatrix=None, distCoeffs=None, rvecs=RR, tvecs=TT
                         )
@@ -240,7 +266,12 @@ class camCalibrateUtil(QThread):
                         self.signal_para.emit(sig_d)
                     # print(self.K)
                     # print(self.D)
-                    r = list(Rotation.from_rotvec(RR[-1].reshape((3,))).as_quat())
+                    rot = cv2.Rodrigues(RR[-1].reshape((3,)))
+                    rot_trans = np.matrix([
+                        [1,0,0],[0,0,1],[0,-1,0]
+                        ])
+                    rot = rot[0]
+                    r = list(Rotation.from_matrix(rot).as_quat())
                     t = list(TT[-1].reshape((3,)) - TT[0].reshape((3,)))
                     pos = {
                         'q': r,
@@ -444,6 +475,7 @@ class ImageListWidget(QWidget):
         self.setLayout(hlayout)
 
     def clear(self):
+        self.row_last = 0
         self.icontable.clear()
 
     def get_item(self):
@@ -656,7 +688,7 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.cam.wait()
 
     def change_pos(self, pos):
-        self.camerapos.add_pose(pos['t'], pos['q'])
+        self.camerapos.add_pose([0,0,0], pos['q'])
 
     def add_image(self, file_name):
         self.iconlist.addItem(file_name)

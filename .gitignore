@@ -11,8 +11,9 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
-images/*.jpg
+images/*
 images/*.png
+images/*.zip
 history/*.csv
 history/*/*.csv
 develop-eggs/
