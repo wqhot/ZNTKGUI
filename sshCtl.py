@@ -49,8 +49,12 @@ class sshCtl(threading.Thread):
         )
 
         self.shell = self.ssh.invoke_shell()
-        self.shell.settimeout(1)    
-        self.shell.send(self.command)
+        self.shell.settimeout(1)  
+        try:  
+            self.shell.send(self.command)
+        except:
+            self.ssh.close()
+            return
         while self.isRun:
             try:
                 recv = self.shell.recv(512).decode()
@@ -66,7 +70,10 @@ class sshCtl(threading.Thread):
             except:
                 continue
         
-        self.shell.send("x\n")
+        try:
+            self.shell.send("x\n")
+        except:
+            pass
         self.ssh.close()
 
 
