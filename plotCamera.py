@@ -26,8 +26,8 @@ class PlotCamera():
         gz.translate(0, 0, -10)
         self.w.addItem(gz)
 
-        self.pos_text = gl.GLTextItem(pos=(0,0,0), text=(0,0,0), font=QtGui.QFont('Helvetica', 7))
-        self.w.addItem(self.pos_text)
+        # self.pos_text = gl.GLTextItem(pos=(0,0,0), text=(0,0,0), font=QtGui.QFont('Helvetica', 7))
+        # self.w.addItem(self.pos_text)
 
         self.imlt = [1.0, -1.0, -0.5]
         self.imrt = [ 1.0, 1.0, -0.5]
@@ -108,7 +108,7 @@ class PlotCamera():
         self.drawLine(6, pt_oc, pt_rb)
         self.drawLine(7, pt_oc, pt_rt)
 
-        self.pos_text.setData(
-            # pos = p,
-            text='({:.1f},{:.1f},{:.1f})'.format(euler[0], euler[1], euler[2])
-            )
+        # self.pos_text.setData(
+        #     # pos = p,
+        #     text='({:.1f},{:.1f},{:.1f})'.format(euler[0], euler[1], euler[2])
+        #     )
