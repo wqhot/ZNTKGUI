@@ -12,13 +12,14 @@ from PyQt5.QtWidgets import QComboBox, QDoubleSpinBox, QListWidget, QDoubleSpinB
 from scipy.spatial.transform import Rotation
 from scipy.spatial.transform import Slerp
 from scipy.special import comb
+from scipy.interpolate import make_interp_spline
 from plotCamera import PlotCamera
 from ui.Ui_vitualcam import Ui_Dialog
-
 
 class virtualCAM(QThread):
     signal_pos = pyqtSignal(dict)
     signal_image = pyqtSignal(object)
+    signal_milestone = pyqtSignal(int)
 
     def __init__(self, step=0.01, img_step=16):
         super(virtualCAM, self).__init__()
@@ -27,6 +28,7 @@ class virtualCAM(QThread):
         self.rot = Rotation.from_quat(np.array([0., 0., 0., 1.]))
         self.pos = np.array([0., 0., 0.])
         self.t = [0.]
+        self.milestone = np.array([0.])
 
         self.img_shape = (int(480), int(640))
         self.mask = None
@@ -43,6 +45,7 @@ class virtualCAM(QThread):
         self.wbais_car = np.zeros((3,))
         self.abais_head = np.zeros((3,))
         self.abais_car = np.zeros((3,))
+        
 
         self.objpoint = np.zeros((1, 5, 3), dtype=np.float32)
         self.objpoint[0, 0, :] = np.array([-0.10316, -0.077, 0.5])
@@ -152,6 +155,7 @@ class virtualCAM(QThread):
         interp_rots = slerp(times_slerp)
         self.rot = interp_rots
         self.t = times_slerp
+        self.milestone = t
         return interp_rots
 
     def bernstein_poly(self, i, n, t):
@@ -187,16 +191,39 @@ class virtualCAM(QThread):
             (xvals, yvals, zvals)).T
         self.pos = point_interp
         self.t = times_interp
+        self.milestone = t
+        return point_interp
+
+    # 平滑插值
+    def interp_pos(self, t, points):
+        times_interp = np.linspace(0, t[-1], num=int(t[-1]/self.step))
+        k = min(3, len(t) - 1)
+        x_spline = make_interp_spline(t, points[:, 0], k=k)
+        y_spline = make_interp_spline(t, points[:, 1], k=k)
+        z_spline = make_interp_spline(t, points[:, 2], k=k)
+
+        x_interp = x_spline(times_interp)
+        y_interp = y_spline(times_interp)
+        z_interp = z_spline(times_interp)
+
+        point_interp = np.vstack(
+            (x_interp, y_interp, z_interp)).T
+
+        self.pos = point_interp
+        self.t = times_interp
+        self.milestone = t
         return point_interp
 
     def interp_t(self, t):
         times_interp = np.linspace(0, t[-1], num=int(t[-1]/self.step))
         self.t = times_interp
+        self.milestone = t
         return times_interp
 
     def run(self):
         bag_name = str(time.strftime("%Y%m%d%H%M%S", time.localtime()))
         csv_name = './virtual_bag/' + bag_name
+        answer_csv_name = './virtual_bag/' + bag_name + '.csv'
         if not os.path.exists(csv_name):
             os.makedirs(csv_name)
         imu_csv_name = csv_name + '/imu_msg.csv'
@@ -204,16 +231,24 @@ class virtualCAM(QThread):
         start_stamp = time.time()
         imu_f = open(imu_csv_name, 'w')
         img_f = open(img_csv_name, 'w')
+        answer_f = open(answer_csv_name, 'w')
         imu_f.write(
             ',seq,stamp,gx,gy,gz,ax,ay,az,gx_car,gy_car,gz_car,ax_car,ay_car,az_car\n')
         img_f.write(',seq,stamp,img_path\n')
+        answer_csv_name.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl\n')
+        last_mile = -1
+        print('run...')
         for i in range(len(self.t)):
             pos = {
                 'q': self.rot.as_quat()[i, :],
                 't': self.pos[i, :]
             }
             self.signal_pos.emit(pos)
-            
+            # 里程碑判断
+            mile = np.where(self.milestone >= self.t[i])[0][0]
+            if mile != last_mile:
+                last_mile = mile
+                self.signal_milestone.emit(mile)
             # 求解角速度
             q_now = self.rot[i].as_quat()
             if i > 0:
@@ -248,7 +283,6 @@ class virtualCAM(QThread):
 
             if i % self.img_step == 0:
                 imgpoints = self.project(self.rot[i], self.pos[i, :])
-                print(imgpoints)
                 img = np.zeros(shape=self.img_shape, dtype=np.uint8)
                 for k in range(imgpoints.shape[1]):
                     img = cv2.circle(
@@ -273,6 +307,8 @@ class virtualCAM(QThread):
                 w_car[0], w_car[1], w_car[2],
                 a_car[0], a_car[1], a_car[2]
             ))
+            eul_now = self.rot[i].as_euler('ZYX', degrees=True)
+            answer_f.write('{},{},{}\n'.format(eul_now[2], eul_now[0], eul_now[1]))
             time.sleep(self.step * 10)
         imu_f.close()
         img_f.close()
@@ -368,7 +404,7 @@ class PosTableWidget(QWidget):
         self.icontable = QTableWidget()
         self.icontable.setColumnCount(2)
         self.icontable.setColumnWidth(0, 200)
-        self.icontable.setColumnWidth(1, 300)
+        self.icontable.setColumnWidth(1, 10)
         self.icontable.horizontalHeader().setVisible(False)
         hlayout = QHBoxLayout()
         hlayout.addWidget(self.icontable)
@@ -378,6 +414,10 @@ class PosTableWidget(QWidget):
     def clear(self):
         self.row_last = 0
         self.icontable.clear()
+
+    def clear_status(self):
+        for row in range(self.icontable.rowCount()):
+            self.icontable.cellWidget(row, 1).setText('')
 
     def get_item(self):
         combox = QComboBox()
@@ -415,7 +455,9 @@ class PosTableWidget(QWidget):
                 self.icontable.cellWidget(
                     self.row_last - 1, 0).spinbox_t.value() + 0.01
             )
+        label = QLabel()
         self.icontable.setCellWidget(self.row_last, 0, pos)
+        self.icontable.setCellWidget(self.row_last, 1, label)
         self.icontable.setRowHeight(self.row_last, 200)
         self.row_last = self.row_last + 1
         self.icontable.scrollToBottom()
@@ -473,6 +515,7 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
 
         self.virtual.signal_pos.connect(self.move)
         self.virtual.signal_image.connect(self.show_image)
+        self.virtual.signal_milestone.connect(self.on_next_milestone)
 
         objpoint = self.virtual.objpoint.reshape((5, 3))
         self.camerapos.add_fix_point(objpoint)
@@ -492,9 +535,9 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
     def on_interp(self):
         [rot, trans, ts] = self.iconlist.get_pos()
         self.interp_rots = self.virtual.gen_rot_slerp(ts, rot.as_quat())
-        self.interp_pos = self.virtual.bezier_curve(ts, trans)
+        self.interp_pos = self.virtual.interp_pos(ts, trans)
         self.interp_t = self.virtual.interp_t(ts)
-
+        self.iconlist.clear_status()
         self.virtual.start()
 
     def show_image(self, img):
@@ -504,6 +547,10 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         p = convertToQtFormat.scaled(
             self.label_image.width(), self.label_image.height(), Qt.KeepAspectRatio)
         self.label_image.setPixmap(QPixmap.fromImage(p))
+
+    def on_next_milestone(self, milestone):
+        self.iconlist.icontable.cellWidget(milestone, 1).setText("√")
+
 
     def move(self, pos):
         self.camerapos.add_pose(pos['t'], pos['q'])
