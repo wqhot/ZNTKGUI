@@ -10,16 +10,16 @@ from config import TIME_LENGTH, SCALE
 class PlotCamera(): 
     def __init__(self, layout):
         self.w = gl.GLViewWidget()
-        self.w.opts['distance'] = 40
+        self.w.opts['distance'] = 1.0
         # self.w.show()
         # self.w.setWindowTitle('pyqtgraph example: GLLinePlotItem')
 
         gx = gl.GLGridItem()
-        gx.rotate(90, 0, 1, 0)
+        gx.rotate(90, 0, 0.1, 0)
         gx.translate(-10, 0, 0)
         self.w.addItem(gx)
         gy = gl.GLGridItem()
-        gy.rotate(90, 1, 0, 0)
+        gy.rotate(90, 0.1, 0, 0)
         gy.translate(0, -10, 0)
         self.w.addItem(gy)
         gz = gl.GLGridItem()
@@ -29,10 +29,10 @@ class PlotCamera():
         # self.pos_text = gl.GLTextItem(pos=(0,0,0), text=(0,0,0), font=QtGui.QFont('Helvetica', 7))
         # self.w.addItem(self.pos_text)
 
-        self.imlt = [1.0, -1.0, -0.5]
-        self.imrt = [ 1.0, 1.0, -0.5]
-        self.imlb = [1.0, -1.0,  0.5]
-        self.imrb = [1.0, 1.0,  0.5]
+        self.imlt = [-0.01, -0.005, -0.01]
+        self.imrt = [0.01, -0.005, -0.01]
+        self.imlb = [-0.01, 0.005, -0.01]
+        self.imrb = [0.01, 0.005, -0.01]
         self.lt0 = [-0.7, -0.5, 1.0]
         self.lt1 = [-0.7, -0.2, 1.0]
         self.lt2 = [-1.0, -0.2, 1.0]
@@ -41,9 +41,10 @@ class PlotCamera():
         pos = np.empty((TIME_LENGTH, 3))
         size = np.empty((TIME_LENGTH))
         color = np.empty((TIME_LENGTH, 4))
+        self.fix_points = None
         for i in range(TIME_LENGTH):
             pos[i] = (0, 0, 0)
-            size[i] = 0.5
+            size[i] = 0.005
             color[i] = (i * 1.0 / TIME_LENGTH, 0.0, 0.0, 1.0)
         self.history = gl.GLScatterPlotItem(pos=pos, size=size, color=color, pxMode=False)
         self.w.addItem(self.history)
@@ -51,6 +52,10 @@ class PlotCamera():
             self.lines.append(gl.GLLinePlotItem(antialias=True))
             self.w.addItem(self.lines[i])
         layout.addWidget(self.w)
+
+    def add_fix_point(self, points):
+        self.fix_points = gl.GLScatterPlotItem(pos=points, size=0.005, color=(0.0, 1.0, 0.0, 1.0), pxMode=False)
+        self.w.addItem(self.fix_points)
 
     def drawLine(self,index, start, end):
         x = np.linspace(start[0], end[0], 50)

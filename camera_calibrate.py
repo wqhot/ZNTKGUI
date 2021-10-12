@@ -579,25 +579,25 @@ class camviewDialog(QDialog, Ui_Dialog):
         if len(directory[0]) == 0:
             return
         with open(directory[0], 'w') as f:
-            s = 'l_parameters:\r\n'
+            s = 'l_parameters:'
             f.write(s)
-            s = '   k1: {}\r\n'.format(self.cam.D[0][0])
+            s = '   k1: {}'.format(self.cam.D[0][0])
             f.write(s)
-            s = '   k2: {}\r\n'.format(self.cam.D[0][1])
+            s = '   k2: {}'.format(self.cam.D[0][1])
             f.write(s)
-            s = '   p1: {}\r\n'.format(self.cam.D[0][2])
+            s = '   p1: {}'.format(self.cam.D[0][2])
             f.write(s)
-            s = '   p2: {}\r\n'.format(self.cam.D[0][3])
+            s = '   p2: {}'.format(self.cam.D[0][3])
             f.write(s)
-            s = '   xi: {}\r\n'.format(self.cam.xi[0][0])
+            s = '   xi: {}'.format(self.cam.xi[0][0])
             f.write(s)
-            s = '   fx: {}\r\n'.format(self.cam.K[0, 0])
+            s = '   fx: {}'.format(self.cam.K[0, 0])
             f.write(s)
-            s = '   fy: {}\r\n'.format(self.cam.K[1, 1])
+            s = '   fy: {}'.format(self.cam.K[1, 1])
             f.write(s)
-            s = '   cx: {}\r\n'.format(self.cam.K[0, 2])
+            s = '   cx: {}'.format(self.cam.K[0, 2])
             f.write(s)
-            s = '   cy: {}\r\n'.format(self.cam.K[1, 2])
+            s = '   cy: {}'.format(self.cam.K[1, 2])
             f.write(s)
             f.close()
         
