@@ -235,7 +235,7 @@ class virtualCAM(QThread):
         imu_f.write(
             ',seq,stamp,gx,gy,gz,ax,ay,az,gx_car,gy_car,gz_car,ax_car,ay_car,az_car\n')
         img_f.write(',seq,stamp,img_path\n')
-        answer_csv_name.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl\n')
+        answer_f.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl\n')
         last_mile = -1
         print('run...')
         for i in range(len(self.t)):
@@ -308,7 +308,7 @@ class virtualCAM(QThread):
                 a_car[0], a_car[1], a_car[2]
             ))
             eul_now = self.rot[i].as_euler('ZYX', degrees=True)
-            answer_f.write('{},{},{}\n'.format(eul_now[2], eul_now[0], eul_now[1]))
+            answer_f.write('{},{},{},{}\n'.format(start_stamp + self.t[i], eul_now[2], eul_now[0], eul_now[1]))
             time.sleep(self.step * 10)
         imu_f.close()
         img_f.close()
