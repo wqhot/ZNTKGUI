@@ -298,7 +298,7 @@ class virtualCAM(QThread):
                 self.signal_image.emit(img)
                 cv2.imwrite(
                     csv_name + '/{}.jpg'.format(start_stamp + self.t[i]), img)
-                img_f.write(',{},{},~/output/{}/{}\n'.format(i, start_stamp +
+                img_f.write(',{},{},~/output/{}/{}\n'.format(int(i / self.img_step), start_stamp +
                             self.t[i], bag_name, start_stamp + self.t[i]))
             imu_f.write(',{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(
                 i, start_stamp + self.t[i],
