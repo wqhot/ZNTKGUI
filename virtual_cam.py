@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import time
 import yaml
+import random
 import os
 from PyQt5 import QtGui
 from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
@@ -47,13 +48,13 @@ class virtualCAM(QThread):
         self.abais_car = np.zeros((3,))
         
 
-        self.objpoint = np.zeros((1, 5, 3), dtype=np.float32)
+        self.objpoint = np.zeros((1, 6, 3), dtype=np.float32)
         self.objpoint[0, 0, :] = np.array([-0.10316, -0.077, 0.5])
         self.objpoint[0, 1, :] = np.array([-0.10316, 0.0, 0.5])
         self.objpoint[0, 2, :] = np.array([-0.10316, 0.07409, 0.5])
         self.objpoint[0, 3, :] = np.array([0.10316, -0.077, 0.5])
-        # self.objpoint[0, 4, :] = np.array([0.10316, 0.0, 0.5])
-        self.objpoint[0, 4, :] = np.array([0.10316, 0.07409, 0.5])
+        self.objpoint[0, 4, :] = np.array([0.10316, 0.0, 0.5])
+        self.objpoint[0, 5, :] = np.array([0.10316, 0.07409, 0.5])
 
     def set_cam(self, file_name):
         with open(file_name,  encoding='utf-8') as f:
@@ -220,6 +221,43 @@ class virtualCAM(QThread):
         self.milestone = t
         return times_interp
 
+    def clamp(self, pv):
+        if pv > 255:
+            return 255
+        elif pv < 0:
+            return 0
+        else:
+            return pv
+    
+    def gaussian_noise(self, img):
+        image = img
+        h, w = image.shape
+        for row in range(h):
+            for col in range(w):
+                #获取三个高斯随机数
+                #第一个参数：概率分布的均值，对应着整个分布的中心
+                #第二个参数：概率分布的标准差，对应于分布的宽度
+                #第三个参数：生成高斯随机数数量
+                s = np.random.normal(0, 20, 3)
+                #获取每个像素点的bgr值
+                b = image[row, col]  #blue
+                #给每个像素值设置新的bgr值
+                image[row, col] = self.clamp(b + s[0])
+
+        return image
+
+    def gen_random(self, img):
+        count = random.randint(0, 4)
+        for i in range(count):
+            center = (random.randint(0, img.shape[0]), random.randint(0, img.shape[1]))
+            axes = (random.randint(0, img.shape[0] / 10), random.randint(0, img.shape[1] / 10))
+            angle = random.randint(0, 180)
+            color = random.randint(0, 255)
+            img = cv2.ellipse(img, center, axes, angle, 0, 360, color, -1)
+        # img = self.gaussian_noise(img)
+        return img
+        
+
     def run(self):
         bag_name = str(time.strftime("%Y%m%d%H%M%S", time.localtime()))
         csv_name = './virtual_bag/' + bag_name
@@ -235,7 +273,7 @@ class virtualCAM(QThread):
         imu_f.write(
             ',seq,stamp,gx,gy,gz,ax,ay,az,gx_car,gy_car,gz_car,ax_car,ay_car,az_car\n')
         img_f.write(',seq,stamp,img_path\n')
-        answer_f.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl\n')
+        answer_f.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl,x_pos,y_pos,z_pos\n')
         last_mile = -1
         print('run...')
         for i in range(len(self.t)):
@@ -294,6 +332,7 @@ class virtualCAM(QThread):
                         thickness=-1
                     )
                     # cv2.circle(img, imgpoints[0, i, :], 4, 255, -1)
+                img = self.gen_random(img)
                 img = cv2.bitwise_and(img, img, mask=self.mask)
                 self.signal_image.emit(img)
                 cv2.imwrite(
@@ -308,7 +347,8 @@ class virtualCAM(QThread):
                 a_car[0], a_car[1], a_car[2]
             ))
             eul_now = self.rot[i].as_euler('ZYX', degrees=True)
-            answer_f.write('{},{},{},{}\n'.format(start_stamp + self.t[i], eul_now[2], eul_now[0], eul_now[1]))
+            pos_now = self.pos[i, :]
+            answer_f.write('{},{},{},{},{},{},{}\n'.format(start_stamp + self.t[i], eul_now[2], eul_now[0], eul_now[1], pos_now[0], pos_now[1], pos_now[2]))
             time.sleep(self.step * 10)
         imu_f.close()
         img_f.close()
@@ -517,7 +557,8 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.virtual.signal_image.connect(self.show_image)
         self.virtual.signal_milestone.connect(self.on_next_milestone)
 
-        objpoint = self.virtual.objpoint.reshape((5, 3))
+        point_num = self.virtual.objpoint.shape[0] * self.virtual.objpoint.shape[1]
+        objpoint = self.virtual.objpoint.reshape((point_num, 3))
         self.camerapos.add_fix_point(objpoint)
 
         self.pushButton.clicked.connect(self.on_add)
