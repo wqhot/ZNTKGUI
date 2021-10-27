@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import sys
 import time
+from pyqtgraph import plot
 import yaml
 import random
 import os
@@ -16,6 +17,7 @@ from scipy.special import comb
 from scipy.interpolate import make_interp_spline
 from plotCamera import PlotCamera
 from ui.Ui_vitualcam import Ui_Dialog
+from plotUtils import plotUtils
 
 class virtualCAM(QThread):
     signal_pos = pyqtSignal(dict)
@@ -101,6 +103,10 @@ class virtualCAM(QThread):
                 tvecs[:],
                 K=self.K, xi=self.xi[0][0], D=self.D
             )
+            undistort_img_points = cv2.omnidir.undistortPoints(
+                img_points,
+                self.K, self.D, self.xi, np.eye(3)
+            )
         elif self.camera_type == 'pinhole-equi':
             # 鱼眼相机反投影
             img_points, _ = cv2.fisheye.projectPoints(
@@ -108,6 +114,10 @@ class virtualCAM(QThread):
                 rvecs[:],
                 tvecs[:],
                 K=self.K, D=self.D
+            )
+            undistort_img_points = cv2.fisheye.undistortPoints(
+                img_points,
+                self.K, self.D
             )
         elif self.camera_type == 'pinhole-radtan':
             # 针孔相机反投影
@@ -117,8 +127,24 @@ class virtualCAM(QThread):
                 tvecs[:],
                 K=self.K, D=self.D
             )
+            undistort_img_points = cv2.undistortPoints(
+                img_points,
+                self.K, self.D
+            )
 
-        return img_points
+        return [img_points, undistort_img_points]
+    
+    def pnp(self, undistort_imgpoints):
+        K = np.eye(3)
+        D = np.zeros((4, 1))
+        retval, rvec, tvec = cv2.solvePnP(
+            self.objpoint,
+            undistort_imgpoints,
+            K, D, flags=cv2.SOLVEPNP_IPPE
+        )
+        rot = cv2.Rodrigues(rvec.reshape((3,)))
+        eul = Rotation.from_matrix(rot).as_euler('ZYX', degrees=True)
+        return eul
 
     def gen_mask(self):
         if self.mask_type == 0:
@@ -320,7 +346,7 @@ class virtualCAM(QThread):
             a_car = self.abais_car
 
             if i % self.img_step == 0:
-                imgpoints = self.project(self.rot[i], self.pos[i, :])
+                imgpoints, undistort_imgpoints = self.project(self.rot[i], self.pos[i, :])
                 img = np.zeros(shape=self.img_shape, dtype=np.uint8)
                 for k in range(imgpoints.shape[1]):
                     img = cv2.circle(
@@ -339,6 +365,7 @@ class virtualCAM(QThread):
                     csv_name + '/{}.jpg'.format(start_stamp + self.t[i]), img)
                 img_f.write(',{},{},~/output/{}/{}\n'.format(int(i / self.img_step), start_stamp +
                             self.t[i], bag_name, start_stamp + self.t[i]))
+                cam_q = self.pnp(undistort_imgpoints)
             imu_f.write(',{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(
                 i, start_stamp + self.t[i],
                 w_head[0], w_head[1], w_head[2],
@@ -553,6 +580,15 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.verticalLayout_table.addWidget(self.iconlist)
         self.virtual = virtualCAM(step=0.001)
 
+        self.plot = plotUtils(time_length=3000, layout=self.verticalLayout_plot)
+        self.plot.add_line('real x', (0x6b, 0x8e, 0x23), Qt.DashLine)
+        self.plot.add_line('real y', (0xee, 0x82, 0xee), Qt.DashLine)
+        self.plot.add_line('real z', (0xff, 0xa5, 0x00), Qt.DashLine)
+
+        self.plot.add_line('pnp x', (0x6b, 0x8e, 0x23), Qt.SolidLine)
+        self.plot.add_line('pnp y', (0xee, 0x82, 0xee), Qt.SolidLine)
+        self.plot.add_line('pnp z', (0xff, 0xa5, 0x00), Qt.SolidLine)
+
         self.virtual.signal_pos.connect(self.move)
         self.virtual.signal_image.connect(self.show_image)
         self.virtual.signal_milestone.connect(self.on_next_milestone)
@@ -595,6 +631,11 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
 
     def move(self, pos):
         self.camerapos.add_pose(pos['t'], pos['q'])
+        q = Rotation.from_quat(pos['q'])
+        eul = q.as_euler('ZYX', degrees=True)[::-1]
+        self.plot.add_data('real x', np.array(eul[0]))
+        self.plot.add_data('real y', np.array(eul[1]))
+        self.plot.add_data('real z', np.array(eul[2]))
 
 
 if __name__ == "__main__":
