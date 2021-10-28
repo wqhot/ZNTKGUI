@@ -23,6 +23,7 @@ class virtualCAM(QThread):
     signal_pos = pyqtSignal(dict)
     signal_image = pyqtSignal(object)
     signal_milestone = pyqtSignal(int)
+    signal_cam_pos = pyqtSignal(dict)
 
     def __init__(self, step=0.01, img_step=16):
         super(virtualCAM, self).__init__()
@@ -143,7 +144,7 @@ class virtualCAM(QThread):
             K, D, flags=cv2.SOLVEPNP_IPPE
         )
         rot = cv2.Rodrigues(rvec.reshape((3,)))
-        eul = Rotation.from_matrix(rot).as_euler('ZYX', degrees=True)
+        eul = Rotation.from_matrix(rot[0]).as_euler('ZYX', degrees=True)[::-1]
         return eul
 
     def gen_mask(self):
@@ -222,8 +223,10 @@ class virtualCAM(QThread):
         return point_interp
 
     # 平滑插值
-    def interp_pos(self, t, points):
-        times_interp = np.linspace(0, t[-1], num=int(t[-1]/self.step))
+    def interp_pos(self, t, points, step=None, setpos=True):
+        if step is None:
+            step = self.step
+        times_interp = np.linspace(0, t[-1], num=int(t[-1] / step))
         k = min(3, len(t) - 1)
         x_spline = make_interp_spline(t, points[:, 0], k=k)
         y_spline = make_interp_spline(t, points[:, 1], k=k)
@@ -235,10 +238,10 @@ class virtualCAM(QThread):
 
         point_interp = np.vstack(
             (x_interp, y_interp, z_interp)).T
-
-        self.pos = point_interp
-        self.t = times_interp
-        self.milestone = t
+        if setpos:
+            self.pos = point_interp
+            self.t = times_interp
+            self.milestone = t
         return point_interp
 
     def interp_t(self, t):
@@ -302,10 +305,13 @@ class virtualCAM(QThread):
         answer_f.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl,x_pos,y_pos,z_pos\n')
         last_mile = -1
         print('run...')
+        real_eul = None
+        last_cam_eul = np.array([0, 0, 0])
         for i in range(len(self.t)):
             pos = {
                 'q': self.rot.as_quat()[i, :],
-                't': self.pos[i, :]
+                't': self.pos[i, :],
+                'progress': int((i + 1) / len(self.t) * 100)
             }
             self.signal_pos.emit(pos)
             # 里程碑判断
@@ -345,6 +351,12 @@ class virtualCAM(QThread):
             a_head = a + self.abais_head
             a_car = self.abais_car
 
+            eul_now = self.rot[i].as_euler('ZYX', degrees=True)[::-1]
+            pos_now = self.pos[i, :]
+            if real_eul is None:
+                real_eul = np.array([eul_now[0], eul_now[1], eul_now[2], i])
+            else:
+                real_eul = np.vstack((real_eul, np.array([eul_now[0], eul_now[1], eul_now[2], i])))
             if i % self.img_step == 0:
                 imgpoints, undistort_imgpoints = self.project(self.rot[i], self.pos[i, :])
                 img = np.zeros(shape=self.img_shape, dtype=np.uint8)
@@ -365,7 +377,16 @@ class virtualCAM(QThread):
                     csv_name + '/{}.jpg'.format(start_stamp + self.t[i]), img)
                 img_f.write(',{},{},~/output/{}/{}\n'.format(int(i / self.img_step), start_stamp +
                             self.t[i], bag_name, start_stamp + self.t[i]))
-                cam_q = self.pnp(undistort_imgpoints)
+                cam_eul = self.pnp(undistort_imgpoints)
+                cam_eul = cam_eul.reshape((1, 3))
+                points_2_interp = np.vstack((last_cam_eul, cam_eul))
+                if i != 0:
+                    cam_eul_interp = self.interp_pos(np.array([0, self.img_step]), points_2_interp, 1, False)
+                else:
+                    cam_eul_interp = cam_eul
+                # print(cam_eul_interp.shape)
+                self.signal_cam_pos.emit({'eul': cam_eul_interp})
+                last_cam_eul = cam_eul
             imu_f.write(',{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(
                 i, start_stamp + self.t[i],
                 w_head[0], w_head[1], w_head[2],
@@ -373,9 +394,8 @@ class virtualCAM(QThread):
                 w_car[0], w_car[1], w_car[2],
                 a_car[0], a_car[1], a_car[2]
             ))
-            eul_now = self.rot[i].as_euler('ZYX', degrees=True)
-            pos_now = self.pos[i, :]
-            answer_f.write('{},{},{},{},{},{},{}\n'.format(start_stamp + self.t[i], eul_now[2], eul_now[0], eul_now[1], pos_now[0], pos_now[1], pos_now[2]))
+            
+            answer_f.write('{},{},{},{},{},{},{}\n'.format(start_stamp + self.t[i], eul_now[0], eul_now[2], eul_now[1], pos_now[0], pos_now[1], pos_now[2]))
             time.sleep(self.step * 10)
         imu_f.close()
         img_f.close()
@@ -580,18 +600,19 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.verticalLayout_table.addWidget(self.iconlist)
         self.virtual = virtualCAM(step=0.001)
 
-        self.plot = plotUtils(time_length=3000, layout=self.verticalLayout_plot)
+        self.plot = plotUtils(time_length=30000, layout=self.verticalLayout_plot)
         self.plot.add_line('real x', (0x6b, 0x8e, 0x23), Qt.DashLine)
         self.plot.add_line('real y', (0xee, 0x82, 0xee), Qt.DashLine)
-        self.plot.add_line('real z', (0xff, 0xa5, 0x00), Qt.DashLine)
+        self.plot.add_line('real z', (0xcc, 0x00, 0x00), Qt.DashLine)
 
         self.plot.add_line('pnp x', (0x6b, 0x8e, 0x23), Qt.SolidLine)
         self.plot.add_line('pnp y', (0xee, 0x82, 0xee), Qt.SolidLine)
-        self.plot.add_line('pnp z', (0xff, 0xa5, 0x00), Qt.SolidLine)
+        self.plot.add_line('pnp z', (0xcc, 0x00, 0x00), Qt.SolidLine)
 
         self.virtual.signal_pos.connect(self.move)
         self.virtual.signal_image.connect(self.show_image)
         self.virtual.signal_milestone.connect(self.on_next_milestone)
+        self.virtual.signal_cam_pos.connect(self.on_pnp)
 
         point_num = self.virtual.objpoint.shape[0] * self.virtual.objpoint.shape[1]
         objpoint = self.virtual.objpoint.reshape((point_num, 3))
@@ -606,6 +627,9 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         if len(directory[0]) != 0:
             self.virtual.set_cam(directory[0])
 
+        self.imu_count = 0
+        self.pnp_count = 0
+
     def on_add(self):
         self.iconlist.addItem()
 
@@ -615,6 +639,9 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.interp_pos = self.virtual.interp_pos(ts, trans)
         self.interp_t = self.virtual.interp_t(ts)
         self.iconlist.clear_status()
+        self.progressBar.setValue(0)
+        self.imu_count = 0
+        self.pnp_count = 0
         self.virtual.start()
 
     def show_image(self, img):
@@ -632,10 +659,23 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
     def move(self, pos):
         self.camerapos.add_pose(pos['t'], pos['q'])
         q = Rotation.from_quat(pos['q'])
+        # print(pos['q'])
         eul = q.as_euler('ZYX', degrees=True)[::-1]
-        self.plot.add_data('real x', np.array(eul[0]))
-        self.plot.add_data('real y', np.array(eul[1]))
-        self.plot.add_data('real z', np.array(eul[2]))
+        self.plot.add_data('real x', np.array([eul[0]]))
+        self.plot.add_data('real y', np.array([eul[1]]))
+        self.plot.add_data('real z', np.array([eul[2]]))
+        self.progressBar.setValue(pos['progress'])
+        self.imu_count = self.imu_count + 1
+        print("imu_count = {}".format(self.imu_count))
+        
+
+    def on_pnp(self, pos):
+        eul = pos['eul']
+        self.plot.add_data('pnp x', eul[:, 0])
+        self.plot.add_data('pnp y', eul[:, 1])
+        self.plot.add_data('pnp z', eul[:, 2])
+        self.pnp_count = self.pnp_count + eul.shape[0]
+        print("pnp_count = {}".format(self.pnp_count))
 
 
 if __name__ == "__main__":

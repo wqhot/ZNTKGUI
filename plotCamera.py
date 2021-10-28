@@ -71,23 +71,7 @@ class PlotCamera():
         return R.as_euler('ZYX', degrees=True)[::-1]
 
     def quaternion_to_rotation_matrix(self, quat):
-        temp = quat[0]
-        quat[0] = quat[1]
-        quat[1] = quat[2]
-        quat[2] = quat[3]
-        quat[3] = temp
-        quat = np.array(quat)
-        q = quat.copy()
-        n = np.dot(q, q)
-        if n < np.finfo(q.dtype).eps:
-            return np.identity(3)
-        q = q * np.sqrt(2.0 / n)
-        q = np.outer(q, q)
-        rot_matrix = np.array(
-            [[1.0 - q[2, 2] - q[3, 3], q[1, 2] + q[3, 0], q[1, 3] - q[2, 0]],
-            [q[1, 2] - q[3, 0], 1.0 - q[1, 1] - q[3, 3], q[2, 3] + q[1, 0]],
-            [q[1, 3] + q[2, 0], q[2, 3] - q[1, 0], 1.0 - q[1, 1] - q[2, 2]]],
-            dtype=q.dtype)
+        rot_matrix = Rotation.from_quat(quat).as_matrix()
         return rot_matrix
 
     def draw_history(self, pos):

@@ -33,25 +33,10 @@ class plotUtils():
         self.data[name]['curve'] = self.plot.plot(name=name)
         self.data[name]['curve'].setPen(color=color, style=linetype)
 
-    def add_data(self, name, data, start_index=None):
+    def add_data(self, name, data):
         if name not in self.data.keys():
             return
-        # 超出范围
-        if len(data) > self.time_length:
-            return
-        # 数据与时间轴长度不一致
-        if start_index is not None:
-            if self.time_length - start_index != len(data):
-                start_index = self.time_length - len(data)
-        else:
-            start_index = self.time_length - len(data)
-        end_index = start_index + len(data)
-        # 再次检测范围
-        if end_index > self.time_length:
-            end_index = 
-            data = data[:]
-        index = np.arange(self.time_length, self.time_length)[-len(data):]
-        self.data[name]['data'][index] = data
+        self.data[name]['data'] = np.concatenate((self.data[name]['data'], data))
         if self.data[name]['data'].shape[0] > self.time_length:
             self.data[name]['data'] = self.data[name]['data'][-self.time_length:]
 

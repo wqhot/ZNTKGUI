@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1920</width>
+    <width>2031</width>
     <height>1080</height>
    </rect>
   </property>
@@ -19,14 +19,14 @@
      <property name="minimumSize">
       <size>
        <width>1000</width>
-       <height>50</height>
+       <height>95</height>
       </size>
      </property>
      <property name="floating">
       <bool>true</bool>
      </property>
      <property name="features">
-      <set>QDockWidget::NoDockWidgetFeatures</set>
+      <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetVerticalTitleBar</set>
      </property>
      <widget class="QWidget" name="dockWidgetContents_3">
       <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -128,6 +128,25 @@
          </property>
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_table"/>
+         </item>
+         <item>
+          <widget class="QProgressBar" name="progressBar">
+           <property name="value">
+            <number>0</number>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="textVisible">
+            <bool>true</bool>
+           </property>
+           <property name="invertedAppearance">
+            <bool>false</bool>
+           </property>
+           <property name="textDirection">
+            <enum>QProgressBar::TopToBottom</enum>
+           </property>
+          </widget>
          </item>
          <item>
           <widget class="QPushButton" name="pushButton">
