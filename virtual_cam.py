@@ -51,13 +51,13 @@ class virtualCAM(QThread):
         self.abais_car = np.zeros((3,))
         
 
-        self.objpoint = np.zeros((1, 6, 3), dtype=np.float32)
+        self.objpoint = np.zeros((1, 5, 3), dtype=np.float32)
         self.objpoint[0, 0, :] = np.array([-0.10316, -0.077, 0.5])
         self.objpoint[0, 1, :] = np.array([-0.10316, 0.0, 0.5])
         self.objpoint[0, 2, :] = np.array([-0.10316, 0.07409, 0.5])
         self.objpoint[0, 3, :] = np.array([0.10316, -0.077, 0.5])
-        self.objpoint[0, 4, :] = np.array([0.10316, 0.0, 0.5])
-        self.objpoint[0, 5, :] = np.array([0.10316, 0.07409, 0.5])
+        # self.objpoint[0, 4, :] = np.array([0.10316, 0.0, 0.5])
+        self.objpoint[0, 4, :] = np.array([0.10316, 0.07409, 0.5])
 
     def set_cam(self, file_name):
         with open(file_name,  encoding='utf-8') as f:
@@ -365,17 +365,18 @@ class virtualCAM(QThread):
                         img=img,
                         center=(int(imgpoints[0, k, :][0]),
                                 int(imgpoints[0, k, :][1])),
-                        radius=4,
+                        radius=6,
                         color=(255,),
                         thickness=-1
                     )
                     # cv2.circle(img, imgpoints[0, i, :], 4, 255, -1)
-                img = self.gen_random(img)
+                # img = self.gen_random(img)
                 img = cv2.bitwise_and(img, img, mask=self.mask)
                 self.signal_image.emit(img)
+                img = cv2.flip(img, -1)
                 cv2.imwrite(
                     csv_name + '/{}.jpg'.format(start_stamp + self.t[i]), img)
-                img_f.write(',{},{},~/output/{}/{}\n'.format(int(i / self.img_step), start_stamp +
+                img_f.write(',{},{},~/output/{}/{}.jpg\n'.format(int(i / self.img_step), start_stamp +
                             self.t[i], bag_name, start_stamp + self.t[i]))
                 cam_eul = self.pnp(undistort_imgpoints)
                 cam_eul = cam_eul.reshape((1, 3))
@@ -666,7 +667,7 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.plot.add_data('real z', np.array([eul[2]]))
         self.progressBar.setValue(pos['progress'])
         self.imu_count = self.imu_count + 1
-        print("imu_count = {}".format(self.imu_count))
+        # print("imu_count = {}".format(self.imu_count))
         
 
     def on_pnp(self, pos):
@@ -675,7 +676,7 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.plot.add_data('pnp y', eul[:, 1])
         self.plot.add_data('pnp z', eul[:, 2])
         self.pnp_count = self.pnp_count + eul.shape[0]
-        print("pnp_count = {}".format(self.pnp_count))
+        # print("pnp_count = {}".format(self.pnp_count))
 
 
 if __name__ == "__main__":
