@@ -295,13 +295,16 @@ class virtualCAM(QThread):
             os.makedirs(csv_name)
         imu_csv_name = csv_name + '/imu_msg.csv'
         img_csv_name = csv_name + '/img_msg.csv'
+        points_csv_name = csv_name + '/points.csv'
         start_stamp = time.time()
         imu_f = open(imu_csv_name, 'w')
         img_f = open(img_csv_name, 'w')
+        points_f = open(points_csv_name, 'w')
         answer_f = open(answer_csv_name, 'w')
         imu_f.write(
             ',seq,stamp,gx,gy,gz,ax,ay,az,gx_car,gy_car,gz_car,ax_car,ay_car,az_car\n')
         img_f.write(',seq,stamp,img_path\n')
+        points_f.write(',seq,pts,pts_undistort\n')
         answer_f.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl,x_pos,y_pos,z_pos\n')
         last_mile = -1
         print('run...')
@@ -358,7 +361,7 @@ class virtualCAM(QThread):
             else:
                 real_eul = np.vstack((real_eul, np.array([eul_now[0], eul_now[1], eul_now[2], i])))
             if i % self.img_step == 0:
-                imgpoints, undistort_imgpoints = self.project(self.rot[i], self.pos[i, :])
+                imgpoints, undistort_imgpoints = self.project(self.rot[i], self.pos[i, :]) 
                 img = np.zeros(shape=self.img_shape, dtype=np.uint8)
                 for k in range(imgpoints.shape[1]):
                     img = cv2.circle(
@@ -378,6 +381,12 @@ class virtualCAM(QThread):
                     csv_name + '/{}.jpg'.format(start_stamp + self.t[i]), img)
                 img_f.write(',{},{},~/output/{}/{}.jpg\n'.format(int(i / self.img_step), start_stamp +
                             self.t[i], bag_name, start_stamp + self.t[i]))
+                pts_str = ''
+                pts_undistort = ''
+                for k in range(imgpoints.shape[1]):
+                    pts_str = pts_str + "{}|{}|".format(imgpoints[0, k, 0], imgpoints[0, k, 1])
+                    pts_undistort = pts_undistort + "{}|{}|".format(undistort_imgpoints[0, k, 0], undistort_imgpoints[0, k, 1])
+                points_f.write(',{},{},{}\n'.format(int(i / self.img_step), pts_str, pts_undistort))
                 cam_eul = self.pnp(undistort_imgpoints)
                 cam_eul = cam_eul.reshape((1, 3))
                 points_2_interp = np.vstack((last_cam_eul, cam_eul))
@@ -400,6 +409,7 @@ class virtualCAM(QThread):
             time.sleep(self.step * 10)
         imu_f.close()
         img_f.close()
+        points_f.close()
         print('over')
 
 
