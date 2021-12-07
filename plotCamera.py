@@ -42,6 +42,7 @@ class PlotCamera():
         size = np.empty((TIME_LENGTH))
         color = np.empty((TIME_LENGTH, 4))
         self.fix_points = None
+        self.points = None
         for i in range(TIME_LENGTH):
             pos[i] = (0, 0, 0)
             size[i] = 0.005
@@ -54,6 +55,7 @@ class PlotCamera():
         layout.addWidget(self.w)
 
     def add_fix_point(self, points):
+        self.points = points
         self.fix_points = gl.GLScatterPlotItem(pos=points, size=0.005, color=(0.0, 1.0, 0.0, 1.0), pxMode=False)
         self.w.addItem(self.fix_points)
 
@@ -78,6 +80,13 @@ class PlotCamera():
         scale = SCALE
         pos = np.vstack(scale * np.array(pos))
         self.history.setData(pos=pos)
+
+    def transform_points(self, p, q):
+        rot_matrix = self.quaternion_to_rotation_matrix(q)
+        points = np.copy(self.points)
+        for row in range(self.points.shape[0]):
+            points[row, :] = np.dot(rot_matrix, points[row, :]) + p
+        self.fix_points.setData(pos=points)
 
     def add_pose(self, p, q):
         rot_matrix = self.quaternion_to_rotation_matrix(q)

@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import time
 from pyqtgraph import plot
+from pyqtgraph.functions import disconnect
 import yaml
 import random
 import os
@@ -34,11 +35,14 @@ class virtualCAM(QThread):
         self.t = [0.]
         self.milestone = np.array([0.])
 
+        self.cam_rot = Rotation.from_euler('ZYX', [0,0,0], degrees=True)
+        self.cam_pos = np.array([0.0, 0.0, 0.0])
+
         self.img_shape = (int(480), int(640))
         self.mask = None
         # 0 无 1 短边 2 长边
         self.mask_type = 2
-        self.camera_type = 'omni-radtan'
+        self.camera_type = 'pinhole-radtan'
         self.undistort_type = 0
 
         self.K = np.zeros((3, 3))
@@ -51,14 +55,13 @@ class virtualCAM(QThread):
         self.abais_car = np.zeros((3,))
         
 
-        self.objpoint = np.zeros((1, 5, 3), dtype=np.float32)
-        self.objpoint[0, 0, :] = np.array([-0.10316, -0.077, 0.5])
-        self.objpoint[0, 1, :] = np.array([-0.10316, 0.0, 0.5])
-        self.objpoint[0, 2, :] = np.array([-0.10316, 0.07409, 0.5])
-        self.objpoint[0, 3, :] = np.array([0.10316, -0.077, 0.5])
+        self.objpoint = np.zeros((1, 4, 3), dtype=np.float32)
+        self.objpoint[0, 0, :] = np.array([0.0714197,  0.0800214,  0.0622611])
+        self.objpoint[0, 1, :] = np.array([0.0400755,  -0.0912328,  0.0317064])
+        self.objpoint[0, 2, :] = np.array([-0.0647293,  -0.0879977,  0.0830852])
+        self.objpoint[0, 3, :] = np.array([-0.0558663, -0.0165446, 0.053473])
         # self.objpoint[0, 4, :] = np.array([0.10316, 0.0, 0.5])
-        self.objpoint[0, 4, :] = np.array([0.10316, 0.07409, 0.5])
-
+        
     def set_cam(self, file_name):
         with open(file_name,  encoding='utf-8') as f:
             yaml_cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -92,14 +95,14 @@ class virtualCAM(QThread):
             self.D[2] = p1
             self.D[3] = p2
 
-    def project(self, rot, trans):
-        rvecs = rot.as_rotvec()
-        tvecs = trans
+    def project(self, objpoints):
+        rvecs = self.cam_rot.as_rotvec()
+        tvecs = self.cam_pos
         mean_error = 0
         if self.camera_type == 'omni-radtan':
             # omni-radtan相机反投影
             img_points, _ = cv2.omnidir.projectPoints(
-                self.objpoint,
+                objpoints,
                 rvecs[:],
                 tvecs[:],
                 K=self.K, xi=self.xi[0][0], D=self.D
@@ -111,7 +114,7 @@ class virtualCAM(QThread):
         elif self.camera_type == 'pinhole-equi':
             # 鱼眼相机反投影
             img_points, _ = cv2.fisheye.projectPoints(
-                self.objpoint,
+                objpoints,
                 rvecs[:],
                 tvecs[:],
                 K=self.K, D=self.D
@@ -123,10 +126,11 @@ class virtualCAM(QThread):
         elif self.camera_type == 'pinhole-radtan':
             # 针孔相机反投影
             img_points, _ = cv2.projectPoints(
-                self.objpoint,
+                objpoints,
                 rvecs[:],
                 tvecs[:],
-                K=self.K, D=self.D
+                cameraMatrix=self.K, 
+                distCoeffs=self.D
             )
             undistort_img_points = cv2.undistortPoints(
                 img_points,
@@ -138,13 +142,16 @@ class virtualCAM(QThread):
     def pnp(self, undistort_imgpoints):
         K = np.eye(3)
         D = np.zeros((4, 1))
-        retval, rvec, tvec = cv2.solvePnP(
-            self.objpoint,
-            undistort_imgpoints,
-            K, D, flags=cv2.SOLVEPNP_IPPE
-        )
-        rot = cv2.Rodrigues(rvec.reshape((3,)))
-        eul = Rotation.from_matrix(rot[0]).as_euler('ZYX', degrees=True)[::-1]
+        try:
+            retval, rvec, tvec = cv2.solvePnP(
+                self.objpoint,
+                undistort_imgpoints,
+                K, D, flags=cv2.SOLVEPNP_ITERATIVE
+            )
+            rot = cv2.Rodrigues(rvec.reshape((3,)))
+            eul = Rotation.from_matrix(rot[0]).as_euler('ZYX', degrees=True)[::-1]
+        except:
+            eul = np.zeros((3,))
         return eul
 
     def gen_mask(self):
@@ -361,7 +368,10 @@ class virtualCAM(QThread):
             else:
                 real_eul = np.vstack((real_eul, np.array([eul_now[0], eul_now[1], eul_now[2], i])))
             if i % self.img_step == 0:
-                imgpoints, undistort_imgpoints = self.project(self.rot[i], self.pos[i, :]) 
+                objpoints = np.copy(self.objpoint)
+                for row in range(self.objpoint.shape[1]):
+                    objpoints[0, row, :] = np.dot(self.rot[i].as_matrix(), objpoints[0, row, :]) + self.pos[i, :]
+                imgpoints, undistort_imgpoints = self.project(objpoints) 
                 img = np.zeros(shape=self.img_shape, dtype=np.uint8)
                 for k in range(imgpoints.shape[1]):
                     img = cv2.circle(
@@ -627,6 +637,7 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
 
         point_num = self.virtual.objpoint.shape[0] * self.virtual.objpoint.shape[1]
         objpoint = self.virtual.objpoint.reshape((point_num, 3))
+        self.camerapos.add_pose(self.virtual.cam_pos, self.virtual.cam_rot)
         self.camerapos.add_fix_point(objpoint)
 
         self.pushButton.clicked.connect(self.on_add)
@@ -668,7 +679,7 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
 
 
     def move(self, pos):
-        self.camerapos.add_pose(pos['t'], pos['q'])
+        self.camerapos.transform_points(pos['t'], pos['q'])
         q = Rotation.from_quat(pos['q'])
         # print(pos['q'])
         eul = q.as_euler('ZYX', degrees=True)[::-1]
