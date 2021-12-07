@@ -8,6 +8,7 @@ from pyqtgraph.functions import disconnect
 import yaml
 import random
 import os
+import math
 from PyQt5 import QtGui
 from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QIcon, QImage
@@ -25,6 +26,7 @@ class virtualCAM(QThread):
     signal_image = pyqtSignal(object)
     signal_milestone = pyqtSignal(int)
     signal_cam_pos = pyqtSignal(dict)
+    singal_change_campos = pyqtSignal(dict)
 
     def __init__(self, step=0.01, img_step=16):
         super(virtualCAM, self).__init__()
@@ -138,6 +140,17 @@ class virtualCAM(QThread):
             )
 
         return [img_points, undistort_img_points]
+    
+    def change_cam_pose(self, rotmat, t):
+        self.cam_rot = Rotation.from_matrix(rotmat)
+        self.cam_pos = t.astype(np.float32)
+        self.gen_image(rotmat, t)
+        pos = {
+            'q': self.cam_rot.as_quat(),
+            't': self.cam_pos,
+        }
+        self.singal_change_campos.emit(pos)
+
     
     def pnp(self, undistort_imgpoints):
         K = np.eye(3)
@@ -292,6 +305,29 @@ class virtualCAM(QThread):
             img = cv2.ellipse(img, center, axes, angle, 0, 360, color, -1)
         # img = self.gaussian_noise(img)
         return img
+
+    def gen_image(self, rotmat, t):
+        objpoints = np.copy(self.objpoint)
+        for row in range(self.objpoint.shape[1]):
+            objpoints[0, row, :] = np.dot(rotmat, objpoints[0, row, :]) + t
+        imgpoints, undistort_imgpoints = self.project(objpoints) 
+        img = np.zeros(shape=self.img_shape, dtype=np.uint8)
+        for k in range(imgpoints.shape[1]):
+            if imgpoints[0, k, :][0] > 0 and imgpoints[0, k, :][1] > 0 and imgpoints[0, k, :][0] < self.img_shape[0] and imgpoints[0, k, :][1] < self.img_shape[1]:
+                img = cv2.circle(
+                    img=img,
+                    center=(int(imgpoints[0, k, :][0]),
+                            int(imgpoints[0, k, :][1])),
+                    radius=6,
+                    color=(255,),
+                    thickness=-1
+                )
+            # cv2.circle(img, imgpoints[0, i, :], 4, 255, -1)
+        # img = self.gen_random(img)
+        img = cv2.bitwise_and(img, img, mask=self.mask)
+        self.signal_image.emit(img)
+        img = cv2.flip(img, -1)
+        return [img, imgpoints, undistort_imgpoints]
         
 
     def run(self):
@@ -368,25 +404,7 @@ class virtualCAM(QThread):
             else:
                 real_eul = np.vstack((real_eul, np.array([eul_now[0], eul_now[1], eul_now[2], i])))
             if i % self.img_step == 0:
-                objpoints = np.copy(self.objpoint)
-                for row in range(self.objpoint.shape[1]):
-                    objpoints[0, row, :] = np.dot(self.rot[i].as_matrix(), objpoints[0, row, :]) + self.pos[i, :]
-                imgpoints, undistort_imgpoints = self.project(objpoints) 
-                img = np.zeros(shape=self.img_shape, dtype=np.uint8)
-                for k in range(imgpoints.shape[1]):
-                    img = cv2.circle(
-                        img=img,
-                        center=(int(imgpoints[0, k, :][0]),
-                                int(imgpoints[0, k, :][1])),
-                        radius=6,
-                        color=(255,),
-                        thickness=-1
-                    )
-                    # cv2.circle(img, imgpoints[0, i, :], 4, 255, -1)
-                # img = self.gen_random(img)
-                img = cv2.bitwise_and(img, img, mask=self.mask)
-                self.signal_image.emit(img)
-                img = cv2.flip(img, -1)
+                img, imgpoints, undistort_imgpoints = self.gen_image(self.rot[i].as_matrix(), self.pos[i, :])
                 cv2.imwrite(
                     csv_name + '/{}.jpg'.format(start_stamp + self.t[i]), img)
                 img_f.write(',{},{},~/output/{}/{}.jpg\n'.format(int(i / self.img_step), start_stamp +
@@ -634,11 +652,28 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.virtual.signal_image.connect(self.show_image)
         self.virtual.signal_milestone.connect(self.on_next_milestone)
         self.virtual.signal_cam_pos.connect(self.on_pnp)
+        self.virtual.singal_change_campos.connect(self.on_change_campos)
+
+        self.horizontalSlider_czd.valueChanged.connect(self.change_cam_pos_by_slider)
+        self.horizontalSlider_cyd.valueChanged.connect(self.change_cam_pos_by_slider)
+        self.horizontalSlider_cxd.valueChanged.connect(self.change_cam_pos_by_slider)
+        self.horizontalSlider_czt.valueChanged.connect(self.change_cam_pos_by_slider)
+        self.horizontalSlider_cyt.valueChanged.connect(self.change_cam_pos_by_slider)
+        self.horizontalSlider_cxt.valueChanged.connect(self.change_cam_pos_by_slider)
+        self.horizontalSlider_hfov.valueChanged.connect(self.change_cam_pos_by_slider)
+        self.horizontalSlider_vfov.valueChanged.connect(self.change_cam_pos_by_slider)
+
+        self.doubleSpinBox_cxd.valueChanged.connect(self.change_cam_pos_by_spinbox)
+        self.doubleSpinBox_cyd.valueChanged.connect(self.change_cam_pos_by_spinbox)
+        self.doubleSpinBox_czd.valueChanged.connect(self.change_cam_pos_by_spinbox)
+        self.doubleSpinBox_cxt.valueChanged.connect(self.change_cam_pos_by_spinbox)
+        self.doubleSpinBox_cyt.valueChanged.connect(self.change_cam_pos_by_spinbox)
+        self.doubleSpinBox_czt.valueChanged.connect(self.change_cam_pos_by_spinbox)
+        self.doubleSpinBox_hfov.valueChanged.connect(self.change_cam_pos_by_spinbox)
+        self.doubleSpinBox_vfov.valueChanged.connect(self.change_cam_pos_by_spinbox)
 
         point_num = self.virtual.objpoint.shape[0] * self.virtual.objpoint.shape[1]
         objpoint = self.virtual.objpoint.reshape((point_num, 3))
-        self.camerapos.add_pose(self.virtual.cam_pos, self.virtual.cam_rot)
-        self.camerapos.add_fix_point(objpoint)
 
         self.pushButton.clicked.connect(self.on_add)
         self.pushButton_2.clicked.connect(self.on_interp)
@@ -649,8 +684,48 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         if len(directory[0]) != 0:
             self.virtual.set_cam(directory[0])
 
+        self.camerapos.hfov = 2.0 * math.atan(self.virtual.img_shape[1] / self.virtual.K[0,0]) * 180.0 / math.pi
+        self.camerapos.vfov = 2.0 * math.atan(self.virtual.img_shape[0] / self.virtual.K[1,1]) * 180.0 / math.pi
+
+        self.camerapos.add_pose(self.virtual.cam_pos, self.virtual.cam_rot.as_quat())
+        self.camerapos.add_fix_point(objpoint)
+        self.doubleSpinBox_hfov.setValue(int(self.camerapos.hfov))
+        self.doubleSpinBox_vfov.setValue(int(self.camerapos.vfov))
+        self.horizontalSlider_hfov.setValue(int(self.camerapos.hfov))
+        self.horizontalSlider_vfov.setValue(int(self.camerapos.vfov))
         self.imu_count = 0
         self.pnp_count = 0
+
+    def change_cam_pos_by_slider(self):
+        self.doubleSpinBox_cxd.setValue(self.horizontalSlider_cxd.value())
+        self.doubleSpinBox_cyd.setValue(self.horizontalSlider_cyd.value())
+        self.doubleSpinBox_czd.setValue(self.horizontalSlider_czd.value())
+        self.doubleSpinBox_cxt.setValue(self.horizontalSlider_cxt.value())
+        self.doubleSpinBox_cyt.setValue(self.horizontalSlider_cyt.value())
+        self.doubleSpinBox_czt.setValue(self.horizontalSlider_czt.value())
+        self.doubleSpinBox_hfov.setValue(int(self.camerapos.hfov))
+        self.doubleSpinBox_vfov.setValue(int(self.camerapos.vfov))
+        self.change_cam_pose()
+
+    def change_cam_pos_by_spinbox(self):
+        self.horizontalSlider_cxd.setValue(self.doubleSpinBox_cxd.value())
+        self.horizontalSlider_cyd.setValue(self.doubleSpinBox_cyd.value())
+        self.horizontalSlider_czd.setValue(self.doubleSpinBox_czd.value())
+        self.horizontalSlider_cxt.setValue(self.doubleSpinBox_cxt.value())
+        self.horizontalSlider_cyt.setValue(self.doubleSpinBox_cyt.value())
+        self.horizontalSlider_czt.setValue(self.doubleSpinBox_czt.value())
+        self.horizontalSlider_hfov.setValue(int(self.camerapos.hfov))
+        self.horizontalSlider_vfov.setValue(int(self.camerapos.vfov))
+        self.change_cam_pose()
+
+    def change_cam_pose(self):
+        rotmat = Rotation.from_euler(
+            'ZYX',
+            [self.horizontalSlider_czd.value(), self.horizontalSlider_cyd.value(), self.horizontalSlider_cxd.value()],
+            degrees=True
+        ).as_matrix()
+        t = np.array([self.doubleSpinBox_cxt.value() / 100.0, self.doubleSpinBox_cyt.value() / 100.0, self.doubleSpinBox_czt.value() / 100.0])
+        self.virtual.change_cam_pose(rotmat, t)
 
     def on_add(self):
         self.iconlist.addItem()
@@ -677,6 +752,8 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
     def on_next_milestone(self, milestone):
         self.iconlist.icontable.cellWidget(milestone, 1).setText("√")
 
+    def on_change_campos(self, pos):
+        self.camerapos.add_pose(pos['t'], pos['q'])
 
     def move(self, pos):
         self.camerapos.transform_points(pos['t'], pos['q'])

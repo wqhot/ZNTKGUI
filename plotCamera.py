@@ -3,6 +3,7 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 import pyqtgraph as pg
 import numpy as np
+import math
 from scipy.spatial.transform import Rotation
 from config import TIME_LENGTH, SCALE
 
@@ -28,15 +29,18 @@ class PlotCamera():
 
         # self.pos_text = gl.GLTextItem(pos=(0,0,0), text=(0,0,0), font=QtGui.QFont('Helvetica', 7))
         # self.w.addItem(self.pos_text)
+        self.hfov = 90.0
+        self.vfov = 60.0
+        self.cam_rotmat = Rotation.from_rotvec([0., 0., 0.])
+        self.cam_t = np.array([0., 0., 0.])
+        self.max_depth = 0.01 # 相机深度
 
         self.imlt = [-0.01, -0.005, -0.01]
         self.imrt = [0.01, -0.005, -0.01]
         self.imlb = [-0.01, 0.005, -0.01]
         self.imrb = [0.01, 0.005, -0.01]
-        self.lt0 = [-0.7, -0.5, 1.0]
-        self.lt1 = [-0.7, -0.2, 1.0]
-        self.lt2 = [-1.0, -0.2, 1.0]
         self.oc = [0.0, 0.0, 0.0]
+        self.cal_cam_fov()
         self.lines = []
         pos = np.empty((TIME_LENGTH, 3))
         size = np.empty((TIME_LENGTH))
@@ -53,6 +57,12 @@ class PlotCamera():
             self.lines.append(gl.GLLinePlotItem(antialias=True))
             self.w.addItem(self.lines[i])
         layout.addWidget(self.w)
+
+    def cal_cam_fov(self):
+        self.imlt = [-self.max_depth * 2.0 * math.tan(self.hfov * math.pi / 360.0), -self.max_depth * 2.0 * math.tan(self.vfov * math.pi / 360.0), -self.max_depth]
+        self.imrt = [ self.max_depth * 2.0 * math.tan(self.hfov * math.pi / 360.0), -self.max_depth * 2.0 * math.tan(self.vfov * math.pi / 360.0), -self.max_depth]
+        self.imlb = [-self.max_depth * 2.0 * math.tan(self.hfov * math.pi / 360.0),  self.max_depth * 2.0 * math.tan(self.vfov * math.pi / 360.0), -self.max_depth]
+        self.imrb = [ self.max_depth * 2.0 * math.tan(self.hfov * math.pi / 360.0),  self.max_depth * 2.0 * math.tan(self.vfov * math.pi / 360.0), -self.max_depth]
 
     def add_fix_point(self, points):
         self.points = points
@@ -84,11 +94,19 @@ class PlotCamera():
     def transform_points(self, p, q):
         rot_matrix = self.quaternion_to_rotation_matrix(q)
         points = np.copy(self.points)
+        cam_center = np.matmul(self.cam_rotmat.as_matrix(), self.oc) + self.cam_t
+        self.max_depth = 0.01
         for row in range(self.points.shape[0]):
             points[row, :] = np.dot(rot_matrix, points[row, :]) + p
+            depth = np.linalg.norm(points[row, :] - cam_center) * 1.05
+            if depth > self.max_depth:
+                self.max_depth = depth
         self.fix_points.setData(pos=points)
 
     def add_pose(self, p, q):
+        self.cam_rotmat = Rotation.from_quat(q)
+        self.cam_t = np.array(p)
+        self.cal_cam_fov()
         rot_matrix = self.quaternion_to_rotation_matrix(q)
         euler = self.quat_to_euler(q)
         scale = SCALE
