@@ -6,7 +6,7 @@ import numpy as np
 import math
 from scipy.spatial.transform import Rotation
 from config import TIME_LENGTH, SCALE
-
+from stl import mesh as stlmesh
 
 class PlotCamera(): 
     def __init__(self, layout):
@@ -26,6 +26,10 @@ class PlotCamera():
         gz = gl.GLGridItem()
         gz.translate(0, 0, -10)
         self.w.addItem(gz)
+
+        axis = gl.GLAxisItem()
+        axis.setSize(0.2, 0.2, 0.2)
+        self.w.addItem(axis)
 
         # self.pos_text = gl.GLTextItem(pos=(0,0,0), text=(0,0,0), font=QtGui.QFont('Helvetica', 7))
         # self.w.addItem(self.pos_text)
@@ -47,6 +51,10 @@ class PlotCamera():
         color = np.empty((TIME_LENGTH, 4))
         self.fix_points = None
         self.points = None
+        self.currentSTL = None
+        self.showSTL('./res/helmat.stl')
+        self.head_last_rot = Rotation.from_quat([0,0,0,1])
+        self.head_last_trans = np.array([0., 0., 0.])
         for i in range(TIME_LENGTH):
             pos[i] = (0, 0, 0)
             size[i] = 0.005
@@ -57,6 +65,28 @@ class PlotCamera():
             self.lines.append(gl.GLLinePlotItem(antialias=True))
             self.w.addItem(self.lines[i])
         layout.addWidget(self.w)
+    
+    def showSTL(self, filename):
+        if self.currentSTL:
+            self.w.removeItem(self.currentSTL)
+
+        points, faces = self.loadSTL(filename)
+        meshdata = gl.MeshData(vertexes=points, faces=faces)
+        mesh = gl.GLMeshItem(meshdata=meshdata, smooth=True, drawFaces=False, drawEdges=True, edgeColor=(0.2, 0.2, 0.2, 0.001))
+        self.w.addItem(mesh)
+        self.currentSTL = mesh
+
+    def loadSTL(self, filename):
+        m = stlmesh.Mesh.from_file(filename)
+        m.rotate([0, 1.0, 0], math.radians(90))
+        m.rotate([1.0, 0, 0], math.radians(-90))
+        m.rotate([0, 0, 1.0], math.radians(-90))
+        m.x += 0.06
+        m.y += 0.25
+        shape = m.points.shape
+        points = m.points.reshape(-1, 3)
+        faces = np.arange(points.shape[0]).reshape(-1, 3)
+        return points, faces
 
     def cal_cam_fov(self):
         self.imlt = [-self.max_depth * 2.0 * math.tan(self.hfov * math.pi / 360.0), -self.max_depth * 2.0 * math.tan(self.vfov * math.pi / 360.0), -self.max_depth]
@@ -90,9 +120,21 @@ class PlotCamera():
         scale = SCALE
         pos = np.vstack(scale * np.array(pos))
         self.history.setData(pos=pos)
+    
+    def reset(self, p, q):
+        self.transform_points(p, q)
 
     def transform_points(self, p, q):
         rot_matrix = self.quaternion_to_rotation_matrix(q)
+        if self.currentSTL:
+            rotmat = Rotation.from_quat(q)
+            det_rot = rotmat * self.head_last_rot.inv()
+            det_trans = p - self.head_last_trans
+            rotvec = det_rot.as_rotvec()
+            self.currentSTL.rotate(np.linalg.norm(rotvec) * 180.0 / math.pi, rotvec[0], rotvec[1], rotvec[2])
+            self.currentSTL.translate(det_trans[0], det_trans[1], det_trans[2])
+            self.head_last_trans = p
+            self.head_last_rot = rotmat
         points = np.copy(self.points)
         cam_center = np.matmul(self.cam_rotmat.as_matrix(), self.oc) + self.cam_t
         self.max_depth = 0.01

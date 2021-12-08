@@ -312,12 +312,12 @@ class virtualCAM(QThread):
             objpoints[0, row, :] = np.dot(rotmat, objpoints[0, row, :]) + t
         imgpoints, undistort_imgpoints = self.project(objpoints) 
         img = np.zeros(shape=self.img_shape, dtype=np.uint8)
-        for k in range(imgpoints.shape[1]):
-            if imgpoints[0, k, :][0] > 0 and imgpoints[0, k, :][1] > 0 and imgpoints[0, k, :][0] < self.img_shape[0] and imgpoints[0, k, :][1] < self.img_shape[1]:
+        for k in range(imgpoints.shape[0]):
+            if imgpoints[k, 0, :][0] > 0 and imgpoints[k, 0, :][1] > 0 and imgpoints[k, 0, :][0] < self.img_shape[0] and imgpoints[k, 0, :][1] < self.img_shape[1]:
                 img = cv2.circle(
                     img=img,
-                    center=(int(imgpoints[0, k, :][0]),
-                            int(imgpoints[0, k, :][1])),
+                    center=(int(imgpoints[k, 0, :][0]),
+                            int(imgpoints[k, 0, :][1])),
                     radius=6,
                     color=(255,),
                     thickness=-1
