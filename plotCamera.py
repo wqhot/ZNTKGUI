@@ -31,18 +31,22 @@ class PlotCamera():
         axis.setSize(0.2, 0.2, 0.2)
         self.w.addItem(axis)
 
-        # self.pos_text = gl.GLTextItem(pos=(0,0,0), text=(0,0,0), font=QtGui.QFont('Helvetica', 7))
-        # self.w.addItem(self.pos_text)
+        self.x_text = gl.GLTextItem(pos=(0.2,0,0), text="x", font=QtGui.QFont('Helvetica', 7))
+        self.w.addItem(self.x_text)
+        self.y_text = gl.GLTextItem(pos=(0,0.2,0), text="y", font=QtGui.QFont('Helvetica', 7))
+        self.w.addItem(self.y_text)
+        self.z_text = gl.GLTextItem(pos=(0,0,0.2), text="z", font=QtGui.QFont('Helvetica', 7))
+        self.w.addItem(self.z_text)
         self.hfov = 90.0
         self.vfov = 60.0
         self.cam_rotmat = Rotation.from_rotvec([0., 0., 0.])
         self.cam_t = np.array([0., 0., 0.])
         self.max_depth = 0.01 # 相机深度
 
-        self.imlt = [-0.01, -0.005, -0.01]
-        self.imrt = [0.01, -0.005, -0.01]
-        self.imlb = [-0.01, 0.005, -0.01]
-        self.imrb = [0.01, 0.005, -0.01]
+        self.imlt = [-0.01, -0.005, 0.01]
+        self.imrt = [0.01, -0.005, 0.01]
+        self.imlb = [-0.01, 0.005, 0.01]
+        self.imrb = [0.01, 0.005, 0.01]
         self.oc = [0.0, 0.0, 0.0]
         self.cal_cam_fov()
         self.lines = []
@@ -78,13 +82,13 @@ class PlotCamera():
 
     def loadSTL(self, filename):
         m = stlmesh.Mesh.from_file(filename)
-        m.rotate([0, 1.0, 0], math.radians(90))
-        m.rotate([1.0, 0, 0], math.radians(-90))
-        m.rotate([0, 0, 1.0], math.radians(-90))
-        m.x += 0.06
-        m.y += 0.25
+        # m.rotate([0, 1.0, 0], math.radians(90))
+        # m.rotate([1.0, 0, 0], math.radians(-90))
+        # m.rotate([0, 0, 1.0], math.radians(-90))
+        # m.x += 0.06
+        # m.y += 0.25
         shape = m.points.shape
-        points = m.points.reshape(-1, 3)
+        points = m.points.reshape(-1, 3) / 1000.0
         faces = np.arange(points.shape[0]).reshape(-1, 3)
         return points, faces
 
@@ -94,9 +98,11 @@ class PlotCamera():
         self.imlb = [-self.max_depth * 2.0 * math.tan(self.hfov * math.pi / 360.0),  self.max_depth * 2.0 * math.tan(self.vfov * math.pi / 360.0), -self.max_depth]
         self.imrb = [ self.max_depth * 2.0 * math.tan(self.hfov * math.pi / 360.0),  self.max_depth * 2.0 * math.tan(self.vfov * math.pi / 360.0), -self.max_depth]
 
-    def add_fix_point(self, points):
+    def add_fix_point(self, points, color):
         self.points = points
-        self.fix_points = gl.GLScatterPlotItem(pos=points, size=0.005, color=(0.0, 1.0, 0.0, 1.0), pxMode=False)
+        color_ = np.ones((color.shape[0], 4))
+        color_[:, :3] = color
+        self.fix_points = gl.GLScatterPlotItem(pos=points, size=0.005, color=color_, pxMode=False)
         self.w.addItem(self.fix_points)
 
     def drawLine(self,index, start, end):
