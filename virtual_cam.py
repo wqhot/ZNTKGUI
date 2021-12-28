@@ -320,6 +320,7 @@ class virtualCAM(QThread):
             objpoints[0, row, :] = np.dot(rotmat, objpoints[0, row, :]) + t
         imgpoints, undistort_imgpoints = self.project(objpoints)
         img = np.zeros(shape=(self.img_shape[0], self.img_shape[1], 3), dtype=np.uint8)
+        img2 = np.zeros(shape=(self.img_shape[0], self.img_shape[1], 3), dtype=np.uint8)
         for k in range(imgpoints.shape[0]):
             if imgpoints[k, 0, :][0] > 0 and imgpoints[k, 0, :][1] > 0 and imgpoints[k, 0, :][0] < self.img_shape[0] and imgpoints[k, 0, :][1] < self.img_shape[1]:
                 img = cv2.circle(
@@ -330,11 +331,19 @@ class virtualCAM(QThread):
                     color=self.objcolor[k]*255,
                     thickness=-1
                 )
+                img2 = cv2.circle(
+                    img=img,
+                    center=(int(imgpoints[k, 0, :][0]),
+                            int(imgpoints[k, 0, :][1])),
+                    radius=6,
+                    color=(255, 255, 255),
+                    thickness=-1
+                )
             # cv2.circle(img, imgpoints[0, i, :], 4, 255, -1)
         # img = self.gen_random(img)
         img = cv2.bitwise_and(img, img, mask=self.mask)
         self.signal_image.emit(img)
-        return [img, imgpoints, undistort_imgpoints]
+        return [img2, imgpoints, undistort_imgpoints]
 
     def run(self):
         bag_name = str(time.strftime("%Y%m%d%H%M%S", time.localtime()))
