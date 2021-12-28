@@ -332,7 +332,7 @@ class virtualCAM(QThread):
                     thickness=-1
                 )
                 img2 = cv2.circle(
-                    img=img,
+                    img=img2,
                     center=(int(imgpoints[k, 0, :][0]),
                             int(imgpoints[k, 0, :][1])),
                     radius=6,
