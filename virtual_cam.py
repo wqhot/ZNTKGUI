@@ -41,7 +41,7 @@ class virtualCAM(QThread):
         self.cam_rot = Rotation.from_euler('ZYX', [0, 0, 0], degrees=True)
         self.cam_pos = np.array([0.0, 0.0, 0.0])
 
-        self.img_shape = (int(480), int(640))
+        self.img_shape = (int(1080), int(1920))
         self.mask = None
         # 0 无 1 短边 2 长边
         self.mask_type = 2
@@ -57,17 +57,20 @@ class virtualCAM(QThread):
         self.abais_head = np.zeros((3,))
         self.abais_car = np.zeros((3,))
 
-        self.objpoint = np.zeros((1, 4, 3), dtype=np.float32)
-        self.objpoint[0, 0, :] = np.array([0.0714197,  0.0800214,  0.0622611])
-        self.objpoint[0, 1, :] = np.array([0.0400755,  -0.0912328,  0.0317064])
-        self.objpoint[0, 2, :] = np.array([-0.0647293,  -0.0879977,  0.0830852])
-        self.objpoint[0, 3, :] = np.array([-0.0558663, -0.0165446, 0.053473])
+        self.objpoint = np.zeros((1, 5, 3), dtype=np.float32)
+        self.objpoint[0, 0, :] = np.array([0.066275251, 0.073340542, 0.025856482])
+        self.objpoint[0, 1, :] = np.array([0.002848404, 0.062531643, 0.008056358])
+        self.objpoint[0, 2, :] = np.array([0, 0.019147298, 0.004942755])
+        self.objpoint[0, 3, :] = np.array([0.069900446, 0, 0.021058054])
+        self.objpoint[0, 4, :] = np.array([0.13414017, 0.000504125, 0])
 
         self.objcolor = np.zeros((self.objpoint.shape[1], 3))
         self.objcolor[0, :] = np.array([1.0, 0.0, 0.0])
         self.objcolor[1, :] = np.array([0.0, 1.0, 0.0])
         self.objcolor[2, :] = np.array([0.8, 0.5, 0.2])
         self.objcolor[3, :] = np.array([0.0, 0.5, 1.0])
+        self.objcolor[4, :] = np.array([0.3, 0.1, 1.0])
+        
         # self.objpoint[0, 4, :] = np.array([0.10316, 0.0, 0.5])
 
     def set_cam(self, file_name):
@@ -733,12 +736,11 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         if len(directory[0]) != 0:
             self.virtual.set_cam(directory[0])
 
-        self.camerapos.hfov = 2.0 * \
-            math.atan(self.virtual.img_shape[1] /
-                      self.virtual.K[0, 0]) * 180.0 / math.pi
-        self.camerapos.vfov = 2.0 * \
-            math.atan(self.virtual.img_shape[0] /
-                      self.virtual.K[1, 1]) * 180.0 / math.pi
+        self.camerapos.hfov = math.atan((self.virtual.img_shape[1] - self.virtual.K[0, 2]) /self.virtual.K[0, 0]) * 180.0 / math.pi + \
+                              math.atan((self.virtual.K[0, 2]) /self.virtual.K[0, 0]) * 180.0 / math.pi
+
+        self.camerapos.vfov = math.atan((self.virtual.img_shape[0] - self.virtual.K[1, 2]) /self.virtual.K[1, 1]) * 180.0 / math.pi + \
+                              math.atan((self.virtual.K[1, 2]) /self.virtual.K[1, 1]) * 180.0 / math.pi
 
         self.camerapos.add_pose(self.virtual.cam_pos,
                                 self.virtual.cam_rot.as_quat())

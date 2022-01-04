@@ -17,7 +17,7 @@ import time
 import datetime
 import zipfile
 
-camera_type_list = ['omni-radtan', 'pinhole-equi', 'pinhole-radtan']
+camera_type_list = ['pinhole-radtan', 'omni-radtan', 'pinhole-equi']
 undistort_list = ['透视图', '圆柱图', '立体图', '世界地图', '原图', '仅透视图 ']
 
 def zipDir(dirpath, outFullName):
@@ -174,6 +174,7 @@ class camCalibrateUtil(QThread):
         # 世界坐标系中的棋盘格点
         obj_p = np.zeros((1, self.corner_num_x * self.corner_num_y, 3), dtype=np.float32)
         obj_p[0, :, :2] = np.mgrid[0:self.corner_num_x, 0:self.corner_num_y].T.reshape(-1, 2)
+        xi = np.zeros((1, 1))
 
         count = 0
         while True:
@@ -194,6 +195,7 @@ class camCalibrateUtil(QThread):
                 temp = np.zeros(shape=frame.shape, dtype=frame.dtype)
                 frame = cv2.bitwise_and(frame, frame, mask=self.mask)
             if len(frame.shape) == 3:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             else:
                 gray = frame
@@ -567,6 +569,8 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.pushButton_calonce.clicked.connect(self.on_click_cal_once)
         self.pushButton_project.clicked.connect(self.on_project)
 
+        self.cap = None
+
         self.reopen()
 
     def on_project(self):
@@ -579,25 +583,25 @@ class camviewDialog(QDialog, Ui_Dialog):
         if len(directory[0]) == 0:
             return
         with open(directory[0], 'w') as f:
-            s = 'l_parameters:'
+            s = 'l_parameters:\r\n'
             f.write(s)
-            s = '   k1: {}'.format(self.cam.D[0][0])
+            s = '   k1: {}\r\n'.format(self.cam.D[0][0])
             f.write(s)
-            s = '   k2: {}'.format(self.cam.D[0][1])
+            s = '   k2: {}\r\n'.format(self.cam.D[0][1])
             f.write(s)
-            s = '   p1: {}'.format(self.cam.D[0][2])
+            s = '   p1: {}\r\n'.format(self.cam.D[0][2])
             f.write(s)
-            s = '   p2: {}'.format(self.cam.D[0][3])
+            s = '   p2: {}\r\n'.format(self.cam.D[0][3])
             f.write(s)
-            s = '   xi: {}'.format(self.cam.xi[0][0])
+            s = '   xi: {}\r\n'.format(self.cam.xi[0][0])
             f.write(s)
-            s = '   fx: {}'.format(self.cam.K[0, 0])
+            s = '   fx: {}\r\n'.format(self.cam.K[0, 0])
             f.write(s)
-            s = '   fy: {}'.format(self.cam.K[1, 1])
+            s = '   fy: {}\r\n'.format(self.cam.K[1, 1])
             f.write(s)
-            s = '   cx: {}'.format(self.cam.K[0, 2])
+            s = '   cx: {}\r\n'.format(self.cam.K[0, 2])
             f.write(s)
-            s = '   cy: {}'.format(self.cam.K[1, 2])
+            s = '   cy: {}\r\n'.format(self.cam.K[1, 2])
             f.write(s)
             f.close()
         
@@ -618,8 +622,16 @@ class camviewDialog(QDialog, Ui_Dialog):
         chessboard_corner_y = self.spinBox_cornery.value()
         chessboard_size = self.spinBox_size.value()
 
-        self.cap = cv2.VideoCapture(camera_id)
-        self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
+        if self.cap is None:
+            self.cap = cv2.VideoCapture(camera_id)
+            self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
+            self.lineEditWidth.setText(str(int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))))
+            self.lineEditHeight.setText(str(int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+        else:
+            self.cap = cv2.VideoCapture(camera_id)
+            self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(self.lineEditWidth.text()))
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(self.lineEditHeight.text()))
         self.cam = camCalibrateUtil(self.cap, chessboard_size, chessboard_corner_x, chessboard_corner_y)
         self.cam.mask_type = self.comboBox_mask.currentIndex()
         self.cam.gen_mask()
