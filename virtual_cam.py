@@ -64,6 +64,12 @@ class virtualCAM(QThread):
         self.objpoint[0, 3, :] = np.array([0.02159825, 0.04610938, 0.04779462])
         self.objpoint[0, 4, :] = np.array([0.07805766, 0.0, 0.05642203])
 
+        init_rot = Rotation.from_euler('ZYX', np.array([-120, -4, 40]), degrees=True)
+        init_trans = np.array([-0.02, 0.12, 0.10])
+        for idx in range(self.objpoint.shape[1]):
+            self.objpoint[0, idx, :] = np.inner(init_rot.as_matrix(), self.objpoint[0, idx, :]) + init_trans
+            # pass
+
         self.objcolor = np.zeros((self.objpoint.shape[1], 3))
         self.objcolor[0, :] = np.array([1.0, 0.0, 0.0])
         self.objcolor[1, :] = np.array([0.0, 1.0, 0.0])

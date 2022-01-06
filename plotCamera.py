@@ -76,7 +76,7 @@ class PlotCamera():
 
         points, faces = self.loadSTL(filename)
         meshdata = gl.MeshData(vertexes=points, faces=faces)
-        mesh = gl.GLMeshItem(meshdata=meshdata, smooth=True, drawFaces=False, drawEdges=True, edgeColor=(0.2, 0.2, 0.2, 0.001))
+        mesh = gl.GLMeshItem(meshdata=meshdata, smooth=True, drawFaces=False, drawEdges=True, edgeColor=(0.4, 0.4, 0.4, 0.001))
         self.w.addItem(mesh)
         self.currentSTL = mesh
 

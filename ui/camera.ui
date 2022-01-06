@@ -206,20 +206,52 @@
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_15">
+           <layout class="QVBoxLayout" name="verticalLayout_11">
             <item>
-             <widget class="QLabel" name="label_7">
-              <property name="text">
-               <string>相机设备号</string>
-              </property>
-             </widget>
+             <layout class="QHBoxLayout" name="horizontalLayout_15">
+              <item>
+               <widget class="QRadioButton" name="radioButtonUSB">
+                <property name="text">
+                 <string>通用相机</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_7">
+                <property name="text">
+                 <string>相机设备号</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="spinBox_cameraid">
+                <property name="maximum">
+                 <number>9999</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
             <item>
-             <widget class="QSpinBox" name="spinBox_cameraid">
-              <property name="maximum">
-               <number>9999</number>
-              </property>
-             </widget>
+             <layout class="QHBoxLayout" name="horizontalLayout_18">
+              <item>
+               <widget class="QRadioButton" name="radioButtonHGDL">
+                <property name="text">
+                 <string>工业相机</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_16">
+                <property name="text">
+                 <string>相机设备号</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="comboBoxHGDL"/>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>

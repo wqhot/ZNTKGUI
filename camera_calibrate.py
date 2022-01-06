@@ -1,4 +1,27 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
+import ctypes
+from ctypes import *
+import sys
+
+from Demo_opencv_byCallBack import HGDLCamera
+
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+if is_admin():
+    pass
+else:
+    if sys.version_info[0] == 3:
+        ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", sys.executable, __file__, None, 1)
+    else:  # in python2.x
+        ctypes.windll.shell32.ShellExecuteW(None, u"runas", unicode(
+            sys.executable), unicode(__file__), None, 1)
+    exit(0)
+
 import cv2
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -12,6 +35,7 @@ from PyQt5.QtGui import QPixmap, QIcon, QImage
 from PyQt5.QtWidgets import QComboBox, QDoubleSpinBox, QListWidget, QDoubleSpinBox, QSpinBox, QWidget, QLabel, QApplication, QListView, QHBoxLayout, QVBoxLayout, QListWidgetItem, QDialog, QFileDialog, QTableWidget, QTableWidgetItem
 from ui.Ui_camera import Ui_Dialog
 from plotCamera import PlotCamera
+from Demo_opencv_byGetFrame import *
 import piexif
 import time
 import datetime
@@ -58,11 +82,12 @@ class camCalibrateUtil(QThread):
         if not os.path.exists(self.raw_dict):
             os.makedirs(self.raw_dict)
         self.img_shape = (int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
+        print(self.img_shape)
         self.mask = None
         # 0 无 1 短边 2 长边
         self.mask_type = 0
 
-        self.camera_type = 'omni-radtan'
+        self.camera_type = 'pinhole-radtan'
         self.undistort_type = 0
 
         self.K = np.zeros((3, 3))
@@ -166,7 +191,7 @@ class camCalibrateUtil(QThread):
     def run(self):
         # 精准化角点迭代终止条件
         ctiteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, self.checkboard_size, 0.1)
-        flags = cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_FILTER_QUADS + cv2.CALIB_CB_NORMALIZE_IMAGE
+        flags = cv2.CALIB_CB_FILTER_QUADS + cv2.CALIB_CB_NORMALIZE_IMAGE + cv2.CALIB_CB_FAST_CHECK 
         flags_fisheye = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC + cv2.fisheye.CALIB_CHECK_COND + cv2.fisheye.CALIB_FIX_SKEW
         flags_omni = cv2.omnidir.CALIB_USE_GUESS
         flags_omni_undistort = cv2.omnidir.RECTIFY_PERSPECTIVE
@@ -188,9 +213,16 @@ class camCalibrateUtil(QThread):
                 flags_omni_undistort = cv2.omnidir.RECTIFY_LONGLATI
             else:
                 flags_omni_undistort = cv2.omnidir.RECTIFY_PERSPECTIVE
+            start = time.perf_counter()  # 返回系统运行时间
             ret, frame = self.cap.read()
+            end = time.perf_counter()
+            print('用时: {:.4f}s'.format(end-start))
+            start = time.perf_counter()
+            print("recv frame")
+            print(frame.shape)
             if not ret:
-                break
+                print("ret is false")
+                continue
             if self.mask is not None:
                 temp = np.zeros(shape=frame.shape, dtype=frame.dtype)
                 frame = cv2.bitwise_and(frame, frame, mask=self.mask)
@@ -198,12 +230,17 @@ class camCalibrateUtil(QThread):
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             else:
-                gray = frame
+                frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             frame_down = np.copy(gray)
-            gray = cv2.equalizeHist(gray)
+            # gray = cv2.equalizeHist(gray)
             self.img_shape = gray.shape
+            end = time.perf_counter()
+            print('用时0: {:.4f}s'.format(end-start))
             # 寻找棋盘格点
             ok, corners = cv2.findChessboardCorners(gray, (self.corner_num_x, self.corner_num_y), flags=flags)
+            end = time.perf_counter()
+            print('用时1: {:.4f}s'.format(end-start))
             if ok:
                 # 获取更精确的角点
                 cv2.cornerSubPix(gray, corners, (5, 5), (-1, -1), ctiteria)
@@ -284,6 +321,8 @@ class camCalibrateUtil(QThread):
                     self.prepare_to_shoot = False
             else:
                 cv2.putText(gray, "FAIL TO FIND CORNERS", (int(0), int(frame_down.shape[0] / 2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255))
+            end = time.perf_counter()
+            print('用时2: {:.4f}s'.format(end-start))
             if not np.linalg.norm(self.K) == 0:
                 try:
                     if self.camera_type == 'omni-radtan':
@@ -308,6 +347,8 @@ class camCalibrateUtil(QThread):
                     # 其余皆叠加
                     frame = cv2.addWeighted(frame_undistort, 0.5, frame, 0.5, 0)
             self.signal_image.emit(frame)
+            end = time.perf_counter()
+            print('用时total: {:.4f}s'.format(end-start))
 
 
     def find_checkboard(self, frame, corner_num_x, corner_num_y):
@@ -553,6 +594,8 @@ class camviewDialog(QDialog, Ui_Dialog):
         for camera_type in camera_type_list:
             self.comboBox.addItem(camera_type)
         self.comboBox_mask.addItems(['无', '短边', '长边'])
+        self.radioButtonHGDL.setChecked(True)
+        self.on_click_hgdl()
         for undistort_type in undistort_list:
             self.comboBox_2.addItem(undistort_type)
         self.camerapos = PlotCamera(self.verticalLayout_camerapos)
@@ -568,6 +611,7 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.pushButton_3.clicked.connect(self.on_push_shoot)
         self.pushButton_calonce.clicked.connect(self.on_click_cal_once)
         self.pushButton_project.clicked.connect(self.on_project)
+        self.radioButtonHGDL.toggled.connect(self.on_click_hgdl)
 
         self.cap = None
 
@@ -621,17 +665,25 @@ class camviewDialog(QDialog, Ui_Dialog):
         chessboard_corner_x = self.spinBox_cornerx.value()
         chessboard_corner_y = self.spinBox_cornery.value()
         chessboard_size = self.spinBox_size.value()
-
+            
         if self.cap is None:
-            self.cap = cv2.VideoCapture(camera_id)
-            self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
+            if self.radioButtonHGDL.isChecked():
+                cameraIdx = self.comboBoxHGDL.currentIndex()
+                self.cap = HGDLCamera(cameraIdx)
+            else:
+                self.cap = cv2.VideoCapture(camera_id)
+                self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
             self.lineEditWidth.setText(str(int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))))
             self.lineEditHeight.setText(str(int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
         else:
-            self.cap = cv2.VideoCapture(camera_id)
-            self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(self.lineEditWidth.text()))
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(self.lineEditHeight.text()))
+            if self.radioButtonHGDL.isChecked():
+                cameraIdx = self.comboBoxHGDL.currentIndex()
+                self.cap = HGDLCamera(cameraIdx)
+            else:
+                self.cap = cv2.VideoCapture(camera_id)
+                self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(self.lineEditWidth.text()))
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(self.lineEditHeight.text()))
         self.cam = camCalibrateUtil(self.cap, chessboard_size, chessboard_corner_x, chessboard_corner_y)
         self.cam.mask_type = self.comboBox_mask.currentIndex()
         self.cam.gen_mask()
@@ -656,6 +708,19 @@ class camviewDialog(QDialog, Ui_Dialog):
 
         self.doubleSpinBox_xi.setValue(sig_d["D"][0][3])
     
+    def on_click_hgdl(self):
+        if self.radioButtonHGDL.isChecked():
+            # 发现相机
+            self.comboBoxHGDL.clear()
+            cameraCnt, cameraList = enumCameras()
+            if cameraCnt is None:
+                return
+            for index in range(0, cameraCnt):
+                camera = cameraList[index]
+                self.comboBoxHGDL.addItem(str(camera.getSerialNumber(camera)))
+        else:
+            self.comboBoxHGDL.clear()
+
     def on_click_cal_once(self):
         self.cam.cal_once()
 
