@@ -58,11 +58,11 @@ class virtualCAM(QThread):
         self.abais_car = np.zeros((3,))
 
         self.objpoint = np.zeros((1, 5, 3), dtype=np.float32)
-        self.objpoint[0, 0, :] = np.array([0.066275251, 0.073340542, 0.025856482])
-        self.objpoint[0, 1, :] = np.array([0.002848404, 0.062531643, 0.008056358])
-        self.objpoint[0, 2, :] = np.array([0, 0.019147298, 0.004942755])
-        self.objpoint[0, 3, :] = np.array([0.069900446, 0, 0.021058054])
-        self.objpoint[0, 4, :] = np.array([0.13414017, 0.000504125, 0])
+        self.objpoint[0, 0, :] = np.array([0, 0.1017863,0])
+        self.objpoint[0, 1, :] = np.array([0.03360889, 0.1237198, 0.001162193])
+        self.objpoint[0, 2, :] = np.array([0.07500772, 0.1011036, 0.03627425])
+        self.objpoint[0, 3, :] = np.array([0.02159825, 0.04610938, 0.04779462])
+        self.objpoint[0, 4, :] = np.array([0.07805766, 0.0, 0.05642203])
 
         self.objcolor = np.zeros((self.objpoint.shape[1], 3))
         self.objcolor[0, :] = np.array([1.0, 0.0, 0.0])
@@ -330,7 +330,7 @@ class virtualCAM(QThread):
                     img=img,
                     center=(int(imgpoints[k, 0, :][0]),
                             int(imgpoints[k, 0, :][1])),
-                    radius=6,
+                    radius=15,
                     color=self.objcolor[k]*255,
                     thickness=-1
                 )
@@ -338,13 +338,15 @@ class virtualCAM(QThread):
                     img=img2,
                     center=(int(imgpoints[k, 0, :][0]),
                             int(imgpoints[k, 0, :][1])),
-                    radius=6,
+                    radius=15,
                     color=(255, 255, 255),
                     thickness=-1
                 )
             # cv2.circle(img, imgpoints[0, i, :], 4, 255, -1)
         # img = self.gen_random(img)
         img = cv2.bitwise_and(img, img, mask=self.mask)
+        img = cv2.flip(img, 0)
+        img2 = cv2.flip(img2, 0)
         self.signal_image.emit(img)
         return [img2, imgpoints, undistort_imgpoints]
 
