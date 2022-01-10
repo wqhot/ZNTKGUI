@@ -1,6 +1,6 @@
 chessboard_corner_x: 11
 chessboard_corner_y: 8
-chessboard_size: 60
+chessboard_size: 6
 camera_mode: 0
 camera_expose: -10
 camera_id: 700

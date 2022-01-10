@@ -215,14 +215,9 @@ class camCalibrateUtil(QThread):
                 flags_omni_undistort = cv2.omnidir.RECTIFY_PERSPECTIVE
             start = time.perf_counter()  # 返回系统运行时间
             ret, frame = self.cap.read()
-            end = time.perf_counter()
-            print('用时: {:.4f}s'.format(end-start))
-            start = time.perf_counter()
-            print("recv frame")
-            print(frame.shape)
             if not ret:
                 print("ret is false")
-                continue
+                break
             if self.mask is not None:
                 temp = np.zeros(shape=frame.shape, dtype=frame.dtype)
                 frame = cv2.bitwise_and(frame, frame, mask=self.mask)
@@ -235,12 +230,8 @@ class camCalibrateUtil(QThread):
             frame_down = np.copy(gray)
             # gray = cv2.equalizeHist(gray)
             self.img_shape = gray.shape
-            end = time.perf_counter()
-            print('用时0: {:.4f}s'.format(end-start))
             # 寻找棋盘格点
             ok, corners = cv2.findChessboardCorners(gray, (self.corner_num_x, self.corner_num_y), flags=flags)
-            end = time.perf_counter()
-            print('用时1: {:.4f}s'.format(end-start))
             if ok:
                 # 获取更精确的角点
                 cv2.cornerSubPix(gray, corners, (5, 5), (-1, -1), ctiteria)
@@ -321,8 +312,6 @@ class camCalibrateUtil(QThread):
                     self.prepare_to_shoot = False
             else:
                 cv2.putText(gray, "FAIL TO FIND CORNERS", (int(0), int(frame_down.shape[0] / 2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255))
-            end = time.perf_counter()
-            print('用时2: {:.4f}s'.format(end-start))
             if not np.linalg.norm(self.K) == 0:
                 try:
                     if self.camera_type == 'omni-radtan':
@@ -347,8 +336,6 @@ class camCalibrateUtil(QThread):
                     # 其余皆叠加
                     frame = cv2.addWeighted(frame_undistort, 0.5, frame, 0.5, 0)
             self.signal_image.emit(frame)
-            end = time.perf_counter()
-            print('用时total: {:.4f}s'.format(end-start))
 
 
     def find_checkboard(self, frame, corner_num_x, corner_num_y):
@@ -670,6 +657,7 @@ class camviewDialog(QDialog, Ui_Dialog):
             if self.radioButtonHGDL.isChecked():
                 cameraIdx = self.comboBoxHGDL.currentIndex()
                 self.cap = HGDLCamera(cameraIdx)
+                self.cap.setExpose(camera_expose)
             else:
                 self.cap = cv2.VideoCapture(camera_id)
                 self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
@@ -679,6 +667,7 @@ class camviewDialog(QDialog, Ui_Dialog):
             if self.radioButtonHGDL.isChecked():
                 cameraIdx = self.comboBoxHGDL.currentIndex()
                 self.cap = HGDLCamera(cameraIdx)
+                self.cap.setExpose(camera_expose)
             else:
                 self.cap = cv2.VideoCapture(camera_id)
                 self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)

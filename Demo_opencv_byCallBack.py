@@ -14,6 +14,7 @@ import datetime
 import numpy
 import cv2
 import gc
+import math
 import queue
 
 g_cameraStatusUserInfo = b"statusInfo"
@@ -28,12 +29,7 @@ g_count = 0
 def onGetFrameEx(frame, userInfo):
 
     global g_isStop
-    global g_count
     if (g_isStop == 1):
-        return
-    g_count = g_count + 1
-    if g_count % 30 != 0:
-        frame.contents.release(frame)
         return
     # else:
     #     frame.contents.release(frame)
@@ -91,7 +87,7 @@ def onGetFrameEx(frame, userInfo):
     # g_imgqueue.put(cvImage.copy())
     # print(g_imgqueue.qsize())
     g_img = cvImage.copy()
-    # gc.collect()
+    gc.collect()
     # cv2.waitKey(1)
 
 
@@ -326,6 +322,32 @@ def setExposureTime(camera, dVal):
             
     # 释放节点资源     
     exposureTimeNode.contents.release(exposureTimeNode)    
+    return 0
+
+# 设置帧率
+def setFrameRate(camera, dVal):
+    # 通用属性设置:设置曝光 --根据属性类型，直接构造属性节点。如曝光是 double类型，构造doubleNode节点
+    frameRateNode = pointer(GENICAM_DoubleNode())
+    frameRateNodeInfo = GENICAM_DoubleNodeInfo() 
+    frameRateNodeInfo.pCamera = pointer(camera)
+    frameRateNodeInfo.attrName = b"AcquisitionFrameRate"
+    nRet = GENICAM_createDoubleNode(byref(frameRateNodeInfo), byref(frameRateNode))
+    if ( nRet != 0 ):
+        print("create FrameRate Node fail!")
+        return -1
+      
+    # 设置帧率时间
+    nRet = frameRateNode.contents.setValue(frameRateNode, c_double(dVal))  
+    if ( nRet != 0 ):
+        print("set FrameRate value [%f]fps fail!"  % (dVal))
+        # 释放相关资源
+        frameRateNode.contents.release(frameRateNode)
+        return -1
+    else:
+        print("set FrameRate value [%f]fps success." % (dVal))
+            
+    # 释放节点资源     
+    frameRateNode.contents.release(frameRateNode)    
     return 0
     
 # 枚举相机
@@ -708,7 +730,7 @@ class HGDLCamera():
             self.streamSource.contents.release(self.streamSource)   
             return    
         
-
+        setFrameRate(self.camera, 30)
         isGrab = True
 
     def read(self):
@@ -720,8 +742,16 @@ class HGDLCamera():
         # time.sleep(0.03)
         global g_img
         img = g_img.copy()
-        # img = numpy.zeros((1024, 1280), dtype=numpy.uint8)
-        return [True, img]
+        global g_isStop
+        if g_isStop == 1:
+            return [False, img]
+        else:
+            return [True, img]
+
+    def setExpose(self, expose):
+        exposeValue = math.pow(2, expose) * 1000000
+        setExposureTime(self.camera, exposeValue)
+
 
     def get(self, status):
         if status == cv2.CAP_PROP_FRAME_HEIGHT:
@@ -731,6 +761,7 @@ class HGDLCamera():
 
     def release(self):
         global g_isStop
+        print("release call")
         g_isStop = 1
 
         # 反注册回调函数
@@ -760,35 +791,6 @@ class HGDLCamera():
         self.streamSource.contents.release(self.streamSource)    
     
 
-    def __del__(self):
-        global g_isStop
-        g_isStop = 1
-
-        # 反注册回调函数
-        nRet = self.streamSource.contents.detachGrabbingEx(self.streamSource, frameCallbackFuncEx, self.userInfo) 
-        if ( nRet != 0 ):
-            print("detachGrabbingEx fail!")
-            # 释放相关资源
-            self.streamSource.contents.release(self.streamSource)  
-            
-
-        # 停止拉流
-        nRet = self.streamSource.contents.stopGrabbing(self.streamSource)
-        if ( nRet != 0 ):
-            print("stopGrabbing fail!")
-            # 释放相关资源
-            self.streamSource.contents.release(self.streamSource)  
-
-
-        # 关闭相机
-        nRet = closeCamera(self.camera)
-        if ( nRet != 0 ):
-            print("closeCamera fail")
-            # 释放相关资源
-            self.streamSource.contents.release(self.streamSource)   
-        
-        # 释放相关资源
-        self.streamSource.contents.release(self.streamSource)   
     
 if __name__=="__main__": 
 
