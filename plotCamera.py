@@ -31,12 +31,12 @@ class PlotCamera():
         axis.setSize(0.2, 0.2, 0.2)
         self.w.addItem(axis)
 
-        self.x_text = gl.GLTextItem(pos=(0.2,0,0), text="x", font=QtGui.QFont('Helvetica', 7))
-        self.w.addItem(self.x_text)
-        self.y_text = gl.GLTextItem(pos=(0,0.2,0), text="y", font=QtGui.QFont('Helvetica', 7))
-        self.w.addItem(self.y_text)
-        self.z_text = gl.GLTextItem(pos=(0,0,0.2), text="z", font=QtGui.QFont('Helvetica', 7))
-        self.w.addItem(self.z_text)
+        # self.x_text = gl.GLTextItem(pos=(0.2,0,0), text="x", font=QtGui.QFont('Helvetica', 7))
+        # self.w.addItem(self.x_text)
+        # self.y_text = gl.GLTextItem(pos=(0,0.2,0), text="y", font=QtGui.QFont('Helvetica', 7))
+        # self.w.addItem(self.y_text)
+        # self.z_text = gl.GLTextItem(pos=(0,0,0.2), text="z", font=QtGui.QFont('Helvetica', 7))
+        # self.w.addItem(self.z_text)
         self.hfov = 90.0
         self.vfov = 60.0
         self.cam_rotmat = Rotation.from_rotvec([0., 0., 0.])

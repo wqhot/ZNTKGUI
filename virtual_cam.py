@@ -29,7 +29,7 @@ class virtualCAM(QThread):
     signal_cam_pos = pyqtSignal(dict)
     singal_change_campos = pyqtSignal(dict)
 
-    def __init__(self, step=0.01, img_step=16):
+    def __init__(self, step=0.01, img_step=8):
         super(virtualCAM, self).__init__()
         self.step = step
         self.img_step = img_step
@@ -57,25 +57,25 @@ class virtualCAM(QThread):
         self.abais_head = np.zeros((3,))
         self.abais_car = np.zeros((3,))
 
-        self.objpoint = np.zeros((1, 5, 3), dtype=np.float32)
-        self.objpoint[0, 0, :] = np.array([0, 0.1017863,0])
-        self.objpoint[0, 1, :] = np.array([0.03360889, 0.1237198, 0.001162193])
-        self.objpoint[0, 2, :] = np.array([0.07500772, 0.1011036, 0.03627425])
-        self.objpoint[0, 3, :] = np.array([0.02159825, 0.04610938, 0.04779462])
-        self.objpoint[0, 4, :] = np.array([0.07805766, 0.0, 0.05642203])
+        # self.objpoint = np.zeros((1, 5, 3), dtype=np.float32)
+        # self.objpoint[0, 0, :] = np.array([0, 0.1017863,0])
+        # self.objpoint[0, 1, :] = np.array([0.03360889, 0.1237198, 0.001162193])
+        # self.objpoint[0, 2, :] = np.array([0.07500772, 0.1011036, 0.03627425])
+        # self.objpoint[0, 3, :] = np.array([0.02159825, 0.04610938, 0.04779462])
+        # self.objpoint[0, 4, :] = np.array([0.07805766, 0.0, 0.05642203])
 
-        init_rot = Rotation.from_euler('ZYX', np.array([-120, -4, 40]), degrees=True)
-        init_trans = np.array([-0.02, 0.12, 0.10])
-        for idx in range(self.objpoint.shape[1]):
-            self.objpoint[0, idx, :] = np.inner(init_rot.as_matrix(), self.objpoint[0, idx, :]) + init_trans
+        # init_rot = Rotation.from_euler('ZYX', np.array([-120, -4, 40]), degrees=True)
+        # init_trans = np.array([-0.02, 0.12, 0.10])
+        # for idx in range(self.objpoint.shape[1]):
+        #     self.objpoint[0, idx, :] = np.inner(init_rot.as_matrix(), self.objpoint[0, idx, :]) + init_trans
             # pass
 
-        self.objcolor = np.zeros((self.objpoint.shape[1], 3))
-        self.objcolor[0, :] = np.array([1.0, 0.0, 0.0])
-        self.objcolor[1, :] = np.array([0.0, 1.0, 0.0])
-        self.objcolor[2, :] = np.array([0.8, 0.5, 0.2])
-        self.objcolor[3, :] = np.array([0.0, 0.5, 1.0])
-        self.objcolor[4, :] = np.array([0.3, 0.1, 1.0])
+        # self.objcolor = np.zeros((self.objpoint.shape[1], 3))
+        # self.objcolor[0, :] = np.array([1.0, 0.0, 0.0])
+        # self.objcolor[1, :] = np.array([0.0, 1.0, 0.0])
+        # self.objcolor[2, :] = np.array([0.8, 0.5, 0.2])
+        # self.objcolor[3, :] = np.array([0.0, 0.5, 1.0])
+        # self.objcolor[4, :] = np.array([0.3, 0.1, 1.0])
         
         # self.objpoint[0, 4, :] = np.array([0.10316, 0.0, 0.5])
 
@@ -112,6 +112,23 @@ class virtualCAM(QThread):
             self.D[2] = p1
             self.D[3] = p2
 
+            self.maker_group_size = yaml_cfg.get("maker_group_size", 0)
+            points = yaml_cfg.get("marker_pos", [])
+
+            self.objpoint = np.array(points)
+
+            self.objcolor = np.zeros((self.objpoint.shape[0] * self.objpoint.shape[1], 3))
+            colortable = np.zeros((5, 3))
+            colortable[0, :] = np.array([1.0, 0.0, 0.0])
+            colortable[1, :] = np.array([0.0, 1.0, 0.0])
+            colortable[2, :] = np.array([0.8, 0.5, 0.2])
+            colortable[3, :] = np.array([0.0, 0.5, 1.0])
+            colortable[4, :] = np.array([0.3, 0.1, 1.0])
+            counter = 0
+            for i in range(self.maker_group_size):
+                self.objcolor[counter: counter+self.objpoint[i, :, :].shape[0], :] = colortable[i, :]
+                counter = counter + self.objpoint[i, :, :].shape[0]
+            
     def project(self, objpoints):
         rvecs = -self.cam_rot.as_rotvec()
         tvecs = -np.inner(np.matrix(self.cam_rot.as_matrix()).I, self.cam_pos)
@@ -166,12 +183,12 @@ class virtualCAM(QThread):
         }
         self.singal_change_campos.emit(pos)
 
-    def pnp(self, undistort_imgpoints):
+    def pnp(self, undistort_imgpoints, group):
         K = np.eye(3)
         D = np.zeros((4, 1))
         try:
             retval, rvec, tvec = cv2.solvePnP(
-                self.objpoint,
+                self.objpoint[group, :, :],
                 undistort_imgpoints,
                 K, D, flags=cv2.SOLVEPNP_ITERATIVE
             )
@@ -324,14 +341,17 @@ class virtualCAM(QThread):
         return img
 
     def gen_image(self, rotmat=np.matrix(np.identity(3)), t=np.zeros((3,))):
+        if not hasattr(self, 'objpoint'):
+            return
         objpoints = np.copy(self.objpoint)
-        for row in range(self.objpoint.shape[1]):
-            objpoints[0, row, :] = np.dot(rotmat, objpoints[0, row, :]) + t
+        objpoints = objpoints.reshape((-1, 3))
+        for row in range(objpoints.shape[0]):
+            objpoints[row, :] = np.dot(rotmat, objpoints[row, :]) + t
         imgpoints, undistort_imgpoints = self.project(objpoints)
         img = np.zeros(shape=(self.img_shape[0], self.img_shape[1], 3), dtype=np.uint8)
         img2 = np.zeros(shape=(self.img_shape[0], self.img_shape[1], 3), dtype=np.uint8)
         for k in range(imgpoints.shape[0]):
-            if imgpoints[k, 0, :][0] > 0 and imgpoints[k, 0, :][1] > 0 and imgpoints[k, 0, :][0] < self.img_shape[0] and imgpoints[k, 0, :][1] < self.img_shape[1]:
+            if imgpoints[k, 0, :][0] > 0 and imgpoints[k, 0, :][1] > 0 and imgpoints[k, 0, :][0] < self.img_shape[1] and imgpoints[k, 0, :][1] < self.img_shape[0]:
                 img = cv2.circle(
                     img=img,
                     center=(int(imgpoints[k, 0, :][0]),
@@ -354,6 +374,7 @@ class virtualCAM(QThread):
         img = cv2.flip(img, 0)
         img2 = cv2.flip(img2, 0)
         self.signal_image.emit(img)
+        imgpoints = imgpoints.reshape((self.objpoint.shape[0], self.objpoint.shape[1], -1))
         return [img2, imgpoints, undistort_imgpoints]
 
     def run(self):
@@ -368,17 +389,17 @@ class virtualCAM(QThread):
         start_stamp = time.time()
         imu_f = open(imu_csv_name, 'w')
         img_f = open(img_csv_name, 'w')
-        points_f = open(points_csv_name, 'w')
         answer_f = open(answer_csv_name, 'w')
         imu_f.write(
             ',seq,stamp,gx,gy,gz,ax,ay,az,gx_car,gy_car,gz_car,ax_car,ay_car,az_car\n')
-        img_f.write(',seq,stamp,img_path\n')
-        points_f.write(',seq,pts,pts_undistort\n')
+        img_f.write(',seq,stamp,num,group,x,y,r\n')
         answer_f.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl,x_pos,y_pos,z_pos\n')
         last_mile = -1
         print('run...')
         real_eul = None
         last_cam_eul = np.array([0, 0, 0])
+        img_count = 0
+        point_count = 0
         for i in range(len(self.t)):
             pos = {
                 'q': self.rot.as_quat()[i, :],
@@ -436,22 +457,22 @@ class virtualCAM(QThread):
             if i % self.img_step == 0:
                 img, imgpoints, undistort_imgpoints = self.gen_image(
                     self.rot[i].as_matrix(), self.pos[i, :])
-                cv2.imwrite(
-                    csv_name + '/{}.jpg'.format(start_stamp + self.t[i]), img)
-                img_f.write(',{},{},~/output/{}/{}.jpg\n'.format(int(i / self.img_step), start_stamp +
-                            self.t[i], bag_name, start_stamp + self.t[i]))
+                
                 pts_str = ''
                 pts_undistort = ''
-                for k in range(imgpoints.shape[1]):
-                    pts_str = pts_str + \
-                        "{}|{}|".format(imgpoints[0, k, 0], imgpoints[0, k, 1])
-                    pts_undistort = pts_undistort + \
-                        "{}|{}|".format(
-                            undistort_imgpoints[0, k, 0], undistort_imgpoints[0, k, 1])
-                points_f.write(',{},{},{}\n'.format(
-                    int(i / self.img_step), pts_str, pts_undistort))
-                cam_eul = self.pnp(undistort_imgpoints)
+                
+                # img_f.write(',seq,stamp,num,group,x,y,r\n')
+                for k in range(imgpoints[img_count % self.maker_group_size, :, :].shape[0]):
+                    img_f.write(',{},{},{},{},{},{},{}\n'.format(
+                        point_count, start_stamp + self.t[i], imgpoints[img_count % self.maker_group_size, :, :].shape[0],
+                        img_count % self.maker_group_size, imgpoints[img_count % self.maker_group_size, k, 0],
+                        imgpoints[img_count % self.maker_group_size, k, 1],
+                        5.0
+                    ))
+                    point_count = point_count + 1
+                cam_eul = self.pnp(undistort_imgpoints, img_count % self.maker_group_size)
                 cam_eul = cam_eul.reshape((1, 3))
+                img_count = img_count + 1    
                 points_2_interp = np.vstack((last_cam_eul, cam_eul))
                 if i != 0:
                     cam_eul_interp = self.interp_pos(
@@ -474,7 +495,6 @@ class virtualCAM(QThread):
             time.sleep(self.step * 10)
         imu_f.close()
         img_f.close()
-        points_f.close()
         print('over')
 
 
@@ -731,6 +751,15 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.doubleSpinBox_czt.setValue(30)
         self.change_cam_pos_by_spinbox()
 
+        directory = QFileDialog.getOpenFileName(self,
+                                                "相机参数", "../cam.txt",
+                                                "Text Files (*.txt)")
+
+        if len(directory[0]) != 0:
+            self.virtual.set_cam(directory[0])
+        else:
+            return
+
         point_num = self.virtual.objpoint.shape[0] * \
             self.virtual.objpoint.shape[1]
         objpoint = self.virtual.objpoint.reshape((point_num, 3))
@@ -738,11 +767,6 @@ class virtualCAMDialog(QDialog, Ui_Dialog):
         self.pushButton.clicked.connect(self.on_add)
         self.pushButton_2.clicked.connect(self.on_interp)
 
-        directory = QFileDialog.getOpenFileName(self,
-                                                "相机参数", "../cam.txt",
-                                                "Text Files (*.txt)")
-        if len(directory[0]) != 0:
-            self.virtual.set_cam(directory[0])
 
         self.camerapos.hfov = math.atan((self.virtual.img_shape[1] - self.virtual.K[0, 2]) /self.virtual.K[0, 0]) * 180.0 / math.pi + \
                               math.atan((self.virtual.K[0, 2]) /self.virtual.K[0, 0]) * 180.0 / math.pi
