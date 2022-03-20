@@ -41,7 +41,7 @@ class virtualCAM(QThread):
         self.cam_rot = Rotation.from_euler('ZYX', [0, 0, 0], degrees=True)
         self.cam_pos = np.array([0.0, 0.0, 0.0])
 
-        self.img_shape = (int(1080), int(1920))
+        self.img_shape = (int(1024), int(1280))
         self.mask = None
         # 0 无 1 短边 2 长边
         self.mask_type = 2
@@ -368,6 +368,7 @@ class virtualCAM(QThread):
                     color=(255, 255, 255),
                     thickness=-1
                 )
+            imgpoints[k, 0, :][1] = self.img_shape[0] - imgpoints[k, 0, :][1] - 1
             # cv2.circle(img, imgpoints[0, i, :], 4, 255, -1)
         # img = self.gen_random(img)
         img = cv2.bitwise_and(img, img, mask=self.mask)

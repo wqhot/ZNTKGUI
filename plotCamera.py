@@ -154,6 +154,7 @@ class PlotCamera():
     def add_pose(self, p, q):
         self.cam_rotmat = Rotation.from_quat(q)
         self.cam_t = np.array(p)
+        self.w.setCameraPosition(pos=QtGui.QVector3D(self.cam_t[0], self.cam_t[1], self.cam_t[2]))
         self.cal_cam_fov()
         rot_matrix = self.quaternion_to_rotation_matrix(q)
         euler = self.quat_to_euler(q)
