@@ -6,12 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2122</width>
-    <height>1080</height>
+    <width>2114</width>
+    <height>980</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../res/virtual.png</normaloff>../res/virtual.png</iconset>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>

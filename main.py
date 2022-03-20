@@ -7,6 +7,7 @@ from ui.Ui_bagset import Ui_Dialog
 from ui.Ui_setting import Ui_Dialog as Ui_Dialog_set
 from ui.Ui_zttask import Ui_dialog as Ui_Dialog_zt
 from ztUsage import ztUsage
+from virtual_cam import virtualCAMDialog
 import yaml
 # from zt902e1 import ztScheduler, ztTask
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -393,7 +394,7 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         self.toolBtnAlign.triggered.connect(self.alignOnce)
         self.toolBtnAlign.setEnabled(True)
 
-        self.toolBtnZTDialog = QAction(QIcon('./res/旋转.png'), '转台', self)
+        self.toolBtnZTDialog = QAction(QIcon('./res/virtual.png'), '仿真', self)
         self.toolBtnZTDialog.triggered.connect(self.settingZT)
         self.toolBtnZTDialog.setEnabled(True)
 
@@ -623,10 +624,9 @@ class mywindow(QMainWindow, Ui_MainWindow):  # 这个窗口继承了用QtDesignn
         #     return
 
     def settingZT(self):
-        # dialog = ztUsage()
-        # if dialog.exec():
-        #     pass
-        pass
+        dialog = virtualCAMDialog()
+        dialog.show()
+        dialog.exec()
        
 
     def settingSSH(self):

@@ -3,24 +3,25 @@ from __future__ import print_function
 import ctypes
 from ctypes import *
 import sys
+from nokov_camera import NOKOVCamera
 
-from Demo_opencv_byCallBack import HGDLCamera
+# from Demo_opencv_byCallBack import HGDLCamera
 
-def is_admin():
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except:
-        return False
-if is_admin():
-    pass
-else:
-    if sys.version_info[0] == 3:
-        ctypes.windll.shell32.ShellExecuteW(
-            None, "runas", sys.executable, __file__, None, 1)
-    else:  # in python2.x
-        ctypes.windll.shell32.ShellExecuteW(None, u"runas", unicode(
-            sys.executable), unicode(__file__), None, 1)
-    exit(0)
+# def is_admin():
+#     try:
+#         return ctypes.windll.shell32.IsUserAnAdmin()
+#     except:
+#         return False
+# if is_admin():
+#     pass
+# else:
+#     if sys.version_info[0] == 3:
+#         ctypes.windll.shell32.ShellExecuteW(
+#             None, "runas", sys.executable, __file__, None, 1)
+#     else:  # in python2.x
+#         ctypes.windll.shell32.ShellExecuteW(None, u"runas", unicode(
+#             sys.executable), unicode(__file__), None, 1)
+#     exit(0)
 
 import cv2
 import numpy as np
@@ -35,7 +36,7 @@ from PyQt5.QtGui import QPixmap, QIcon, QImage
 from PyQt5.QtWidgets import QComboBox, QDoubleSpinBox, QListWidget, QDoubleSpinBox, QSpinBox, QWidget, QLabel, QApplication, QListView, QHBoxLayout, QVBoxLayout, QListWidgetItem, QDialog, QFileDialog, QTableWidget, QTableWidgetItem
 from ui.Ui_camera import Ui_Dialog
 from plotCamera import PlotCamera
-from Demo_opencv_byGetFrame import *
+# from Demo_opencv_byGetFrame import *
 import piexif
 import time
 import datetime
@@ -581,8 +582,7 @@ class camviewDialog(QDialog, Ui_Dialog):
         for camera_type in camera_type_list:
             self.comboBox.addItem(camera_type)
         self.comboBox_mask.addItems(['无', '短边', '长边'])
-        self.radioButtonHGDL.setChecked(True)
-        self.on_click_hgdl()
+        self.radioButtonHGDL.setChecked(False)
         for undistort_type in undistort_list:
             self.comboBox_2.addItem(undistort_type)
         self.camerapos = PlotCamera(self.verticalLayout_camerapos)
@@ -598,7 +598,6 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.pushButton_3.clicked.connect(self.on_push_shoot)
         self.pushButton_calonce.clicked.connect(self.on_click_cal_once)
         self.pushButton_project.clicked.connect(self.on_project)
-        self.radioButtonHGDL.toggled.connect(self.on_click_hgdl)
 
         self.cap = None
 
@@ -655,8 +654,8 @@ class camviewDialog(QDialog, Ui_Dialog):
             
         if self.cap is None:
             if self.radioButtonHGDL.isChecked():
-                cameraIdx = self.comboBoxHGDL.currentIndex()
-                self.cap = HGDLCamera(cameraIdx)
+                cameraIdx = self.spinBox_cameraid_2.value()
+                self.cap = NOKOVCamera(cameraIdx)
                 self.cap.setExpose(camera_expose)
             else:
                 self.cap = cv2.VideoCapture(camera_id)
@@ -665,9 +664,10 @@ class camviewDialog(QDialog, Ui_Dialog):
             self.lineEditHeight.setText(str(int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
         else:
             if self.radioButtonHGDL.isChecked():
-                cameraIdx = self.comboBoxHGDL.currentIndex()
-                self.cap = HGDLCamera(cameraIdx)
+                cameraIdx = self.spinBox_cameraid_2.value()
+                self.cap = NOKOVCamera(cameraIdx)
                 self.cap.setExpose(camera_expose)
+                pass
             else:
                 self.cap = cv2.VideoCapture(camera_id)
                 self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
@@ -696,19 +696,7 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.doubleSpinBox_dp2.setValue(sig_d["D"][0][3])
 
         self.doubleSpinBox_xi.setValue(sig_d["D"][0][3])
-    
-    def on_click_hgdl(self):
-        if self.radioButtonHGDL.isChecked():
-            # 发现相机
-            self.comboBoxHGDL.clear()
-            cameraCnt, cameraList = enumCameras()
-            if cameraCnt is None:
-                return
-            for index in range(0, cameraCnt):
-                camera = cameraList[index]
-                self.comboBoxHGDL.addItem(str(camera.getSerialNumber(camera)))
-        else:
-            self.comboBoxHGDL.clear()
+       
 
     def on_click_cal_once(self):
         self.cam.cal_once()

@@ -206,6 +206,13 @@
            </layout>
           </item>
           <item>
+           <widget class="Line" name="line_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
            <layout class="QVBoxLayout" name="verticalLayout_11">
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_15">
@@ -233,11 +240,18 @@
              </layout>
             </item>
             <item>
+             <widget class="Line" name="line">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
              <layout class="QHBoxLayout" name="horizontalLayout_18">
               <item>
                <widget class="QRadioButton" name="radioButtonHGDL">
                 <property name="text">
-                 <string>工业相机</string>
+                 <string>度量相机</string>
                 </property>
                </widget>
               </item>
@@ -249,7 +263,14 @@
                </widget>
               </item>
               <item>
-               <widget class="QComboBox" name="comboBoxHGDL"/>
+               <widget class="QSpinBox" name="spinBox_cameraid_2">
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>254</number>
+                </property>
+               </widget>
               </item>
              </layout>
             </item>
