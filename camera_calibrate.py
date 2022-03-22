@@ -663,6 +663,7 @@ class camviewDialog(QDialog, Ui_Dialog):
             self.lineEditWidth.setText(str(int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))))
             self.lineEditHeight.setText(str(int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
         else:
+            self.cap = None
             if self.radioButtonHGDL.isChecked():
                 cameraIdx = self.spinBox_cameraid_2.value()
                 self.cap = NOKOVCamera(cameraIdx)

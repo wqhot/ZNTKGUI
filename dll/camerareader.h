@@ -4,9 +4,9 @@
 #include "cameraReader_global.h"
 
 extern "C" {
-    extern void nokovInit(int ip);
-    extern void nokovClose();
-    extern void getImage(unsigned char *data);
+    __declspec(dllexport) void nokovInit(int ip);
+    __declspec(dllexport) void nokovClose();
+    __declspec(dllexport) void getImage(unsigned char *data);
 }
 
 
