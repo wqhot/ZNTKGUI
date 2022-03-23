@@ -3,6 +3,9 @@ from __future__ import print_function
 import ctypes
 from ctypes import *
 import sys
+from tabnanny import check
+
+from attr import has
 from nokov_camera import NOKOVCamera
 
 # from Demo_opencv_byCallBack import HGDLCamera
@@ -30,7 +33,7 @@ import os
 import sys
 import copy
 import yaml
-from PyQt5 import QtGui
+from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QIcon, QImage
 from PyQt5.QtWidgets import QComboBox, QDoubleSpinBox, QListWidget, QDoubleSpinBox, QSpinBox, QWidget, QLabel, QApplication, QListView, QHBoxLayout, QVBoxLayout, QListWidgetItem, QDialog, QFileDialog, QTableWidget, QTableWidgetItem
@@ -598,10 +601,25 @@ class camviewDialog(QDialog, Ui_Dialog):
         self.pushButton_3.clicked.connect(self.on_push_shoot)
         self.pushButton_calonce.clicked.connect(self.on_click_cal_once)
         self.pushButton_project.clicked.connect(self.on_project)
+        self.checkBox.toggled.connect(self.on_toggle_points)
+        self.horizontalSlider.valueChanged.connect(self.on_change_expose)
 
         self.cap = None
 
         self.reopen()
+    
+    def on_change_expose(self, camera_expose):
+        # camera_expose = self.horizontalSlider.value()
+        if self.cap is not None:
+            self.cap.setExpose(camera_expose)
+
+    def on_toggle_points(self, checked):
+        if not self.radioButtonHGDL.isChecked():
+            return
+        if self.cap is None:
+            return
+        if hasattr(self.cap, 'enableDraw'):
+            self.cap.enableDraw(checked)
 
     def on_project(self):
         rot, trans = self.iconlist.get_pos()
@@ -655,9 +673,12 @@ class camviewDialog(QDialog, Ui_Dialog):
         if self.cap is None:
             if self.radioButtonHGDL.isChecked():
                 cameraIdx = self.spinBox_cameraid_2.value()
+                self.label_3.setText(QtCore.QCoreApplication.translate("Dialog", "阈值"))
                 self.cap = NOKOVCamera(cameraIdx)
-                self.cap.setExpose(camera_expose)
+                # self.cap.setExpose(camera_expose)
+                self.cap.enableDraw(self.checkBox.isChecked())
             else:
+                self.label_3.setText(QtCore.QCoreApplication.translate("Dialog", "曝光时间"))
                 self.cap = cv2.VideoCapture(camera_id)
                 self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
             self.lineEditWidth.setText(str(int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))))
@@ -667,9 +688,11 @@ class camviewDialog(QDialog, Ui_Dialog):
             if self.radioButtonHGDL.isChecked():
                 cameraIdx = self.spinBox_cameraid_2.value()
                 self.cap = NOKOVCamera(cameraIdx)
-                self.cap.setExpose(camera_expose)
-                pass
+                self.label_3.setText(QtCore.QCoreApplication.translate("Dialog", "阈值"))
+                # self.cap.setExpose(camera_expose)
+                self.cap.enableDraw(self.checkBox.isChecked())
             else:
+                self.label_3.setText(QtCore.QCoreApplication.translate("Dialog", "曝光时间"))
                 self.cap = cv2.VideoCapture(camera_id)
                 self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_expose)
                 self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(self.lineEditWidth.text()))
