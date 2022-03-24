@@ -41,7 +41,7 @@ class virtualCAM(QThread):
         self.cam_rot = Rotation.from_euler('ZYX', [0, 0, 0], degrees=True)
         self.cam_pos = np.array([0.0, 0.0, 0.0])
 
-        self.img_shape = (int(1024), int(1280))
+        self.img_shape = (int(1024), int(2048))
         self.mask = None
         # 0 无 1 短边 2 长边
         self.mask_type = 2
@@ -115,7 +115,7 @@ class virtualCAM(QThread):
             self.maker_group_size = yaml_cfg.get("maker_group_size", 0)
             points = yaml_cfg.get("marker_pos", [])
 
-            self.objpoint = np.array(points)
+            self.objpoint = np.array(points) / 1000.0
 
             self.objcolor = np.zeros((self.objpoint.shape[0] * self.objpoint.shape[1], 3))
             colortable = np.zeros((5, 3))
@@ -393,7 +393,7 @@ class virtualCAM(QThread):
         answer_f = open(answer_csv_name, 'w')
         imu_f.write(
             ',seq,stamp,gx,gy,gz,ax,ay,az,gx_car,gy_car,gz_car,ax_car,ay_car,az_car\n')
-        img_f.write(',seq,stamp,num,group,x,y,r\n')
+        img_f.write(',seq,stamp,num,group,camera,x,y,r\n')
         answer_f.write('stamp,x_ang_cl,z_ang_cl,y_ang_cl,x_pos,y_pos,z_pos\n')
         last_mile = -1
         print('run...')
@@ -464,9 +464,9 @@ class virtualCAM(QThread):
                 
                 # img_f.write(',seq,stamp,num,group,x,y,r\n')
                 for k in range(imgpoints[img_count % self.maker_group_size, :, :].shape[0]):
-                    img_f.write(',{},{},{},{},{},{},{}\n'.format(
+                    img_f.write(',{},{},{},{},{},{},{},{}\n'.format(
                         point_count, start_stamp + self.t[i], imgpoints[img_count % self.maker_group_size, :, :].shape[0],
-                        img_count % self.maker_group_size, imgpoints[img_count % self.maker_group_size, k, 0],
+                        img_count % self.maker_group_size, 0, imgpoints[img_count % self.maker_group_size, k, 0],
                         imgpoints[img_count % self.maker_group_size, k, 1],
                         5.0
                     ))
